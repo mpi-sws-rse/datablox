@@ -1,0 +1,9 @@
+In order to run datablox, RabbitMQ must be installed in the system.
+
+datablox depends on the following python modules:
+    pika 0.9.5
+
+Individual blox depend on several others:
+    pymongo 2.0.1 for Mongodb (also requires Mongodb to be running)
+    pylucene 3.4.0 for Lucene
+    

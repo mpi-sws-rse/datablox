@@ -4,6 +4,11 @@ Assemble big data computations from blocks.
 
 This is still under development.
 
+Setup
+============
+
+See "setup" for instructions.
+
 Running
 ============
 
