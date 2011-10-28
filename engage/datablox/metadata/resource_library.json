@@ -1,0 +1,11 @@
+[
+    { "key":{"name":"pika", "version":"0.9"},
+      "mgr_module_name":"engage.drivers.genforma.easy_install",
+      "packages": [
+        { "type": "Reference",
+          "package_class": "EasyInstallLink",
+          "location": "pika"
+        }
+      ]
+    }
+]
