@@ -1,1 +1,7 @@
 *.pyc
+*~
+*.egg-info
+datablox_framework/build
+datablox_framework/dist
+engage/datablox/sw_packages
+
