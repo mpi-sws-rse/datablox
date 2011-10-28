@@ -1,0 +1,36 @@
+[
+   { "key": { "name": "mongodb", "version": "2.0"},
+      "display_name":"MongoDB database server",
+      "config_port": {
+        "home":{"type":"path", "default":"${input_ports.host.genforma_home}/mongodb-2.0"},
+        "port":{"type":"tcp_port", "default":27017},
+        "log_file":{"type":"path", "default":"${input_ports.host.log_directory}/mongodb.log"}
+      },
+      "input_ports": {
+        "host": {
+          "hostname": {"type": "string"},
+          "os_user_name" : {"type": "string"},
+          "genforma_home": {"type": "path"},
+          "log_directory": {"type": "path"}
+        }
+      },
+      "output_ports": {
+        "mongodb": {
+            "home":{"type":"path", "source":"config_port.home"},
+            "hostname":{"type":"string", "fixed-value":"localhost"},
+            "port":{"type":"tcp_port", "source":"config_port.port"}
+        }
+      },
+      "inside": {
+	"one-of": [
+          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
+                                                 "less-than":"10.7"}},
+            "port_mapping": {"host":"host"}},
+	  { "key": {"name": "ubuntu-linux", "version":"9.10"},
+            "port_mapping": {"host":"host"}},
+          { "key": {"name": "ubuntu-linux", "version":"10.04"},
+            "port_mapping": {"host":"host"}}
+        ]
+      }
+    }
+]
