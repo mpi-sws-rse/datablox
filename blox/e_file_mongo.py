@@ -21,8 +21,6 @@ class FileMongo(Element):
   def recv_push(self, port, log):
     if log.log.has_key("token"):
       print self.name + " got the finish token for directory " + log.log["token"]
-      # self.crawler_done = True
-      # self.process_outstanding_queries()
       self.num_tokens = self.num_tokens - 1
       if self.num_tokens == 0:
         self.crawler_done = True

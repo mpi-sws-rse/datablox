@@ -35,19 +35,18 @@ def create_element(name, config):
   return inst
 
 def setup_connections():
-  # crawler1 = create_element("Dir-Src", {"directory": "."})
-  crawler2 = create_element("Dir-Src", {"directory": "/Users/saideep/Downloads/pylucene-3.4.0-1/samples"})
+  crawler = create_element("Dir-Src", {"directory": "."})
+  # crawler = create_element("Dir-Src", {"directory": "/Users/saideep/Downloads/pylucene-3.4.0-1/samples"})
   categorizer = create_element("Categorize", {})
-  indexer = create_element("Lucene-index", {"crawlers": 1})
+  # indexer = create_element("Lucene-index", {"crawlers": 1})
   metaindexer = create_element("File-mongo", {"crawlers": 1})
-  query = create_element("File-query", {})
+  # query = create_element("File-query", {})
   
-  # crawler1.connect("output", categorizer, "input")
-  crawler2.connect("output", categorizer, "input")
-  categorizer.connect("output", indexer, "input")
+  crawler.connect("output", categorizer, "input")
+  # categorizer.connect("output", indexer, "input")
   categorizer.connect("output", metaindexer, "input")
-  query.connect("meta_query", metaindexer, "file_data")
-  query.connect("data_query", indexer, "query")
+  # query.connect("meta_query", metaindexer, "file_data")
+  # query.connect("data_query", indexer, "query")
   
 def start_elements():
   for e in elements:
