@@ -125,6 +125,7 @@ class Manager(service_manager.Manager):
         r(run_program,
           [p.server_exe, "--fork", "--dbpath", p.dbpath,
            "--logpath", p.config_port.log_file,
+           "--port", str(p.config_port.port),
            "--logappend"],
           cwd=os.path.dirname(p.server_exe))
         self.ctx.check_poll(10, 1.0, lambda x: x!=None, get_server_status, p.pid_file)
