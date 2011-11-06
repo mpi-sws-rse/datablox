@@ -9,6 +9,7 @@ class SimplePull(Element):
     print "Simple-pull element loaded"
 
   def recv_pull_query(self, port, log):
+    # print "got query " + str(log.log)
     number = log.log["number"]
     print self.name + " got query for number " + str(number)
     ret_log = Log()

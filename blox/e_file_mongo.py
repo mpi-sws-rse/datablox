@@ -30,15 +30,17 @@ class FileMongo(Element):
       entries = []
       log = log.log
       names = log["name"]
+      paths = log["path"]
       sizes = log["size"]
       perms = log["perm"]
       owners = log["owner"]
       categories = log["category"]
     
-      for i in range(0, len(names)):
+      for i in range(0, len(paths)):
         # remove the old entry corresponding to this file
-        self.file_data.remove({"name" : names[i]})
-        entry = {"name": names[i],
+        self.file_data.remove({"path" : paths[i]})
+        entry = {"path": paths[i],
+                 "name": names[i],
                  "size": sizes[i],
                  "perm": perms[i],
                  "owner": owners[i],
@@ -61,27 +63,27 @@ class FileMongo(Element):
     
   def process_query(self, port_name, log):
     entry = {}
-    if port_name == self.full_port_name("file_data"):
-      names = log.log["name"]
-      print self.name + " got query for files "# + str(names)
-      paths = []
+    if port_name == "file_data":
+      paths = log.log["paths"]
+      names = []
       sizes = []
       perms = []
       owners = []
       categories = []
-      for name in names:
-        fd = self.file_data.find_one({"name": name})
-        paths.append(fd["name"])
+      for path in paths:
+        fd = self.file_data.find_one({"path": path})
+        names.append(fd["name"])
         sizes.append(fd["size"])
         perms.append(fd["perm"])
         owners.append(fd["owner"])
         categories.append(fd["category"])
+      entry["name"] = names
       entry["path"] = paths
       entry["size"] = sizes
       entry["perm"] = perms
       entry["owner"] = owners
       entry["category"] = categories
-    elif port_name == self.full_port_name("dir_aggregates"):
+    elif port_name == "dir_aggregates":
       total_size = 0.0
       num_files = 0
       for fd in self.file_data.find():

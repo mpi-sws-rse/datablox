@@ -1,14 +1,15 @@
 from element import *
 import pymongo
 from pymongo import Connection
+import os
 
 class Categorize(Element):
   name = "Categorize"
   
   def on_load(self, config):
     self.name = "Categorize"
-    self.add_port("input", Port.PUSH, Port.UNNAMED, ["name", "size", "perm", "owner"])
-    self.add_port("output", Port.PUSH, Port.UNNAMED, ["name", "size", "perm", "owner", "category"])
+    self.add_port("input", Port.PUSH, Port.UNNAMED, ["path", "size", "perm", "owner"])
+    self.add_port("output", Port.PUSH, Port.UNNAMED, ["path", "name", "size", "perm", "owner", "category"])
 
   def find_category(self, file_name):
     if file_name.endswith(".py"):
@@ -30,13 +31,16 @@ class Categorize(Element):
       new_log["token"] = log.log["token"]
     else:
       log = log.log
-      names = log["name"]
+      paths = log["path"]
       categories = []
+      names = []
     
-      for name in names:
-        categories.append(self.find_category(name))
+      for path in paths:
+        categories.append(self.find_category(path))
+        names.append(os.path.split(path)[-1])
       
       new_log["name"] = names
+      new_log["path"] = paths
       new_log["size"] = log["size"]
       new_log["perm"] = log["perm"]
       new_log["owner"] = log["owner"]

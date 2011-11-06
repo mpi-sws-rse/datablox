@@ -14,7 +14,7 @@ class DirSrc(Element):
           continue
         stat = os.stat(path)
         listing = {}
-        listing["name"] = [path]
+        listing["path"] = [path]
         listing["size"] = [stat.st_size]
         listing["perm"] = [stat.st_mode]
         listing["owner"] = [stat.st_uid]
@@ -32,7 +32,7 @@ class DirSrc(Element):
 
   def on_load(self, config):
     self.config = config
-    # self.name = "Dir-Src:" + config["directory"]
-    self.name = "Dir-Src"
-    self.add_port("output", Port.PUSH, Port.UNNAMED, ["name", "size", "perm", "owner"])
+    self.name = "Dir-Src:" + config["directory"]
+    # self.name = "Dir-Src"
+    self.add_port("output", Port.PUSH, Port.UNNAMED, ["path", "size", "perm", "owner"])
     print "Dir-Src element loaded"

@@ -11,9 +11,7 @@ class SimplePullClient(Element):
   def src_start(self):
     log = Log()
     log.log["number"] = 23
-    self.pull("output", log)
-  
-  def recv_pull_result(self, port, log):
-    number = log.log["result"]
+    res = self.pull("output", log)
+    number = res.log["result"]
     print self.name + " got result " + str(number)
     self.shutdown()

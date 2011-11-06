@@ -7,50 +7,44 @@ class FileQuery(Element):
     self.name = "File-query"
     self.add_port("meta_query", Port.PULL, Port.UNNAMED, ["name"])
     self.add_port("data_query", Port.PULL, Port.UNNAMED, ["query"])
-    self.interactive = False
-    self.query = "lucene"
-    self.category = "Source"
+    self.interactive = True
     print "File-query element loaded"
 
   def src_start(self):
-    self.start_query()
+    if self.interactive:
+      self.do_interactive()
+    else:
+      self.query("lucene", "Source")
+      self.shutdown()
     
-  def start_query(self):
+  def query(self, query, category):
     log = Log()
-    log.log["query"] = self.query
-    self.pull("data_query", log)
+    log.log["query"] = query
+    res = self.pull("data_query", log)
+    paths = res.log["results"]
+    ml = Log()
+    ml.log["paths"] = paths
+    res = self.pull("meta_query", ml)
+    names = res.log["name"]
+    categories = res.log["category"]
+    print "Results: "
+    for i in range(0, len(names)):
+      if categories[i] == category:
+        print names[i]
   
   def do_interactive(self):
-    print
-    print "Hit enter with no input to quit."
-    query = raw_input("Query:")
-    if query == '':
-        self.interactive = False
-        self.shutdown()
-    print
-    category = raw_input("Category:")
-    category = category.capitalize()
-    print "Searching for: " + query + " in category " + category
-    self.query = query
-    self.category = category
-    self.start_query()
-    
-  def recv_pull_result(self, port_name, log):
-    if port_name == self.full_port_name("data_query"):
-      # print self.name + " got document results " + str(log.log)
-      ml = Log()
-      ml.log["name"] = log.log["results"]
-      self.pull("meta_query", ml)
-    elif port_name == self.full_port_name("meta_query"):
-      log = log.log
-      # print self.name + " got metadata for the documents " + str(log)
-      print "Showing results under category " + self.category
-      paths = log["path"]
-      categories = log["category"]
-      for i in range(0, len(paths)):
-        if categories[i] == self.category:
-          print paths[i]
-      if self.interactive:
-        self.do_interactive()
-      else:
-        self.shutdown()
+    #do a sample query, so we know the databases are ready
+    self.query("lucene", "Source")
+    while self.interactive:
+      print
+      print "Hit enter with no input to quit."
+      query = raw_input("Query:")
+      if query == '':
+          self.interactive = False
+          break
+      print
+      category = raw_input("Category:")
+      category = category.capitalize()
+      print "Searching for: " + query + " in category " + category
+      self.query(query, category)
+    self.shutdown()

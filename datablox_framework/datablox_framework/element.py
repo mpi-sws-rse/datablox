@@ -1,7 +1,8 @@
-import pika
-from pika.adapters import SelectConnection
-import threading
+import zmq
+import time
 import json
+import threading
+import collections
 
 class Log(object):
   def __init__(self):
@@ -19,13 +20,15 @@ class Port(object):
       NAMED = 0
       UNNAMED = 1
       
-      def __init__(self, port_name, port_type, keys_type, keys):
+      def __init__(self, port_name, port_type, keys_type, keys, port_number):
         self.name = port_name
         self.port_type = port_type
         self.keys_type = keys_type
         #do some additional checks here - length(key) = 1 if port_type = named
         self.keys = keys
         self.end_point = None
+        self.port_number = port_number
+        self.socket = None
       
       def connect_to(self, element):
         self.end_point = element
@@ -38,144 +41,211 @@ class InvalidConnection(Exception):
   def __str__(self):
     return "Invalid connection from " + fromc.name + " to " + toc.name
     
-  
-class Element(threading.Thread):
+class PortNumberGenerator(object):
   def __init__(self):
+    #start with port 6000
+    self.port_num = 6000
+  
+  #leave one port number for control
+  def new_port(self):
+    self.port_num += 2
+    return self.port_num
+    
+class Element(threading.Thread):
+  def __init__(self, port_num_gen):
     threading.Thread.__init__(self)
     self.name = "__no_name__"
     self.connection_type = Port.AGNOSTIC
     self.ports = []
     self.connections = []
     self.input_connections = []
-    #pika initialization
-    self.channel = None
-    self.queues_declared = 0
+    self.port_num_generator = port_num_gen
+    self.context = None
+    self.poller = None
+    self.alive = True
 
   def run(self):
-    parameters = pika.ConnectionParameters()
-    connection = SelectConnection(parameters, self.pika_on_connected)
     try:
-      # Loop so we can communicate with RabbitMQ
-      connection.ioloop.start()
-    except KeyboardInterrupt:
-      # Gracefully close the connection
-      connection.close()
-      # Loop until we're fully closed, will stop on its own
-      connection.ioloop.start()
-
-  def pika_on_connected(self, connection):
-    """Called when we are fully connected to RabbitMQ"""
-    connection.channel(self.pika_on_channel_open)
-  
-  def pika_on_channel_open(self, new_channel):
-    """Called when our channel has opened"""
-    self.channel = new_channel
-    # declare queues we might send data to and receive data from
-    for c in self.connections:
-      self.queues_declared = self.queues_declared + 1
-      self.channel.queue_declare(queue=c[1].name, callback=self.pika_on_queue_declared)
-      if c[0].port_type == Port.PULL:
-        self.queues_declared = self.queues_declared + 1
-        self.channel.queue_declare(queue=c[0].name, callback=self.pika_on_queue_declared)
-    for c in self.input_connections:
-      self.queues_declared = self.queues_declared + 1
-      self.channel.queue_declare(queue=c[0].name, callback=self.pika_on_queue_declared)
-  
-  def our_port(self, port_name):
-    for p in self.ports:
-      if p.name == port_name:
-        return True
-    return False
-    
-  def pika_on_queue_declared(self, frame):
-    self.queues_declared = self.queues_declared - 1
-    if self.our_port(frame.method.queue):
-      # print self.name + " listening to " + frame.method.queue
-      self.channel.basic_consume(self.pika_callback, queue=frame.method.queue, no_ack=True)
-    if self.queues_declared == 0:
+      self.context = zmq.Context()
+      self.ready_ports()
+      print self.name + " ports are ready"
       self.src_start()
+      if self.input_connections != []:
+        self.start_listening()
+    except KeyboardInterrupt:
+      print "Stopping thread"
+  
+  def ready_ports(self):
+    #we can have multiple connections from the same output port
+    #get the number of subscribers for each connection
+    output_port_hash = collections.defaultdict(int)
+    for c in self.connections:
+      if c[0].port_type != Port.PULL:
+        output_port_hash[c[0]] += 1
+      
+    #this won't be a problem for input pull connections
+    #as they are assumed to be 1-1
+    input_bind_ports = [c[0] for c in self.input_connections if c[0].port_type == Port.PULL]
     
-  def pika_callback(self, ch, method, properties, body):
-    control, log_data = json.loads(body)
-    #ch.basic_ack(delivery_tag = method.delivery_tag)
-    if control == "push":
-      log = Log()
-      log.set_log(log_data)
-      # print self.name + " got a push for port " + method.routing_key
-      self.recv_push(method.routing_key, log)
-    elif control == "pull_query":
-      log = Log()
-      log.set_log(log_data)
-      port_name = method.routing_key
-      print self.name + " got a pull query for port " + port_name
-      self.recv_pull_query(port_name, log)
-    elif control == "pull_result":
-      log = Log()
-      log.set_log(log_data)
-      print self.name + " got a pull result for port " + method.routing_key
-      self.recv_pull_result(method.routing_key, log)
-    # remove this port from the incoming connections as it stopped
-    elif control == "stop":
-      print self.name + " got stop message from " + log_data + " for port " + method.routing_key 
-      new_input_connections = []
-      for c in self.input_connections:
-        if c[0].name == method.routing_key and c[1].name == log_data:
-          continue
-        new_input_connections.append(c)
-      if new_input_connections == self.input_connections:
-        print "(warning)" + self.name + " got stop from unknown port, known ports: " + str(self.input_connections)
-      self.input_connections = new_input_connections
-      # all the input ports are closed so shutdown
-      # TODO: this might not work in all cases
-      # might have to let the actual element decide
-      if new_input_connections == []:
-        self.shutdown()
-    else:
-      assert(False)
+    #we serve all output ports
+    for p in output_port_hash.keys():
+      self.bind_pub_port(p)
+      
+    #we also serve input pull ports
+    for p in input_bind_ports:
+      self.bind_server_port(p)
+      
+    #wait till we have elements listening to us
+    for p, subscribers in output_port_hash.items():
+      self.wait_for_subscribers(p, subscribers)
 
-  def send(self, message, connections):
+    #we subscribe to all non-pull input ports
+    input_listen_ports = [c[0] for c in self.input_connections if c[0].port_type != Port.PULL]
+    for p in input_listen_ports:
+      self.subscribe_to_server(p)
+
+    # Initialize poll set to listen to all inputs
+    self.poller = zmq.Poller()
+    for p in [c[0] for c in self.input_connections]:
+      self.poller.register(p.socket, zmq.POLLIN)
+    
+    # Connect to all pull-output ports
+    for c in self.connections:
+      port = c[0]
+      if port.port_type == Port.PULL:
+        port.socket = self.context.socket(zmq.REQ)
+        port.socket.connect(self.listen_url(port.port_number))
+    
+    
+  def bind_url(self, port_number):
+    return "tcp://*:" + str(port_number)
+  
+  def listen_url(self, port_number):
+    return "tcp://localhost:" + str(port_number)
+
+  def bind_pub_port(self, port):
+    bind_url = self.bind_url(port.port_number)
+    print self.name + " binding to url as PUB " + bind_url
+    port.socket = self.context.socket(zmq.PUB)
+    port.socket.bind(bind_url)
+  
+  def bind_server_port(self, port):
+    bind_url = self.bind_url(port.port_number)
+    port.socket = self.context.socket(zmq.REP)
+    port.socket.bind(bind_url)
+
+  def subscribe_to_server(self, port):
+    listen_url = self.listen_url(port.port_number)
+    port.socket = self.context.socket(zmq.SUB)
+    print self.name + " listening to url as SUB " + listen_url
+    port.socket.connect(listen_url)
+    port.socket.setsockopt(zmq.SUBSCRIBE, "")
+
+    #control ports are one more than data ports
+    control_url = self.listen_url(port.port_number+1)
+    syncclient = self.context.socket(zmq.REQ)
+    syncclient.connect(control_url)
+    syncclient.send('')
+    # wait for synchronization reply
+    syncclient.recv()
+  
+  def wait_for_subscribers(self, port, expected_subscribers):
+    #control ports are one more than data ports
+    control_url = self.bind_url(port.port_number+1)
+    # Socket to receive signals
+    syncservice = self.context.socket(zmq.REP)
+    syncservice.bind(control_url)
+
+    # Get synchronization from subscribers
+    subscribers = 0
+    while subscribers < expected_subscribers:
+        # wait for synchronization request
+        msg = syncservice.recv()
+        # send synchronization reply
+        syncservice.send('')
+        subscribers += 1
+        print self.name + " +1 subscriber"
+      
+  def start_listening(self):
+    while self.alive:
+      socks = dict(self.poller.poll())
+      ports_with_data = [p for p in self.ports if p.socket in socks and socks[p.socket] == zmq.POLLIN]
+      push_ports = [p for p in ports_with_data if p.port_type == Port.PUSH]
+      pull_ports = [p for p in ports_with_data if p.port_type == Port.PULL]
+      for p in push_ports:
+        message = p.socket.recv()
+        (control, log) = json.loads(message)
+        if control == "END":
+          self.process_stop(p, log)
+        else:
+          self.process_push(p, log)
+      for p in pull_ports:
+        message = p.socket.recv()
+        (control, log) = json.loads(message)
+        if control == "END":
+          self.process_stop(p, log)
+        else:
+          self.process_pull_query(p, log)    
+    
+  def process_push(self, port, log_data):
+    log = Log()
+    log.set_log(log_data)
+    self.recv_push(port.name, log)
+  
+  def process_pull_query(self, port, log_data):
+    log = Log()
+    log.set_log(log_data)
+    print self.name + " got a pull query for port " + port.name
+    self.recv_pull_query(port.name, log)
+  
+  def process_stop(self, port, stop_msg):
+    (element_name, recv_port_name) = stop_msg
+    print "(%s, %s) stopped on (%s, %s)" % (element_name, recv_port_name, self.name, port.name)
+    #we could have multiple (element, port) input pairs, remove only one
+    new_connections = []
+    removed = False
+    for c in self.input_connections:
+      if (not removed) and (c[0].name, c[1].name, c[1].end_point.name) == (port.name, recv_port_name, element_name):
+        removed = True
+      else:
+        new_connections.append(c)
+    
+    if new_connections == self.input_connections:
+      print "WARNING: %s received a stop from a stopped/unknown element %s" % (self.name, element_name)
+    else:
+      self.input_connections = new_connections
+    
+    if self.input_connections == []:
+      self.on_shutdown()
+      self.shutdown()
+    
+  def send(self, control, message, port):
+    message = (control, message)
     json_log = json.dumps(message)
-    for c in connections:
-      # print self.name + " publishing to " + c[1].name
-      self.channel.basic_publish(exchange='',
-                            routing_key=c[1].name,
-                            body=json_log)
+    port.socket.send(str(json_log))
   
   def on_shutdown(self):
     pass
 
   def shutdown(self):
-    print "Got a stop request, trying to stop thread " + self.name
+    outputs = {}
     for c in self.connections:
-      message = ("stop", c[0].name)
-      json_log = json.dumps(message)
-      # print self.name + " asking to stop connection to " + c[1].name
-      self.channel.basic_publish(exchange='',
-                            routing_key=c[1].name,
-                            body=json_log)
-    # self.send(message, self.connections)
-    # raising KeyboardInterrupt this right now as run() catches it and does the right thing
-    # TODO: define a special interrupt class for this
-    self.on_shutdown()
-    raise KeyboardInterrupt
+      outputs[c[0]] = True
     
+    for p in outputs.keys():
+      self.send("END", (self.name, p.name), p)
+    self.alive = False
+
   def src_start(self):
-    """Sources' can start sending data"""
+    """Sources can start sending data"""
     pass
-    
-  def teardown(self):
-    """Called before unloading the element"""
-    raise NotImplementedError
     
   def on_load(self, config):
     raise NotImplementedError
   
-  def full_port_name(self, port_name):
-    return self.name + port_name
-    
   def add_port(self, port_name, port_type, keys_type, keys):
-    full_port_name = self.full_port_name(port_name)
-    port = Port(full_port_name, port_type, keys_type, keys)
+    port_number = self.port_num_generator.new_port()
+    port = Port(port_name, port_type, keys_type, keys, port_number)
     port.end_point = self
     self.ports.append(port)
   
@@ -188,65 +258,51 @@ class Element(threading.Thread):
   def recv_pull_result(self, port, log):
     raise NotImplementedError
   
-  def find_port(self, full_port_name):
+  def find_port(self, port_name):
     port = None
     for p in self.ports:
-      if p.name == full_port_name:
+      if p.name == port_name:
         port = p
     
     if port == None:
-      print self.name + " could not find port with name: " + full_port_name
+      print self.name + " could not find port with name: " + port_name
       raise NameError
     
     return port
 
-  def find_connections(self, full_output_port_name):
-    connections = []
-    for c in self.connections:
-      if c[0].name == full_output_port_name:
-        connections.append(c)
-    
-    if connections == []:
-      print self.name + " could not find connection with port " + full_output_port_name
-      raise NameError
-    
-    return connections
-
-  def find_input_connections(self, full_input_port_name):
-    connections = []
-    for c in self.input_connections:
-      if c[0].name == full_input_port_name:
-        connections.append(c)
-
-    if connections == []:
-      print self.name + " could not find input connection with port " + full_input_port_name
-      raise NameError
-
-    return connections
-    
   def push(self, port_name, log):
-    full_port_name = self.full_port_name(port_name)
-    connections = self.find_connections(full_port_name)
-    message = ("push", log.log)
-    self.send(message, connections)
+    port = self.find_port(port_name)
+    self.send("PUSH", log.log, port)
   
-  # cannot broadcast pulls
+  #pull is blocking for now
   def pull(self, port_name, log):
-    full_port_name = self.full_port_name(port_name)
-    connections = self.find_connections(full_port_name)
-    assert(len(connections) == 1)
-    message = ("pull_query", log.log)
-    self.send(message, connections)
+    port = self.find_port(port_name)
+    self.send("PULL", log.log, port)
+    res = port.socket.recv()
+    log_data = json.loads(res)
+    log = Log()
+    log.set_log(log_data)
+    print self.name + " got a pull result for port " + port_name
+    return log
   
-  def return_pull(self, full_port_name, log):
-    print self.name + " returning pull result on " + full_port_name
-    connections = self.find_input_connections(full_port_name)
-    assert(len(connections) == 1)
-    message = ("pull_result", log.log)
-    self.send(message, connections)
-
+  def return_pull(self, port_name, log):
+    port = self.find_port(port_name)
+    log_data = json.dumps(log.log)
+    port.socket.send(log_data)
+    
+  def already_connected(self, input_port_name):
+    for c in self.input_connections:
+      if c[0].name == input_port_name:
+        return True
+    return False
+    
   def connect(self, output_port_name, element, input_port_name):
-    output_port = self.find_port(self.full_port_name(output_port_name))
-    input_port = element.find_port(element.full_port_name(input_port_name))
+    if element.already_connected(input_port_name):
+      print "Connecting to an already connected input port"
+      raise NameError
+    output_port = self.find_port(output_port_name)
+    input_port = element.find_port(input_port_name)
+    #they will now have the same port number
+    input_port.port_number = output_port.port_number
     self.connections.append((output_port, input_port))
     element.input_connections.append((input_port, output_port))

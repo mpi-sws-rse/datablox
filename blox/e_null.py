@@ -1,4 +1,6 @@
 from element import *
+import time
+
 
 class Null(Element):
   name = "Null"
@@ -9,5 +11,5 @@ class Null(Element):
     print "NULL element loaded"
 
   def recv_push(self, port, log):
-    print "dumping log from " + port.end_point.name
-    print "log is: " + str(log.log["value"])
+    print "log is: " + str(log.log)
+    #time.sleep(1)
