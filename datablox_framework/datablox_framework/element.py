@@ -16,6 +16,7 @@ class Port(object):
       PULL = 0
       PUSH = 1
       AGNOSTIC = 2
+      MASTER = 3
       
       NAMED = 0
       UNNAMED = 1
@@ -43,8 +44,9 @@ class InvalidConnection(Exception):
     
 class PortNumberGenerator(object):
   def __init__(self):
-    #start with port 6000
-    self.port_num = 6000
+    #start with port 7002
+    #6000 onwards is for listening to the master
+    self.port_num = 7000
   
   #leave one port number for control
   def new_port(self):
@@ -52,11 +54,13 @@ class PortNumberGenerator(object):
     return self.port_num
     
 class Element(threading.Thread):
-  def __init__(self, port_num_gen):
+  def __init__(self, master_port_num, port_num_gen):
     threading.Thread.__init__(self)
     self.name = "__no_name__"
     self.connection_type = Port.AGNOSTIC
-    self.ports = []
+    master_port = Port("master", Port.MASTER, Port.UNNAMED, [], master_port_num)
+    self.master_port = master_port
+    self.ports = [master_port]
     self.connections = []
     self.input_connections = []
     self.port_num_generator = port_num_gen
@@ -76,6 +80,8 @@ class Element(threading.Thread):
       print "Stopping thread"
   
   def ready_ports(self):
+    self.listen_to_master()
+    
     #we can have multiple connections from the same output port
     #get the number of subscribers for each connection
     output_port_hash = collections.defaultdict(int)
@@ -99,23 +105,36 @@ class Element(threading.Thread):
     for p, subscribers in output_port_hash.items():
       self.wait_for_subscribers(p, subscribers)
 
-    #we subscribe to all non-pull input ports
+    #Tell all ports we expect data from that we are ready
+    #PULL ports are not included in this because they work on REP-REQ protocol 
+    #   which waits for both parties to be ready
     input_listen_ports = [c[0] for c in self.input_connections if c[0].port_type != Port.PULL]
     for p in input_listen_ports:
       self.subscribe_to_server(p)
-
-    # Initialize poll set to listen to all inputs
+ 
     self.poller = zmq.Poller()
+    #Listen to Master
+    self.poller.register(self.master_port.socket, zmq.POLLIN)
+    
+    #Listen to all inputs
     for p in [c[0] for c in self.input_connections]:
       self.poller.register(p.socket, zmq.POLLIN)
     
-    # Connect to all pull-output ports
+    #Connect to all pull-output ports
     for c in self.connections:
       port = c[0]
       if port.port_type == Port.PULL:
         port.socket = self.context.socket(zmq.REQ)
         port.socket.connect(self.listen_url(port.port_number))
     
+  
+  def listen_to_master(self):
+    self.bind_server_port(self.master_port)
+    print self.name + " waiting for master to respond"
+    #wait for master to synchronize
+    self.master_port.socket.recv()
+    print self.name + " master's online, starting other ports"
+    self.master_port.socket.send('')
     
   def bind_url(self, port_number):
     return "tcp://*:" + str(port_number)
@@ -125,7 +144,6 @@ class Element(threading.Thread):
 
   def bind_pub_port(self, port):
     bind_url = self.bind_url(port.port_number)
-    print self.name + " binding to url as PUB " + bind_url
     port.socket = self.context.socket(zmq.PUB)
     port.socket.bind(bind_url)
   
@@ -137,7 +155,6 @@ class Element(threading.Thread):
   def subscribe_to_server(self, port):
     listen_url = self.listen_url(port.port_number)
     port.socket = self.context.socket(zmq.SUB)
-    print self.name + " listening to url as SUB " + listen_url
     port.socket.connect(listen_url)
     port.socket.setsockopt(zmq.SUBSCRIBE, "")
 
@@ -172,6 +189,12 @@ class Element(threading.Thread):
       ports_with_data = [p for p in self.ports if p.socket in socks and socks[p.socket] == zmq.POLLIN]
       push_ports = [p for p in ports_with_data if p.port_type == Port.PUSH]
       pull_ports = [p for p in ports_with_data if p.port_type == Port.PULL]
+
+      #process master instructions if any
+      if socks.has_key(self.master_port.socket) and socks[self.master_port.socket] == zmq.POLLIN:
+        message = json.loads(self.master_port.socket.recv())
+        self.process_master(message)
+        
       for p in push_ports:
         message = p.socket.recv()
         (control, log) = json.loads(message)
@@ -186,6 +209,13 @@ class Element(threading.Thread):
           self.process_stop(p, log)
         else:
           self.process_pull_query(p, log)    
+  
+  def process_master(self, control_data):
+    if control_data == "POLL":
+      load = json.dumps(1000)
+      self.master_port.socket.send(load)
+    else:
+      print self.name + " Warning ** could not understand master"
     
   def process_push(self, port, log_data):
     log = Log()

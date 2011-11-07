@@ -10,7 +10,7 @@ class ZeroSrc(Element):
       log.log["value"] = [0]
       print "Sending a zero"
       self.push("output", log)
-      #time.sleep(1)
+      time.sleep(1)
     self.shutdown()
 
   def on_load(self, config):
