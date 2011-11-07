@@ -1,0 +1,23 @@
+[
+  {"id":"master-host",
+     "key": {"name":"dynamic-host", "version":"*"}
+  },
+  {
+    "id": "mongodb",
+    "key": {"name":"mongodb", "version":"2.0"},
+    "inside": {
+      "id": "master-host",
+      "key": {"name":"dynamic-host", "version":"*"},
+      "port_mapping": {"host": "host"}
+    }
+  },
+  {
+    "id": "pika",
+    "key": {"name":"pika", "version":"0.9"},
+    "inside": {
+      "id": "master-host",
+      "key": {"name":"dynamic-host", "version":"*"},
+      "port_mapping": {"host": "host"}
+    }
+  }
+]
