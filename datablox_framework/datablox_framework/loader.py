@@ -6,7 +6,7 @@ from element import *
 from shard import *
 
 class Master(object):
-  def __init__(self):
+  def __init__(self, config_file):
     self.master_port = 6000
     self.element_classes = []
     self.elements = {}
@@ -14,7 +14,7 @@ class Master(object):
     self.context = zmq.Context()
     self.port_num_gen = PortNumberGenerator()
     self.load_elements(os.environ["BLOXPATH"])
-    self.setup_connections()
+    self.setup_connections(config_file)
     self.start_elements()
     self.run()
 
@@ -129,49 +129,26 @@ class Master(object):
     for e in self.elements.values():
       e.alive = False
     
-  def setup_connections(self):
-    # crawler1 = self.create_element("Dir-Src", {"directory": "."})
-    # crawler2 = self.create_element("Dir-Src", {"directory": "/Users/saideep/Downloads/pylucene-3.4.0-1/samples"})
-    # join = self.create_element("Join", {"joins": 2})
-    # categorizer = self.create_element("Categorize", {})
-    # indexer = self.create_element("Solr-index", {"crawlers": 2})
-    # metaindexer = self.create_element("File-mongo", {"crawlers": 2})
-    # query = self.create_element("File-query", {})
-    # 
-    # crawler1.connect("output", join, "input1")
-    # crawler2.connect("output", join, "input2")
-    # join.connect("output", categorizer, "input")
-    # categorizer.connect("output", indexer, "input")
-    # categorizer.connect("output", metaindexer, "input")
-    # query.connect("meta_query", metaindexer, "file_data")
-    # query.connect("data_query", indexer, "query")
-
-    #source1 = self.create_element("0-Src", {"directory": "."})
-    #source2 = self.create_element("Dir-Src", {"directory": "/Users/saideep/Downloads/pylucene-3.4.0-1/samples"})
-    #source3 = self.create_element("Dir-Src", {"directory": "/Users/saideep/Projects/sandbox"})
-    #trans1 = self.create_element("Categorize", {})
-    #trans2 = self.create_element("Categorize", {})
-    #join1 = self.create_element("Join", {"joins": 2})
-    #join2 = self.create_element("Join", {"joins": 2})
-    #sink = self.create_element("Solr-index", {"crawlers": 3})
-    #sink = self.create_element("Null", {})
+  def get_single_item(self, d):
+    items = d.items()
+    assert(len(items) == 1)
+    return items[0]
     
-    # source1.connect("output", trans1, "input")
-    # source2.connect("output", join1, "input1")
-    # source3.connect("output", join1, "input2")
-    # trans1.connect("output", join2, "input1")
-    # join1.connect("output", join2, "input2")
-    # join2.connect("output", sink, "input")
-    #source1.connect("output", sink, "input")
-
-    # source = self.create_element("Simple-pull-client", {})
-    # sink = self.create_element("Simple-pull", {})
-    # source.connect("output", sink, "input")
-
-    source = self.create_element("0-Src", {"directory": "."})
-    sink = self.create_element("Null-Shard", {})
-    # sink = self.create_element("Null", {})
-    source.connect("output", sink, "input")
+  def setup_connections(self, file_name):
+    with open(file_name) as f:
+      config = json.load(f)
+    element_hash = {}
+    for e in config["elements"]:
+      element_id, (element_name, element_config) = self.get_single_item(e)
+      element = self.create_element(element_name, element_config)
+      element_hash[element_id] = element
+    
+    for f, t in config["connections"]:
+      (from_name, from_port) = self.get_single_item(f)
+      (to_name, to_port)  = self.get_single_item(t)
+      from_element = element_hash[from_name]
+      to_element = element_hash[to_name]
+      from_element.connect(from_port, to_element, to_port)
   
 if __name__ == "__main__":
-  m = Master()
+  m = Master(sys.argv[1])

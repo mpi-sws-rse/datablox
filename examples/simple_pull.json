@@ -1,0 +1,10 @@
+{
+    "elements": [
+        {"source": ["Simple-pull-client", {}]},
+        {"sink": ["Simple-pull", {}]}
+    ],
+
+    "connections": [
+        [{"source": "output"}, {"sink": "input"}]
+    ]
+}

@@ -1,0 +1,10 @@
+{
+    "elements": [
+        {"source": ["0-Src", {}]},
+        {"sink": ["Null", {}]}
+    ],
+
+    "connections": [
+        [{"source": "output"}, {"sink": "input"}]
+    ]
+}

@@ -1,0 +1,21 @@
+{
+    "elements": [
+        {"crawler1": ["Dir-Src", {"directory": "."}]},
+        {"crawler2": ["Dir-Src", {"directory": "./blox"}]},
+        {"join": ["Join", {"joins": 2}]},
+        {"categorizer": ["Categorize", {}]},
+        {"indexer": ["Solr-index", {"crawlers": 2}]},
+        {"metaindexer": ["File-mongo", {"crawlers": 2}]},
+        {"query": ["File-query", {}]}
+    ],
+
+    "connections": [
+        [{"crawler1": "output"}, {"join": "input1"}],
+        [{"crawler2": "output"}, {"join": "input2"}],
+        [{"join": "output"}, {"categorizer": "input"}],
+        [{"categorizer": "output"}, {"indexer": "input"}],
+        [{"categorizer": "output"}, {"metaindexer": "input"}],
+        [{"query": "data_query"}, {"indexer": "query"}],
+        [{"query": "meta_query"}, {"metaindexer": "file_data"}]
+    ]
+}
