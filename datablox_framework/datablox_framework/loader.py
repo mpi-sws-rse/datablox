@@ -3,6 +3,7 @@ import sys
 import zmq
 import json
 from element import *
+from shard import *
 
 class Master(object):
   def __init__(self):
@@ -11,7 +12,6 @@ class Master(object):
     self.elements = {}
     self.loads = {}
     self.context = zmq.Context()
-    #this is not thread safe, so call this before starting threads
     self.port_num_gen = PortNumberGenerator()
     self.load_elements(os.environ["BLOXPATH"])
     self.setup_connections()
@@ -31,6 +31,7 @@ class Master(object):
         __import__(modulename)
   
     self.element_classes = Element.__subclasses__()
+    self.element_classes.extend(Shard.__subclasses__())
 
   def create_element(self, name, config):
     element = None
@@ -46,8 +47,23 @@ class Master(object):
     inst = element(self.master_port, self.port_num_gen)
     inst.on_load(config)
     self.elements[self.master_port] = inst
+    
+    if isinstance(inst, Shard):
+      self.populate_shard(inst)
+
     return inst
 
+  def populate_shard(self, shard):
+    num_elements = shard.minimum_nodes()
+    element_name = shard.node_name()
+    for i in range(num_elements):
+      output_port = "output"+str(i)
+      input_port = "input"
+      element_config = shard.config_for_node(i)
+      shard.add_port(output_port, Port.PUSH, Port.UNNAMED, [])
+      e = self.create_element(element_name, element_config)
+      shard.connect(output_port, e, input_port)
+    
   def start_elements(self):
     for e in self.elements.values():
       print "starting " + e.name
@@ -130,7 +146,7 @@ class Master(object):
     # query.connect("meta_query", metaindexer, "file_data")
     # query.connect("data_query", indexer, "query")
 
-    source1 = self.create_element("0-Src", {"directory": "."})
+    #source1 = self.create_element("0-Src", {"directory": "."})
     #source2 = self.create_element("Dir-Src", {"directory": "/Users/saideep/Downloads/pylucene-3.4.0-1/samples"})
     #source3 = self.create_element("Dir-Src", {"directory": "/Users/saideep/Projects/sandbox"})
     #trans1 = self.create_element("Categorize", {})
@@ -138,7 +154,7 @@ class Master(object):
     #join1 = self.create_element("Join", {"joins": 2})
     #join2 = self.create_element("Join", {"joins": 2})
     #sink = self.create_element("Solr-index", {"crawlers": 3})
-    sink = self.create_element("Null", {})
+    #sink = self.create_element("Null", {})
     
     # source1.connect("output", trans1, "input")
     # source2.connect("output", join1, "input1")
@@ -146,12 +162,16 @@ class Master(object):
     # trans1.connect("output", join2, "input1")
     # join1.connect("output", join2, "input2")
     # join2.connect("output", sink, "input")
-    source1.connect("output", sink, "input")
+    #source1.connect("output", sink, "input")
 
     # source = self.create_element("Simple-pull-client", {})
     # sink = self.create_element("Simple-pull", {})
     # source.connect("output", sink, "input")
 
+    source = self.create_element("0-Src", {"directory": "."})
+    sink = self.create_element("Null-Shard", {})
+    # sink = self.create_element("Null", {})
+    source.connect("output", sink, "input")
   
 if __name__ == "__main__":
   m = Master()

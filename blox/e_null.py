@@ -12,4 +12,4 @@ class Null(Element):
 
   def recv_push(self, port, log):
     print "log is: " + str(log.log)
-    #time.sleep(1)
+    time.sleep(3)

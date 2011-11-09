@@ -47,12 +47,14 @@ class PortNumberGenerator(object):
     #start with port 7002
     #6000 onwards is for listening to the master
     self.port_num = 7000
+    self.lock = threading.Lock()
   
   #leave one port number for control
   def new_port(self):
-    self.port_num += 2
-    return self.port_num
-    
+    with self.lock:
+      self.port_num += 2
+      return self.port_num
+  
 class Element(threading.Thread):
   def __init__(self, master_port_num, port_num_gen):
     threading.Thread.__init__(self)
@@ -208,7 +210,7 @@ class Element(threading.Thread):
         if control == "END":
           self.process_stop(p, log)
         else:
-          self.process_pull_query(p, log)    
+          self.process_pull_query(p, log)
   
   def process_master(self, control_data):
     if control_data == "POLL":
