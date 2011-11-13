@@ -39,7 +39,7 @@ class SolrIndex(Element):
     for path in paths:
       if not self.indexible_file(path):
         continue
-      #print "adding", path
+      print "adding", path
       try:
         file = open(path)
         contents = unicode(file.read(), 'iso-8859-1')

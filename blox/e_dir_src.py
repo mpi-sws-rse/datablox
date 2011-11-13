@@ -10,7 +10,7 @@ class DirSrc(Element):
     for root, dirnames, filenames in os.walk(path):
       for filename in filenames:
         path = os.path.join(root, filename)
-        if path.find('/index/') != -1:
+        if path.find('/index/') != -1 or path.find('.git/') != -1:
           continue
         stat = os.stat(path)
         listing = {}

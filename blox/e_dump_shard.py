@@ -4,29 +4,29 @@ from shard import *
 import time
 
 
-class Null_shard(Shard):
-  name = "Null-Shard"
+class Dump_shard(Shard):
+  name = "Dump-Shard"
   
   def on_load(self, config):
-    self.name = "Null-Shard"
+    self.name = "Dump-Shard"
     self.nodes = config["nodes"]
     self.config = config
     self.max_nodes = 20
     self.current_node = 0
     self.add_port("input", Port.PUSH, Port.UNNAMED, [])
-    print "NULL shard loaded"
+    print "Dump shard loaded"
 
   def minimum_nodes(self):
     return self.nodes
   
   def node_type(self):
-    return {"name": "Null", "input_port": "input"}
+    return {"name": "Dump", "input_port": "input"}
   
   def config_for_new_node(self):
     return self.config
         
   def recv_push(self, port, log):
-    # print "%s sending to port %d" % (self.name, self.current_node)
+    print "%s sending to port %d" % (self.name, self.current_node)
     self.push_node(self.current_node, log)
     self.current_node = (self.current_node + 1) % self.nodes
   

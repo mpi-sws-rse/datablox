@@ -22,6 +22,10 @@ class Categorize(Element):
       return "Compiled Source"
     else:
       return "Unknown"
+  
+  def comment(self, path):
+    p = os.popen("file " + path)
+    return p.read()
     
   def recv_push(self, port, log):
     new_log = {}
@@ -34,9 +38,11 @@ class Categorize(Element):
       paths = log["path"]
       categories = []
       names = []
+      comments = []
     
       for path in paths:
         categories.append(self.find_category(path))
+        comments.append(self.comment(path))
         names.append(os.path.split(path)[-1])
       
       new_log["name"] = names
@@ -45,6 +51,7 @@ class Categorize(Element):
       new_log["perm"] = log["perm"]
       new_log["owner"] = log["owner"]
       new_log["category"] = categories
+      new_log["comments"] = comments
     
     nl = Log()
     nl.set_log(new_log)

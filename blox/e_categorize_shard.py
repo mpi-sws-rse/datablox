@@ -4,26 +4,25 @@ from shard import *
 import time
 
 
-class Null_shard(Shard):
-  name = "Null-Shard"
+class Categorize_shard(Shard):
+  name = "Categorize-Shard"
   
   def on_load(self, config):
-    self.name = "Null-Shard"
+    self.name = "Categorize-Shard"
     self.nodes = config["nodes"]
-    self.config = config
     self.max_nodes = 20
     self.current_node = 0
     self.add_port("input", Port.PUSH, Port.UNNAMED, [])
-    print "NULL shard loaded"
+    print "Categorize shard loaded"
 
   def minimum_nodes(self):
     return self.nodes
   
   def node_type(self):
-    return {"name": "Null", "input_port": "input"}
+    return {"name": "Categorize", "input_port": "input", "output_port": "output"}
   
   def config_for_new_node(self):
-    return self.config
+    return {}
         
   def recv_push(self, port, log):
     # print "%s sending to port %d" % (self.name, self.current_node)
@@ -34,7 +33,6 @@ class Null_shard(Shard):
     return (self.nodes < self.max_nodes)
   
   def should_add_node(self, node_num):
-    print self.name + " should_add_node got a new port!"
     self.nodes += 1
     # start distribution from the new node
     self.current_node = node_num

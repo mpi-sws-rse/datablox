@@ -1,0 +1,12 @@
+{
+    "elements": [
+        {"source": ["Dir-Src", {"directory": "./blox"}]},
+        {"categorizer": ["Categorize", {}]},
+        {"sink": ["Dump", {"sleep": 0}]}
+    ],
+
+    "connections": [
+        [{"source": "output"}, {"categorizer": "input"}],
+        [{"categorizer": "output"}, {"sink": "input"}]
+    ]
+}

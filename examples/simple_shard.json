@@ -1,7 +1,7 @@
 {
     "elements": [
         {"source": ["0-Src", {}]},
-        {"sink": ["Null-Shard", {}]}
+        {"sink": ["Dump-Shard", {"nodes": 1, "sleep": 1}]}
     ],
 
     "connections": [

@@ -5,12 +5,12 @@ class ZeroSrc(Element):
   name = "0-Src"
   
   def src_start(self):
-    for i in range(0,5):
+    for i in range(0,10):
       log = Log()
       log.log["value"] = [0]
       print "Sending a zero"
       self.push("output", log)
-      time.sleep(1)
+      time.sleep(2)
     self.shutdown()
 
   def on_load(self, config):

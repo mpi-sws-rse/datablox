@@ -2,6 +2,7 @@ import os
 import sys
 import zmq
 import json
+import time
 from element import *
 from shard import *
 
@@ -11,6 +12,8 @@ class Master(object):
     self.element_classes = []
     self.elements = {}
     self.loads = {}
+    self.shard_nodes = {}
+    self.done_parallelize = False
     self.context = zmq.Context()
     self.port_num_gen = PortNumberGenerator()
     self.load_elements(os.environ["BLOXPATH"])
@@ -44,10 +47,12 @@ class Master(object):
       raise NameError
 
     self.master_port += 2  
-    inst = element(self.master_port, self.port_num_gen)
+    inst = element(self.master_port)
     inst.on_load(config)
     self.elements[self.master_port] = inst
-    
+    #random initial value
+    self.loads[inst] = 1000
+
     if isinstance(inst, Shard):
       self.populate_shard(inst)
 
@@ -55,15 +60,26 @@ class Master(object):
 
   def populate_shard(self, shard):
     num_elements = shard.minimum_nodes()
-    element_name = shard.node_name()
+    shard.num_nodes = num_elements
+    element_type = shard.node_type()
+    self.shard_nodes[shard] = element_type
+    element_name = element_type["name"]
+    input_port = element_type["input_port"]
+    if element_type.has_key("output_port"):
+      join = self.create_element("Join", {"joins": num_elements})
+      shard.set_join_node(join)
+
     for i in range(num_elements):
       output_port = "output"+str(i)
-      input_port = "input"
-      element_config = shard.config_for_node(i)
+      element_config = shard.config_for_new_node()
       shard.add_port(output_port, Port.PUSH, Port.UNNAMED, [])
       e = self.create_element(element_name, element_config)
-      shard.connect(output_port, e, input_port)
-    
+      connection_port_num = self.port_num_gen.new_port()
+      shard.add_output_node_connection(output_port, connection_port_num)
+      e.add_input_connection(input_port, connection_port_num)
+      if element_type.has_key("output_port"):
+        self.connect(e, element_type["output_port"], join, "input"+str(i+1))
+        
   def start_elements(self):
     for e in self.elements.values():
       print "starting " + e.name
@@ -71,23 +87,32 @@ class Master(object):
   
   def run(self):
     self.sync_elements()
-    try:
-      self.poll_loads()
-      #self.parallelize()
-    except KeyboardInterrupt:
-      self.stop_all()
+    while True:
+      try:
+        self.poll_loads()
+        if len(self.loads.keys()) == 0:
+          print "Master: no more running nodes, quitting"
+          break
+        self.parallelize()
+        time.sleep(1)
+      except KeyboardInterrupt:
+        self.stop_all()
+        break
   
   def listen_url(self, port_number):
     return "tcp://localhost:" + str(port_number)
 
   def sync_elements(self):
     for (p, e) in self.elements.items():
-      url = self.listen_url(p)
-      syncclient = self.context.socket(zmq.REQ)
-      syncclient.connect(url)
-      syncclient.send('')
-      # wait for synchronization reply
-      syncclient.recv()
+      self.sync_element(p, e)
+
+  def sync_element(self, p, e):
+    url = self.listen_url(p)
+    syncclient = self.context.socket(zmq.REQ)
+    syncclient.connect(url)
+    syncclient.send('')
+    # wait for synchronization reply
+    syncclient.recv()
   
   def timed_recv(self, socket, time):
     """time is to be given in milliseconds"""
@@ -100,15 +125,18 @@ class Master(object):
       return socket.recv()
     
   def poll_loads(self):
+    elements = self.loads.keys()
     self.loads = {}
-    for (p, e) in self.elements.items():
-      if e.alive:
-        load = self.poll_load(p, e) 
-        if load != None:
-          self.loads[p] = load
+    for e in elements:
+      load = self.poll_load(e)
+      if load != None and load != -1:
+        self.loads[e] = load
   
-  def poll_load(self, port, element):
-    message = json.dumps("POLL")
+  def poll_load(self, element):
+    if element.name == "0-Src":
+      return None
+    port = element.master_port.port_number
+    message = json.dumps(("POLL", {}))
     socket = self.context.socket(zmq.REQ)
     socket.connect(self.listen_url(port))
     socket.send(message)
@@ -116,12 +144,12 @@ class Master(object):
     load = self.timed_recv(socket, 4000)
     if load != None:
       load = json.loads(load)
-      print "Master: %s has a load %d" % (element.name, load)
+      print "Master: %s has a load %r" % (element.name, load)
       return load
     #element timed out
     else:
       print "** Master: %s timed out" % element.name
-      return None        
+      return None
 
   def stop_all(self):
     print "Master: trying to stop all elements"
@@ -129,10 +157,59 @@ class Master(object):
     for e in self.elements.values():
       e.alive = False
     
+  def parallelize(self):
+    for e in self.loads.keys():
+      if isinstance(e, Shard):
+        can, config = self.can_parallelize(e)
+        if can and not self.done_parallelize:
+          self.do_parallelize(e, config)
+  
+  def can_parallelize(self, element):
+    socket = self.context.socket(zmq.REQ)
+    port = element.master_port.port_number
+    socket.connect(self.listen_url(port))
+    message = json.dumps(("CAN ADD", {}))
+    socket.send(message)
+    print "Master: trying to parallelize %s" % element.name
+    message = self.timed_recv(socket, 8000)
+    if message != None:
+      return json.loads(message)
+    else:
+      print "Master did not get any result for parallelize from %s" % element.name
+      return (False, None)
+  
+  def do_parallelize(self, element, config):
+    port_number = self.port_num_gen.new_port()
+    print "Master: %s can parallelize with config %r, on port %r" % (element.name, config, port_number)
+    node_type = self.shard_nodes[element]
+    new_node = self.create_element(node_type["name"], config)
+    new_node.add_input_connection(node_type["input_port"], port_number)
+    new_node.start()
+    self.sync_element(new_node.master_port.port_number, new_node)
+
+    socket = self.context.socket(zmq.REQ)
+    port = element.master_port.port_number
+    socket.connect(self.listen_url(port))
+    message = json.dumps(("SHOULD ADD", {"port_number": port_number}))
+    socket.send(message)
+    message = self.timed_recv(socket, 8000)
+    if message != None:
+      print "Master: done parallelizing " + element.name
+      self.done_parallelize = True
+    else:
+      print "Master didn't get a reply for should_add"
+    
   def get_single_item(self, d):
     items = d.items()
     assert(len(items) == 1)
     return items[0]
+
+  def connect_node(self, from_element, from_port, to_element, to_port):
+    connection_port_num = from_element.get_output_port_num(from_port)
+    if connection_port_num == None:
+      connection_port_num = self.port_num_gen.new_port()
+    from_element.add_output_connection(from_port, connection_port_num)
+    to_element.add_input_connection(to_port, connection_port_num)
     
   def setup_connections(self, file_name):
     with open(file_name) as f:
@@ -148,7 +225,7 @@ class Master(object):
       (to_name, to_port)  = self.get_single_item(t)
       from_element = element_hash[from_name]
       to_element = element_hash[to_name]
-      from_element.connect(from_port, to_element, to_port)
+      self.connect_node(from_element, from_port, to_element, to_port)
   
 if __name__ == "__main__":
   m = Master(sys.argv[1])
