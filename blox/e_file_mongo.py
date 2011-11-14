@@ -1,11 +1,11 @@
 from element import *
 
 class FileMongo(Element):
-  import pymongo
-  from pymongo import Connection
   name = "File-mongo"
   
   def on_load(self, config):
+    import pymongo
+    from pymongo import Connection
     self.name = "File-mongo"
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["name", "size", "perm", "owner"])
     self.add_port("file_data", Port.PULL, Port.UNNAMED, ["name"])

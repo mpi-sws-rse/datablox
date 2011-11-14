@@ -4,10 +4,10 @@ import sys, os, threading, time
 from datetime import datetime
 
 class SolrIndex(Element):
-  import sunburnt
   name = "Solr-index"
   
   def on_load(self, config):
+    import sunburnt
     self.name = "Solr-index"
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["name"])
     self.add_port("query", Port.PULL, Port.UNNAMED, ["query"])
