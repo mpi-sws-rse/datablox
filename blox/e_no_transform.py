@@ -1,8 +1,6 @@
 from element import *
-import pymongo
-from pymongo import Connection
 
-class Categorize(Element):
+class NoTransform(Element):
   name = "No-transform"
   
   def on_load(self, config):
