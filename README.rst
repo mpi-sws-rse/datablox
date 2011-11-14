@@ -16,4 +16,10 @@ loader.py must know where the blox are located. For this to happen, please set t
 
 export BLOXPATH=path_to_datablox/blox
 
+loader.py requires a json configuration file which specifies the system. Some configuration files are present in examples directory. To ensure the system is setup correctly, please run:
+
+python datablox_framework/datablox_framework/loader.py examples/example.json
+
+This should print all the files in the datablox directory along with various attributes of the files.
+
 Copyright 2011, MPI-SWS and genForma Corporation
