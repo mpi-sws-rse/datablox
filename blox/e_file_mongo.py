@@ -1,8 +1,8 @@
 from element import *
-import pymongo
-from pymongo import Connection
 
 class FileMongo(Element):
+  import pymongo
+  from pymongo import Connection
   name = "File-mongo"
   
   def on_load(self, config):

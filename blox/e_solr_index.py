@@ -1,10 +1,10 @@
 from element import *
 import time
-import sys, os, lucene, threading, time
+import sys, os, threading, time
 from datetime import datetime
-import sunburnt
 
 class SolrIndex(Element):
+  import sunburnt
   name = "Solr-index"
   
   def on_load(self, config):
