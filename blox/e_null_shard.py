@@ -20,7 +20,7 @@ class Null_shard(Shard):
     return self.nodes
   
   def node_type(self):
-    return {"name": "Null", "input_port": "input"}
+    return {"name": "Null", "input_port": "input", "port_type": "PUSH"}
   
   def config_for_new_node(self):
     return self.config

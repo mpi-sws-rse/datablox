@@ -1,8 +1,8 @@
 {
     "elements": [
-        {"source": ["Dir-Src", {"directory": "./blox"}]},
-        {"categorizer": ["Categorize-Shard", {"nodes": 1}]},
-        {"sink": ["Null-Shard", {"nodes": 1, "sleep": 0}]}
+        {"source": ["Dir-Src", {"directory": "./blox", "sleep": 0.5}]},
+        {"categorizer": ["Categorize-Shard", {"nodes": 1, "sleep": 2}]},
+        {"sink": ["Dump", {"sleep": 0}]}
     ],
 
     "connections": [

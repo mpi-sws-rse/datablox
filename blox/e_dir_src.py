@@ -7,6 +7,7 @@ class DirSrc(Element):
   
   def src_start(self):
     path = self.config["directory"]
+    sleeptime = self.config["sleep"] if self.config.has_key("sleep") else 0
     for root, dirnames, filenames in os.walk(path):
       for filename in filenames:
         path = os.path.join(root, filename)
@@ -21,7 +22,7 @@ class DirSrc(Element):
         log = Log()
         log.set_log(listing)
         self.push("output", log)
-        #time.sleep(0.5)
+        time.sleep(sleeptime)
     
     token = {"token": self.config["directory"]}
     log = Log()

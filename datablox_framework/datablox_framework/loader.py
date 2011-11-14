@@ -13,7 +13,7 @@ class Master(object):
     self.elements = {}
     self.loads = {}
     self.shard_nodes = {}
-    self.done_parallelize = False
+    self.num_parallel = 0
     self.context = zmq.Context()
     self.port_num_gen = PortNumberGenerator()
     self.load_elements(os.environ["BLOXPATH"])
@@ -35,6 +35,7 @@ class Master(object):
   
     self.element_classes = Element.__subclasses__()
     self.element_classes.extend(Shard.__subclasses__())
+    #self.element_classes.append(DynamicJoin)
 
   def create_element(self, name, config):
     element = None
@@ -66,19 +67,34 @@ class Master(object):
     element_name = element_type["name"]
     input_port = element_type["input_port"]
     if element_type.has_key("output_port"):
-      join = self.create_element("Join", {"joins": num_elements})
+      join = self.create_element("DynamicJoin", {})
+      join_port_num = self.port_num_gen.new_port()
+      join.set_join_port_num(join_port_num)
+      self.shard_nodes[shard]["join_node"] = join
       shard.set_join_node(join)
 
     for i in range(num_elements):
       output_port = "output"+str(i)
       element_config = shard.config_for_new_node()
-      shard.add_port(output_port, Port.PUSH, Port.UNNAMED, [])
       e = self.create_element(element_name, element_config)
       connection_port_num = self.port_num_gen.new_port()
+      shard.add_port(output_port, Port.PUSH, Port.UNNAMED, [])
       shard.add_output_node_connection(output_port, connection_port_num)
       e.add_input_connection(input_port, connection_port_num)
       if element_type.has_key("output_port"):
-        self.connect(e, element_type["output_port"], join, "input"+str(i+1))
+        e.add_output_connection(element_type["output_port"], join_port_num)
+        join.add_subscriber()
+
+    # for i in range(num_elements):
+    #   output_port = "output"+str(i)
+    #   element_config = shard.config_for_new_node()
+    #   shard.add_port(output_port, Port.PUSH, Port.UNNAMED, [])
+    #   e = self.create_element(element_name, element_config)
+    #   connection_port_num = self.port_num_gen.new_port()
+    #   shard.add_output_node_connection(output_port, connection_port_num)
+    #   e.add_input_connection(input_port, connection_port_num)
+    #   if element_type.has_key("output_port"):
+    #     self.connect(e, element_type["output_port"], join, "input"+str(i+1))
         
   def start_elements(self):
     for e in self.elements.values():
@@ -133,7 +149,7 @@ class Master(object):
         self.loads[e] = load
   
   def poll_load(self, element):
-    if element.name == "0-Src":
+    if element.name == "Dir-Src:./blox":
       return None
     port = element.master_port.port_number
     message = json.dumps(("POLL", {}))
@@ -144,7 +160,7 @@ class Master(object):
     load = self.timed_recv(socket, 4000)
     if load != None:
       load = json.loads(load)
-      print "Master: %s has a load %r" % (element.name, load)
+      #print "Master: %s has a load %r" % (element.name, load)
       return load
     #element timed out
     else:
@@ -161,7 +177,7 @@ class Master(object):
     for e in self.loads.keys():
       if isinstance(e, Shard):
         can, config = self.can_parallelize(e)
-        if can and not self.done_parallelize:
+        if can and self.num_parallel < 4:
           self.do_parallelize(e, config)
   
   def can_parallelize(self, element):
@@ -170,7 +186,6 @@ class Master(object):
     socket.connect(self.listen_url(port))
     message = json.dumps(("CAN ADD", {}))
     socket.send(message)
-    print "Master: trying to parallelize %s" % element.name
     message = self.timed_recv(socket, 8000)
     if message != None:
       return json.loads(message)
@@ -179,11 +194,23 @@ class Master(object):
       return (False, None)
   
   def do_parallelize(self, element, config):
+    print "Master: trying to parallelize %s" % element.name
     port_number = self.port_num_gen.new_port()
     print "Master: %s can parallelize with config %r, on port %r" % (element.name, config, port_number)
     node_type = self.shard_nodes[element]
     new_node = self.create_element(node_type["name"], config)
     new_node.add_input_connection(node_type["input_port"], port_number)
+    if node_type.has_key("join_node"):
+      join = node_type["join_node"]
+      new_node.add_output_connection(node_type["output_port"], join.join_input_port.port_number)
+      socket = self.context.socket(zmq.REQ)
+      socket.connect(self.listen_url(join.master_port.port_number))
+      message = json.dumps(("ADD JOIN", {}))
+      socket.send(message)
+      res = self.timed_recv(socket, 8000)
+      if message == None:
+        print "join node did not reply to add join, so not parallelizing"
+        return      
     new_node.start()
     self.sync_element(new_node.master_port.port_number, new_node)
 
@@ -195,7 +222,7 @@ class Master(object):
     message = self.timed_recv(socket, 8000)
     if message != None:
       print "Master: done parallelizing " + element.name
-      self.done_parallelize = True
+      self.num_parallel += 1
     else:
       print "Master didn't get a reply for should_add"
     
@@ -205,9 +232,7 @@ class Master(object):
     return items[0]
 
   def connect_node(self, from_element, from_port, to_element, to_port):
-    connection_port_num = from_element.get_output_port_num(from_port)
-    if connection_port_num == None:
-      connection_port_num = self.port_num_gen.new_port()
+    connection_port_num = self.port_num_gen.new_port()
     from_element.add_output_connection(from_port, connection_port_num)
     to_element.add_input_connection(to_port, connection_port_num)
     

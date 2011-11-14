@@ -20,7 +20,7 @@ class Dump_shard(Shard):
     return self.nodes
   
   def node_type(self):
-    return {"name": "Dump", "input_port": "input"}
+    return {"name": "Dump", "input_port": "input", "port_type": "PUSH"}
   
   def config_for_new_node(self):
     return self.config

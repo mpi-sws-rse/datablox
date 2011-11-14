@@ -2,12 +2,14 @@ from element import *
 import pymongo
 from pymongo import Connection
 import os
+import time
 
 class Categorize(Element):
   name = "Categorize"
   
   def on_load(self, config):
     self.name = "Categorize"
+    self.config = config
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["path", "size", "perm", "owner"])
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["path", "name", "size", "perm", "owner", "category"])
 
@@ -56,3 +58,5 @@ class Categorize(Element):
     nl = Log()
     nl.set_log(new_log)
     self.push("output", nl)
+    if self.config.has_key("sleep"):
+      time.sleep(self.config["sleep"])
