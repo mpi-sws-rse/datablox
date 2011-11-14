@@ -1,0 +1,9 @@
+Input ports: 
+    "input" - PUSH
+Output ports:
+    None
+
+Arguments:
+    "sleep" - float: time between listing individual logs
+    
+Requirements: None

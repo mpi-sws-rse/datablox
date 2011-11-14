@@ -1,0 +1,10 @@
+Input ports: 
+    None
+Output ports:
+    "output" - PUSH
+
+Arguments:
+    "directory" - string: which directory to list
+    "sleep" - float: time between listing individual files
+    
+Requirements: None
