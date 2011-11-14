@@ -1,11 +1,4 @@
 from element import *
-import time
-import sys, os, lucene, threading, time
-from datetime import datetime
-from lucene import \
-    QueryParser, IndexSearcher, StandardAnalyzer, SimpleFSDirectory, File, \
-    VERSION, initVM, Version
-
 
 """
 This class is loosely based on the Lucene (java implementation) demo class 
@@ -101,6 +94,13 @@ class LuceneIndex(Element):
   name = "Lucene-index"
   
   def on_load(self, config):
+    import time
+    import sys, os, lucene, threading, time
+    from datetime import datetime
+    from lucene import \
+        QueryParser, IndexSearcher, StandardAnalyzer, SimpleFSDirectory, File, \
+        VERSION, initVM, Version
+    
     self.name = "Lucene-index"
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["name"])
     self.add_port("query", Port.PULL, Port.UNNAMED, ["query"])

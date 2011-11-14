@@ -1,6 +1,4 @@
 from element import *
-import pymongo
-from pymongo import Connection
 import os
 import time
 
