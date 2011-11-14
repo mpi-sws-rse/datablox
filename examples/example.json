@@ -1,0 +1,10 @@
+{
+    "elements": [
+        {"source": ["Dir-Src", {"directory": "."}]},
+        {"sink": ["Dump", {}]}
+    ],
+
+    "connections": [
+        [{"source": "output"}, {"sink": "input"}]
+    ]
+}

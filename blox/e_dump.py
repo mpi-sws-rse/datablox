@@ -8,7 +8,7 @@ class Dump(Element):
   def on_load(self, config):
     self.name = "Dump"
     self.add_port("input", Port.PUSH, Port.UNNAMED, [])
-    self.sleep_time = config["sleep"] if config.has_key("sleep") else 1
+    self.sleep_time = config["sleep"] if config.has_key("sleep") else 0
     print "Dump element loaded"
 
   def recv_push(self, port, log):
