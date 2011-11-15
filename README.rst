@@ -7,7 +7,7 @@ This is still under development.
 Setup
 ============
 
-See "setup" for instructions.
+See "setup.txt" for instructions.
 
 Running
 ============
