@@ -22,7 +22,7 @@ class Port(object):
       NAMED = 0
       UNNAMED = 1
       
-      #port_numbers and sockets will be added to this object by elements
+      #port_urls and sockets will be added to this object by elements
       def __init__(self, port_name, port_type, keys_type, keys):
         self.name = port_name
         self.port_type = port_type
@@ -56,12 +56,12 @@ class PortNumberGenerator(object):
       return self.port_num
   
 class Element(threading.Thread):
-  def __init__(self, master_port_num):
+  def __init__(self, master_url):
     threading.Thread.__init__(self)
     self.name = "__no_name__"
     self.connection_type = Port.AGNOSTIC
     master_port = Port("master", Port.MASTER, Port.UNNAMED, [])
-    master_port.port_number = master_port_num
+    master_port.port_url = master_url
     self.master_port = master_port
     self.ports = [master_port]
     self.output_ports = {}
@@ -104,7 +104,7 @@ class Element(threading.Thread):
     #Listen to all inputs
     for p in self.input_ports:
       if p.socket == None:
-        print "%s has a port %s, number %d none" % (self.name, p.name, p.port_number)
+        print "%s has a port %s, url %d none" % (self.name, p.name, p.url)
         raise NameError
       self.poller.register(p.socket, zmq.POLLIN)
     
@@ -133,39 +133,29 @@ class Element(threading.Thread):
     else:
       raise NameError
     
-  def bind_url(self, port_number):
-    return "tcp://*:" + str(port_number)
-  
-  def listen_url(self, port_number):
-    return "tcp://localhost:" + str(port_number)
-
   def get_one(self, _list):
     assert(len(_list) == 1)
     return _list[0]
     
-  def bind_pull_port(self, port):    
-    bind_url = self.bind_url(port.port_number)
+  def bind_pull_port(self, port):
     port.socket = self.context.socket(zmq.PULL)
-    port.socket.bind(bind_url)
+    port.socket.bind(port.port_url)
   
   def bind_rep_port(self, port):
-    bind_url = self.bind_url(port.port_number)
     port.socket = self.context.socket(zmq.REP)
-    port.socket.bind(bind_url)
+    port.socket.bind(port.port_url)
 
   def listen_push_port(self, port):
     port.sockets = []
-    for port_number in port.port_numbers:
-      listen_url = self.listen_url(port_number)
+    for port_url in port.port_urls:
       socket = self.context.socket(zmq.PUSH)
-      socket.connect(listen_url)
+      socket.connect(port_url)
       port.sockets.append(socket)
   
   def listen_req_port(self, port):
-    port_number = self.get_one(port.port_numbers)
-    listen_url = self.listen_url(port_number)
+    port_url = self.get_one(port.port_urls)
     socket = self.context.socket(zmq.REQ)
-    socket.connect(listen_url)
+    socket.connect(port_url)
     port.sockets = [socket]
   
   def start_listening(self):
@@ -336,26 +326,26 @@ class Element(threading.Thread):
     log_data = json.dumps(log.log)
     port.socket.send(log_data)
     
-  def get_input_port_num(self, input_port_name):
+  def get_input_port_url(self, input_port_name):
     input_port = self.find_port(input_port_name)
-    return input_port.port_number
+    return input_port.port_url
 
-  def add_output_connection(self, output_port_name, connection_port_num):
+  def add_output_connection(self, output_port_name, connection_port_url):
     output_port = self.find_port(output_port_name)
     if output_port.port_type == Port.PULL and self.output_ports.has_key(output_port):
       print self.name + " connecting to an already connected output PULL port"
       raise NameError
     try:
-      port_numbers = getattr(output_port, "port_numbers")
-      output_port.port_numbers.append(connection_port_num)
+      port_urls = getattr(output_port, "port_urls")
+      output_port.port_urls.append(connection_port_url)
     except AttributeError:
-        output_port.port_numbers = [connection_port_num]
+        output_port.port_urls = [connection_port_url]
     self.output_ports[output_port] = 1
   
-  def add_input_connection(self, input_port_name, connection_port_num):
+  def add_input_connection(self, input_port_name, connection_port_url):
     input_port = self.find_port(input_port_name)
     if self.input_ports.has_key(input_port):
       print self.name + " connecting to an already connected input port"
       raise NameError
-    input_port.port_number = connection_port_num
+    input_port.port_url = connection_port_url
     self.input_ports[input_port] = 1

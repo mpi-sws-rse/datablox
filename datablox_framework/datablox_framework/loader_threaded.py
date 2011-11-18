@@ -8,70 +8,55 @@ from shard import *
 
 class Master(object):
   def __init__(self, config_file):
-    self.master_port = 6500
-    self.blox_run_dir = "/Users/saideep/Downloads/blox"
+    self.master_port = 6000
     self.element_classes = []
     self.elements = {}
     self.loads = {}
     self.shard_nodes = {}
     self.num_parallel = 0
-    self.ip_pick = 0
-    self.ipaddress_hash = self.get_ipaddress_hash()
     self.context = zmq.Context()
     self.port_num_gen = PortNumberGenerator()
-    # os.system("cd " + self.blox_run_dir + " && rm *")
-    # self.load_elements(os.environ["BLOXPATH"])
+    self.load_elements(os.environ["BLOXPATH"])
     self.setup_connections(config_file)
     self.start_elements()
     self.run()
 
-  #TODO: Fix this
-  def get_ipaddress_hash(self):
-    ipaddresses = ["139.19.157.13", "139.19.192.14", "139.19.193.85", "139.19.157.14"]
-    #ipaddresses = ["139.19.192.14"]
-    d = {}
-    for ip in ipaddresses:
-      d[ip] = 0
-    return d
+
+  def load_elements(self, path):
+    try:
+      sys.path.index(path)
+    except ValueError:
+      sys.path.append(path)
+    for name in os.listdir(path):
+      if name.endswith(".py") and name.startswith("e_"):
+        modulename = os.path.splitext(name)[0]
+        print "importing: " + modulename
+        __import__(modulename)
   
-  def select_ipaddress(self):
-    #select the node which has the least number of running elements
-    min_ip = (None, 100000)
-    for k, v in self.ipaddress_hash.items():
-      if min_ip[1] > v:
-        min_ip = (k, v)
-    #increment the elements on this one
-    self.ipaddress_hash[min_ip[0]] = min_ip[1] + 1
-    return min_ip[0]
-    
-  def element_path(self, element_name):
-    file_name = 'e_' + element_name.lower().replace('-', '_') + '.py'
-    return os.path.join(os.environ["BLOXPATH"], file_name)
-  
-  def element_class_name(self, element_name):
-    return element_name.lower().replace('-', '_')
-    
-  def create_element(self, name, config, pin_ipaddress=None):
-    path = self.element_path(name)
-    if not os.path.isfile(path):
-      print "Could not find the element " + path
+    self.element_classes = Element.__subclasses__()
+    self.element_classes.extend(Shard.__subclasses__())
+    #self.element_classes.append(DynamicJoin)
+
+  def create_element(self, name, config):
+    element = None
+    for e in self.element_classes:
+      if e.name == name:
+        element = e
+
+    if element == None:
+      print "Could not find element with name " + name
       raise NameError
-    
-    if pin_ipaddress == None:
-      ipaddress = self.select_ipaddress()
-    else:
-      print "got an ipaddress for %s, using %s" % (name, pin_ipaddress)
-      self.ipaddress_hash[pin_ipaddress] += 1
-      ipaddress = pin_ipaddress
 
     self.master_port += 2  
-    connections = {}
-    inst = {"name": name, "path": path, "args": config, 
-          "connections": connections, "master_port": self.master_port,
-          "ipaddress": ipaddress}
+    inst = element(self.master_port)
+    inst.on_load(config)
     self.elements[self.master_port] = inst
     #random initial value
-    self.loads[self.master_port] = 1000
+    self.loads[inst] = 1000
+
+    if isinstance(inst, Shard):
+      self.populate_shard(inst)
+
     return inst
 
   def populate_shard(self, shard):
@@ -99,31 +84,23 @@ class Master(object):
       if element_type.has_key("output_port"):
         e.add_output_connection(element_type["output_port"], join_port_num)
         join.add_subscriber()
+
+    # for i in range(num_elements):
+    #   output_port = "output"+str(i)
+    #   element_config = shard.config_for_new_node()
+    #   shard.add_port(output_port, Port.PUSH, Port.UNNAMED, [])
+    #   e = self.create_element(element_name, element_config)
+    #   connection_port_num = self.port_num_gen.new_port()
+    #   shard.add_output_node_connection(output_port, connection_port_num)
+    #   e.add_input_connection(input_port, connection_port_num)
+    #   if element_type.has_key("output_port"):
+    #     self.connect(e, element_type["output_port"], join, "input"+str(i+1))
         
   def start_elements(self):
     for e in self.elements.values():
-      print "starting " + e["name"]
-      self.start_element(e)
+      print "starting " + e.name
+      e.start()
   
-  def start_element(self, element):
-    config = {}
-    config["name"] = element["name"]
-    config["args"] = element["args"]
-    config["master_port"] = self.url(element["ipaddress"], element["master_port"])
-    config["ports"] = element["connections"]
-    socket = self.context.socket(zmq.REQ)
-    message = json.dumps(("ADD NODE", config))
-    socket.connect(self.url(element["ipaddress"], 5000))
-    socket.send(message)
-    print "waiting for caretake to load " + element["name"]
-    res = json.loads(socket.recv())
-    socket.close()
-    if not res:
-      print "Could not start element " + element["name"]
-      raise NameError
-    else:
-      print element["name"] + " loaded"
-      
   def run(self):
     self.sync_elements()
     while True:
@@ -131,29 +108,27 @@ class Master(object):
         self.poll_loads()
         if len(self.loads.keys()) == 0:
           print "Master: no more running nodes, quitting"
-          return
+          break
         self.parallelize()
-        time.sleep(4)
+        time.sleep(1)
       except KeyboardInterrupt:
         self.stop_all()
         break
   
-  def url(self, ip_address, port_number):
-    return "tcp://" + ip_address + ":" + str(port_number)
+  def listen_url(self, port_number):
+    return "tcp://localhost:" + str(port_number)
 
   def sync_elements(self):
     for (p, e) in self.elements.items():
       self.sync_element(p, e)
 
   def sync_element(self, p, e):
-    url = self.url(e["ipaddress"], p)
+    url = self.listen_url(p)
     syncclient = self.context.socket(zmq.REQ)
     syncclient.connect(url)
-    print "syncing with url " + url
     syncclient.send('')
     # wait for synchronization reply
     syncclient.recv()
-    syncclient.close()
   
   def timed_recv(self, socket, time):
     """time is to be given in milliseconds"""
@@ -169,31 +144,32 @@ class Master(object):
     elements = self.loads.keys()
     self.loads = {}
     for e in elements:
-      load = self.poll_load(self.elements[e])
+      load = self.poll_load(e)
       if load != None and load != -1:
         self.loads[e] = load
   
   def poll_load(self, element):
-    port = element["master_port"]
+    port = element.master_port.port_number
     message = json.dumps(("POLL", {}))
     socket = self.context.socket(zmq.REQ)
-    socket.connect(self.url(element["ipaddress"], port))
+    socket.connect(self.listen_url(port))
     socket.send(message)
     #wait for 4 sec
     load = self.timed_recv(socket, 4000)
-    socket.close()
     if load != None:
       load = json.loads(load)
-      print "Master: %s has a load %r" % (element["name"], load)
+      #print "Master: %s has a load %r" % (element.name, load)
       return load
     #element timed out
     else:
-      print "** Master: %s timed out" % element["name"]
+      print "** Master: %s timed out" % element.name
       return None
 
   def stop_all(self):
     print "Master: trying to stop all elements"
-    raise NotImplementedError
+    #not thread-safe, implement this better
+    for e in self.elements.values():
+      e.alive = False
     
   def parallelize(self):
     for e in self.loads.keys():
@@ -203,7 +179,6 @@ class Master(object):
           self.do_parallelize(e, config)
   
   def can_parallelize(self, element):
-    return (False, None)
     socket = self.context.socket(zmq.REQ)
     port = element.master_port.port_number
     socket.connect(self.listen_url(port))
@@ -253,35 +228,19 @@ class Master(object):
     items = d.items()
     assert(len(items) == 1)
     return items[0]
-  
-  def get_or_default(self, d, key, default):
-    if d.has_key(key):
-      return d[key]
-    else:
-      d[key] = default
-      return default
 
   def connect_node(self, from_element, from_port, to_element, to_port):
     connection_port_num = self.port_num_gen.new_port()
-    connection_url = self.url(to_element["ipaddress"], connection_port_num)
-    from_connections = self.get_or_default(from_element["connections"], from_port, ["output"])
-    from_connections.append(connection_url)
-    to_connections = self.get_or_default(to_element["connections"], to_port, ["input"])
-    if len(to_connections) > 2:
-      print "Cannot add multiple input connections"
-      raise NameError
-    to_connections.append(connection_url)
+    from_element.add_output_connection(from_port, connection_port_num)
+    to_element.add_input_connection(to_port, connection_port_num)
     
   def setup_connections(self, file_name):
     with open(file_name) as f:
       config = json.load(f)
     element_hash = {}
     for e in config["elements"]:
-      element_id = e["id"]
-      element_name = e["name"] 
-      element_config = e["args"]
-      element_ip = e["at"] if e.has_key("at") else None
-      element = self.create_element(element_name, element_config, element_ip)
+      element_id, (element_name, element_config) = self.get_single_item(e)
+      element = self.create_element(element_name, element_config)
       element_hash[element_id] = element
     
     for f, t in config["connections"]:
@@ -292,4 +251,4 @@ class Master(object):
       self.connect_node(from_element, from_port, to_element, to_port)
   
 if __name__ == "__main__":
-  Master(sys.argv[1])
+  m = Master(sys.argv[1])

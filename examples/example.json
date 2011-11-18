@@ -1,7 +1,11 @@
 {
     "elements": [
-        {"source": ["Dir-Src", {"directory": "."}]},
-        {"sink": ["Dump", {}]}
+        {"id": "source", 
+         "name": "Dir-Src", 
+         "args": {"directory": "."}},
+        {"id": "sink", 
+        "name": "Dump", 
+        "args": {}}
     ],
 
     "connections": [

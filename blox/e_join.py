@@ -1,8 +1,6 @@
 from element import *
 
-class Join(Element):
-  name = "Join"
-  
+class join(Element):
   def on_load(self, config):
     self.name = "Join"
     for i in range(config["joins"]):

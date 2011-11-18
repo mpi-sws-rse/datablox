@@ -3,9 +3,7 @@ import time
 import sys, os, threading, time
 from datetime import datetime
 
-class SolrIndex(Element):
-  name = "Solr-index"
-  
+class solr_index(Element):
   def on_load(self, config):
     import sunburnt
     self.name = "Solr-index"
@@ -25,6 +23,8 @@ class SolrIndex(Element):
         self.crawler_done = True
         self.indexer.commit()
         self.process_outstanding_queries()
+    elif log.log.has_key("data"):
+      self.index_entries(log.log)
     else:
       files = log.log["path"]
       try:
@@ -50,6 +50,19 @@ class SolrIndex(Element):
         self.indexer.add(entry)
       except Exception, e:
           print "Failed in index_docs:", e
+  
+  def index_entries(self, log):
+    paths = log["path"]
+    data = log["data"]
+    # print "path len: %d, data len %d" % (len(paths), len(data))
+    for i in range(len(paths)):
+      if not self.indexible_file(paths[i]):
+        continue
+      print "adding " + paths[i]
+      entry = {"path": paths[i],
+               "name": os.path.split(paths[i])[-1],
+               "contents": data[i]}
+      self.indexer.add(entry)
     
   def on_shutdown(self):
     self.indexer.commit()

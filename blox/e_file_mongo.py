@@ -1,8 +1,6 @@
 from element import *
 
-class FileMongo(Element):
-  name = "File-mongo"
-  
+class file_mongo(Element):
   def on_load(self, config):
     import pymongo
     from pymongo import Connection

@@ -1,9 +1,7 @@
 from element import *
 import time
 
-class Count(Element):
-  name = "Count"
-  
+class count(Element):
   def on_load(self, config):
     self.name = "Count"
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["value"])

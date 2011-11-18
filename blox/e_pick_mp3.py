@@ -2,9 +2,7 @@ import os
 import sys
 from element import *
 
-class PickMp3(Element):
-  name = "pick-mp3"
-  
+class pick_mp3(Element):
   def on_load(self, config):
     self.name = "pick-mp3"
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["name"])

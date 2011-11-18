@@ -2,9 +2,7 @@ from element import *
 import time
 
 
-class Dump(Element):
-  name = "Dump"
-  
+class dump(Element):
   def on_load(self, config):
     self.name = "Dump"
     self.add_port("input", Port.PUSH, Port.UNNAMED, [])

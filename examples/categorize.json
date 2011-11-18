@@ -1,8 +1,15 @@
 {
     "elements": [
-        {"source": ["Dir-Src", {"directory": "./blox"}]},
-        {"categorizer": ["Categorize", {}]},
-        {"sink": ["Dump", {"sleep": 0}]}
+        {"id": "source",
+         "name": "Dir-Src",
+         "args": {"directory": "/Users/saideep/Projects/datablox/blox"},
+         "at": "139.19.192.14"},
+        {"id": "categorizer", 
+         "name": "Categorize", 
+         "args": {}},
+        {"id": "sink",
+         "name": "Dump", 
+         "args": {"sleep": 0}}
     ],
 
     "connections": [

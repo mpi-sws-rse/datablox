@@ -4,9 +4,7 @@ from shard import *
 import time
 
 
-class Categorize_shard(Shard):
-  name = "Categorize-Shard"
-  
+class categorize_shard(Shard):
   def on_load(self, config):
     self.name = "Categorize-Shard"
     self.config = config

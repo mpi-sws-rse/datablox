@@ -2,9 +2,7 @@ from element import *
 import time
 
 
-class Null(Element):
-  name = "Null"
-  
+class null(Element):
   def on_load(self, config):
     self.name = "Null"
     self.add_port("input", Port.PUSH, Port.UNNAMED, [])

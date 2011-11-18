@@ -72,8 +72,6 @@ class Shard(Element):
     Element.add_output_connection(self, output_port_name, connection_port_num)
 
 class DynamicJoin(Element):
-  name = "DynamicJoin"
-  
   def on_load(self, config):
     self.name = "DynamicJoin"
     self.join_input_port = self.add_port("input", Port.PUSH, Port.UNNAMED, [])

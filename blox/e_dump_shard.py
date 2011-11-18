@@ -4,9 +4,7 @@ from shard import *
 import time
 
 
-class Dump_shard(Shard):
-  name = "Dump-Shard"
-  
+class dump_shard(Shard):
   def on_load(self, config):
     self.name = "Dump-Shard"
     self.nodes = config["nodes"]

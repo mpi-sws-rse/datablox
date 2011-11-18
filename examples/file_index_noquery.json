@@ -2,10 +2,10 @@
     "elements": [
         {"id": "crawler1",
          "name": "Dir-Src", 
-         "args": {"directory": "."}},
+         "args": {"directory": "~"}},
         {"id": "crawler2",
          "name": "Dir-Src", 
-         "args": {"directory": "./blox"}},
+         "args": {"directory": "~"}},
         {"id": "join",
          "name": "Join", 
          "args": {"joins": 2}},
@@ -19,10 +19,7 @@
         {"id": "metaindexer",
          "name": "File-mongo", 
          "args": {"crawlers": 2},
-         "at": "139.19.192.14"},
-        {"id": "query",
-         "name": "File-query", 
-         "args": {}}
+         "at": "139.19.192.14"}
     ],
 
     "connections": [
@@ -30,8 +27,6 @@
         [{"crawler2": "output"}, {"join": "input2"}],
         [{"join": "output"}, {"categorizer": "input"}],
         [{"categorizer": "output"}, {"indexer": "input"}],
-        [{"categorizer": "output"}, {"metaindexer": "input"}],
-        [{"query": "data_query"}, {"indexer": "query"}],
-        [{"query": "meta_query"}, {"metaindexer": "file_data"}]
+        [{"categorizer": "output"}, {"metaindexer": "input"}]
     ]
 }

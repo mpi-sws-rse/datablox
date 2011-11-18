@@ -1,8 +1,6 @@
 from element import *
 
-class SimplePullClient(Element):
-  name = "Simple-pull-client"
-  
+class simple_pull_client(Element):
   def on_load(self, config):
     self.name = "Simple-pull-client"
     self.add_port("output", Port.PULL, Port.UNNAMED, ["number"])

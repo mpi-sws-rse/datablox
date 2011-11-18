@@ -1,9 +1,7 @@
 from element import *
 import time
 
-class ZeroSrc(Element):
-  name = "0-Src"
-  
+class zero_src(Element):
   def src_start(self):
     for i in range(0,10):
       log = Log()

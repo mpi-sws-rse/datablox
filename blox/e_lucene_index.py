@@ -90,9 +90,7 @@ class IndexFiles(object):
       
     return paths
 
-class LuceneIndex(Element):
-  name = "Lucene-index"
-  
+class lucene_index(Element):
   def on_load(self, config):
     import time
     import sys, os, lucene, threading, time

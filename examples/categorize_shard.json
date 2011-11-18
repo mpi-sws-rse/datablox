@@ -1,8 +1,14 @@
 {
     "elements": [
-        {"source": ["Dir-Src", {"directory": "./blox", "sleep": 0.5}]},
-        {"categorizer": ["Categorize-Shard", {"nodes": 1, "sleep": 2}]},
-        {"sink": ["Dump", {"sleep": 0}]}
+        {"id": "source", 
+         "name": "Dir-Src", 
+         "args": {"directory": "./blox", "sleep": 0.5}},
+        {"id": "categorizer", 
+         "name": "Categorize-Shard", 
+         "args": {"nodes": 1, "sleep": 2}},
+        {"id": "sink", 
+         "name": "Dump", 
+         "args": {"sleep": 0}}
     ],
 
     "connections": [

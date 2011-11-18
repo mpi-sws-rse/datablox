@@ -2,9 +2,7 @@ from element import *
 import os
 import time
 
-class Categorize(Element):
-  name = "Categorize"
-  
+class categorize(Element):
   def on_load(self, config):
     self.name = "Categorize"
     self.config = config
@@ -38,11 +36,11 @@ class Categorize(Element):
       paths = log["path"]
       categories = []
       names = []
-      comments = []
+      # comments = []
     
       for path in paths:
         categories.append(self.find_category(path))
-        comments.append(self.comment(path))
+        # comments.append(self.comment(path))
         names.append(os.path.split(path)[-1])
       
       new_log["name"] = names
@@ -50,8 +48,11 @@ class Categorize(Element):
       new_log["size"] = log["size"]
       new_log["perm"] = log["perm"]
       new_log["owner"] = log["owner"]
+      if log.has_key("data"):
+        new_log["data"] = log["data"]
+        
       new_log["category"] = categories
-      new_log["comments"] = comments
+      # new_log["comments"] = comments
     
     nl = Log()
     nl.set_log(new_log)

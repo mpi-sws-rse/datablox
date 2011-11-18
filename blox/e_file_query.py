@@ -1,8 +1,6 @@
 from element import *
 
-class FileQuery(Element):
-  name = "File-query"
-  
+class file_query(Element):
   def on_load(self, config):
     self.name = "File-query"
     self.add_port("meta_query", Port.PULL, Port.UNNAMED, ["name"])

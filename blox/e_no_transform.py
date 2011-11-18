@@ -1,8 +1,6 @@
 from element import *
 
-class NoTransform(Element):
-  name = "No-transform"
-  
+class no_transform(Element):
   def on_load(self, config):
     self.name = "No-transform"
     self.add_port("input1", Port.PUSH, Port.UNNAMED, ["name", "size", "perm", "owner"])
