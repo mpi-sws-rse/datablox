@@ -72,6 +72,7 @@ class Element(threading.Thread):
     #this is to prioritize control requests
     self.control_poller = None
     self.poller = None
+    self.requests = 0
     self.alive = True
 
   def run(self):
@@ -202,7 +203,7 @@ class Element(threading.Thread):
   def process_master(self, control_data):
     control, data = control_data
     if control == "POLL":
-      load = json.dumps(1000)
+      load = json.dumps(self.requests)
       self.master_port.socket.send(load)
     else:
       print self.name + " Warning ** could not understand master"
@@ -214,6 +215,7 @@ class Element(threading.Thread):
   def process_push(self, port, log_data):
     log = Log()
     log.set_log(log_data)
+    self.requests += 1
     self.recv_push(port.name, log)
   
   def process_pull_query(self, port, log_data):

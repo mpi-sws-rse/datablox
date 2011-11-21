@@ -2,7 +2,7 @@
     "elements": [
         {"id": "source", 
          "name": "Dir-Src", 
-         "args": {"directory": "./blox", "sleep": 0.5}},
+         "args": {"directory": ".", "sleep": 1}},
         {"id": "categorizer", 
          "name": "Categorize-Shard", 
          "args": {"nodes": 1, "sleep": 2}},

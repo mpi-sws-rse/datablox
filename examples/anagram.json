@@ -1,0 +1,18 @@
+{
+    "elements": [
+        {"id": "source", 
+         "name": "permute", 
+         "args": {"words": ["salsadance"]}},
+        {"id": "filter",
+         "name": "Filter-Shard",
+          "args": {"nodes": 2}},
+        {"id": "sink", 
+        "name": "Dump", 
+        "args": {}}
+    ],
+
+    "connections": [
+        [{"source": "output"}, {"filter": "input"}],
+        [{"filter": "output"}, {"sink": "input"}]
+    ]
+}

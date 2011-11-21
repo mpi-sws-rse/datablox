@@ -19,16 +19,17 @@ class Master(object):
     self.ipaddress_hash = self.get_ipaddress_hash()
     self.context = zmq.Context()
     self.port_num_gen = PortNumberGenerator()
-    # os.system("cd " + self.blox_run_dir + " && rm *")
-    # self.load_elements(os.environ["BLOXPATH"])
+    self.add_blox_to_path(os.environ["BLOXPATH"])
     self.setup_connections(config_file)
     self.start_elements()
     self.run()
 
   #TODO: Fix this
   def get_ipaddress_hash(self):
-    ipaddresses = ["139.19.157.13", "139.19.192.14", "139.19.193.85", "139.19.157.14"]
-    #ipaddresses = ["139.19.192.14"]
+    #ipaddresses = ["139.19.157.13", "139.19.192.14", "139.19.193.85", "139.19.157.14", "139.19.157.15"]
+    #ipaddresses = ["139.19.157.13", "139.19.157.14", "139.19.157.15"]
+    #ipaddresses = ["127.0.0.1"]
+    ipaddresses = sys.argv[2:]
     d = {}
     for ip in ipaddresses:
       d[ip] = 0
@@ -43,13 +44,33 @@ class Master(object):
     #increment the elements on this one
     self.ipaddress_hash[min_ip[0]] = min_ip[1] + 1
     return min_ip[0]
-    
+  
+  #TODO: Put all these utility functions in their own module
+  def add_blox_to_path(self, blox_dir):
+    try:
+      sys.path.index(blox_dir)
+    except ValueError:
+      sys.path.append(blox_dir)
+  
   def element_path(self, element_name):
     file_name = 'e_' + element_name.lower().replace('-', '_') + '.py'
     return os.path.join(os.environ["BLOXPATH"], file_name)
   
   def element_class_name(self, element_name):
     return element_name.lower().replace('-', '_')
+  
+  def element_module(self, element_name):
+    return 'e_' + element_name.lower().replace('-', '_')
+  
+  def is_shard(self, element_name):
+    return self.element_class_name(element_name).endswith('_shard')
+  
+  def element_class(self, element_name):
+    module_name = self.element_module(element_name)
+    element_name = self.element_class_name(element_name)
+    module = __import__(module_name)
+    element_class = getattr(module, element_name)
+    return element_class
     
   def create_element(self, name, config, pin_ipaddress=None):
     path = self.element_path(name)
@@ -61,44 +82,50 @@ class Master(object):
       ipaddress = self.select_ipaddress()
     else:
       print "got an ipaddress for %s, using %s" % (name, pin_ipaddress)
-      self.ipaddress_hash[pin_ipaddress] += 1
       ipaddress = pin_ipaddress
 
-    self.master_port += 2  
+    self.master_port += 2
     connections = {}
-    inst = {"name": name, "path": path, "args": config, 
+    inst = {"name": name, "args": config, 
           "connections": connections, "master_port": self.master_port,
           "ipaddress": ipaddress}
     self.elements[self.master_port] = inst
     #random initial value
-    self.loads[self.master_port] = 1000
+    self.loads[self.master_port] = 0
+    
+    if self.is_shard(name):
+      ec = self.element_class(name)
+      inst["initial_configs"] = ec.initial_configs(config)
+      inst["node_type"] = ec.node_type()
+      self.populate_shard(inst)
+
     return inst
 
   def populate_shard(self, shard):
-    num_elements = shard.minimum_nodes()
-    shard.num_nodes = num_elements
-    element_type = shard.node_type()
-    self.shard_nodes[shard] = element_type
+    element_configs = shard["initial_configs"]
+    assert(len(element_configs) > 0)
+    element_type = shard["node_type"]
     element_name = element_type["name"]
     input_port = element_type["input_port"]
+    print "num elements in shard %d" % (len(element_configs))
     if element_type.has_key("output_port"):
-      join = self.create_element("DynamicJoin", {})
+      #optimization: creating the join element on the same node as the shard
+      join = self.create_element("dynamic-join", {}, shard["ipaddress"])
       join_port_num = self.port_num_gen.new_port()
-      join.set_join_port_num(join_port_num)
-      self.shard_nodes[shard]["join_node"] = join
-      shard.set_join_node(join)
+      join_url = self.url(join["ipaddress"], join_port_num)
+      join["join_port_num"] = join_port_num
+      join["subscribers"] = 0
+      shard["join_node"] = join
 
-    for i in range(num_elements):
+    for i in range(len(element_configs)):
       output_port = "output"+str(i)
-      element_config = shard.config_for_new_node()
+      element_config = element_configs[i]
       e = self.create_element(element_name, element_config)
-      connection_port_num = self.port_num_gen.new_port()
-      shard.add_port(output_port, Port.PUSH, Port.UNNAMED, [])
-      shard.add_output_node_connection(output_port, connection_port_num)
-      e.add_input_connection(input_port, connection_port_num)
+      self.connect_node(shard, output_port, e, input_port)
       if element_type.has_key("output_port"):
-        e.add_output_connection(element_type["output_port"], join_port_num)
-        join.add_subscriber()
+        #TODO: remove hardcoded join input port name
+        self.connect_node(e, element_type["output_port"], join, "input", join_url)
+        join["subscribers"] += 1
         
   def start_elements(self):
     for e in self.elements.values():
@@ -111,6 +138,13 @@ class Master(object):
     config["args"] = element["args"]
     config["master_port"] = self.url(element["ipaddress"], element["master_port"])
     config["ports"] = element["connections"]
+    #for the join element
+    if element.has_key("subscribers"):
+      config["subscribers"] = element["subscribers"]
+    #for the shard element
+    if self.is_shard(element["name"]):
+      config["num_elements"] = len(element["initial_configs"])
+
     socket = self.context.socket(zmq.REQ)
     message = json.dumps(("ADD NODE", config))
     socket.connect(self.url(element["ipaddress"], 5000))
@@ -166,12 +200,13 @@ class Master(object):
       return socket.recv()
     
   def poll_loads(self):
-    elements = self.loads.keys()
+    ports = self.loads.keys()
+    self.old_loads = self.loads
     self.loads = {}
-    for e in elements:
-      load = self.poll_load(self.elements[e])
+    for p in ports:
+      load = self.poll_load(self.elements[p])
       if load != None and load != -1:
-        self.loads[e] = load
+        self.loads[p] = load
   
   def poll_load(self, element):
     port = element["master_port"]
@@ -184,7 +219,7 @@ class Master(object):
     socket.close()
     if load != None:
       load = json.loads(load)
-      print "Master: %s has a load %r" % (element["name"], load)
+      print "Master: %s has served %r (%r)" % (element["name"], load, (load - self.old_loads[element["master_port"]]))
       return load
     #element timed out
     else:
@@ -196,55 +231,63 @@ class Master(object):
     raise NotImplementedError
     
   def parallelize(self):
-    for e in self.loads.keys():
-      if isinstance(e, Shard):
+    for p in self.loads.keys():
+      e = self.elements[p]
+      if self.is_shard(e["name"]):
         can, config = self.can_parallelize(e)
         if can and self.num_parallel < 4:
           self.do_parallelize(e, config)
   
   def can_parallelize(self, element):
-    return (False, None)
     socket = self.context.socket(zmq.REQ)
-    port = element.master_port.port_number
-    socket.connect(self.listen_url(port))
+    port = element["master_port"]
+    socket.connect(self.url(element["ipaddress"], port))
     message = json.dumps(("CAN ADD", {}))
     socket.send(message)
     message = self.timed_recv(socket, 8000)
+    socket.close()
     if message != None:
       return json.loads(message)
     else:
-      print "Master did not get any result for parallelize from %s" % element.name
+      print "Master did not get any result for parallelize from %s" % element["name"]
       return (False, None)
   
   def do_parallelize(self, element, config):
-    print "Master: trying to parallelize %s" % element.name
-    port_number = self.port_num_gen.new_port()
-    print "Master: %s can parallelize with config %r, on port %r" % (element.name, config, port_number)
-    node_type = self.shard_nodes[element]
+    node_type = element["node_type"]
     new_node = self.create_element(node_type["name"], config)
-    new_node.add_input_connection(node_type["input_port"], port_number)
-    if node_type.has_key("join_node"):
-      join = node_type["join_node"]
-      new_node.add_output_connection(node_type["output_port"], join.join_input_port.port_number)
+    port_number = self.port_num_gen.new_port()
+    connection_url = self.url(new_node["ipaddress"], port_number)
+    print "Master: trying to parallelize %s with url %s" % (element["name"], connection_url)
+    #TODO: rename initial_configs 
+    element["initial_configs"].append(config)
+    self.connect_node(element, "output"+str(len(element["initial_configs"])), new_node, node_type["input_port"], connection_url)
+    if element.has_key("join_node"):
+      join = element["join_node"]
+      join_url = self.url(join["ipaddress"], join["join_port_num"])
+      #TODO: hardcoded join input port
+      self.connect_node(new_node, node_type["output_port"], join, "input", join_url)
+      # new_node.add_output_connection(node_type["output_port"], join.join_input_port.port_number)
       socket = self.context.socket(zmq.REQ)
-      socket.connect(self.listen_url(join.master_port.port_number))
+      socket.connect(self.url(join["ipaddress"], join["master_port"]))
       message = json.dumps(("ADD JOIN", {}))
       socket.send(message)
       res = self.timed_recv(socket, 8000)
+      socket.close()
       if message == None:
         print "join node did not reply to add join, so not parallelizing"
         return      
-    new_node.start()
-    self.sync_element(new_node.master_port.port_number, new_node)
+    self.start_element(new_node)
+    self.sync_element(new_node["master_port"], new_node)
 
     socket = self.context.socket(zmq.REQ)
-    port = element.master_port.port_number
-    socket.connect(self.listen_url(port))
-    message = json.dumps(("SHOULD ADD", {"port_number": port_number}))
+    port = element["master_port"]
+    socket.connect(self.url(element["ipaddress"], port))
+    message = json.dumps(("SHOULD ADD", {"port_url": connection_url}))
     socket.send(message)
     message = self.timed_recv(socket, 8000)
+    socket.close()
     if message != None:
-      print "Master: done parallelizing " + element.name
+      print "Master: done parallelizing " + element["name"]
       self.num_parallel += 1
     else:
       print "Master didn't get a reply for should_add"
@@ -261,20 +304,34 @@ class Master(object):
       d[key] = default
       return default
 
-  def connect_node(self, from_element, from_port, to_element, to_port):
-    connection_port_num = self.port_num_gen.new_port()
-    connection_url = self.url(to_element["ipaddress"], connection_port_num)
+  def connect_node(self, from_element, from_port, to_element, to_port, connection_url=None):
+    if connection_url == None:
+      connection_port_num = self.port_num_gen.new_port()
+      connection_url = self.url(to_element["ipaddress"], connection_port_num)
     from_connections = self.get_or_default(from_element["connections"], from_port, ["output"])
     from_connections.append(connection_url)
     to_connections = self.get_or_default(to_element["connections"], to_port, ["input"])
-    if len(to_connections) > 2:
-      print "Cannot add multiple input connections"
-      raise NameError
-    to_connections.append(connection_url)
+    if len(to_connections) > 1:
+      try:
+        #it's ok for join url to have multiple inputs
+        to_connections.index(connection_url)
+        pass
+      except ValueError:
+        print "Cannot add multiple input connections"
+        raise NameError
+    else:
+      to_connections.append(connection_url)
+  
+  def setup_initial_node_counts(self, config):
+    for e in config["elements"]:
+      if e.has_key("at"):
+        pin_ipaddress = e["at"]
+        self.ipaddress_hash[pin_ipaddress] += 1
     
   def setup_connections(self, file_name):
     with open(file_name) as f:
       config = json.load(f)
+    self.setup_initial_node_counts(config)
     element_hash = {}
     for e in config["elements"]:
       element_id = e["id"]
@@ -288,6 +345,11 @@ class Master(object):
       (from_name, from_port) = self.get_single_item(f)
       (to_name, to_port)  = self.get_single_item(t)
       from_element = element_hash[from_name]
+      #if we have a shard, connect the join node instead
+      #TODO: hardcoded join output port name
+      if from_element.has_key("join_node"):
+        from_element = from_element["join_node"]
+        from_port = "output"
       to_element = element_hash[to_name]
       self.connect_node(from_element, from_port, to_element, to_port)
   

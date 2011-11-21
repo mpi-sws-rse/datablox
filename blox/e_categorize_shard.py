@@ -5,6 +5,14 @@ import time
 
 
 class categorize_shard(Shard):
+  @classmethod
+  def initial_configs(cls, config):
+    return [config for i in range(config["nodes"])]
+  
+  @classmethod
+  def node_type(self):
+    return {"name": "Categorize", "input_port": "input", "output_port": "output", "port_type": "PUSH"}
+  
   def on_load(self, config):
     self.name = "Categorize-Shard"
     self.config = config
@@ -13,12 +21,6 @@ class categorize_shard(Shard):
     self.current_node = 0
     self.add_port("input", Port.PUSH, Port.UNNAMED, [])
     print "Categorize shard loaded"
-
-  def minimum_nodes(self):
-    return self.nodes
-  
-  def node_type(self):
-    return {"name": "Categorize", "input_port": "input", "output_port": "output", "port_type": "PUSH"}
   
   def config_for_new_node(self):
     return self.config
