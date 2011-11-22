@@ -88,7 +88,7 @@ class Master(object):
     connections = {}
     inst = {"name": name, "args": config, 
           "connections": connections, "master_port": self.master_port,
-          "ipaddress": ipaddress}
+          "ipaddress": ipaddress, "timeouts": 0}
     self.elements[self.master_port] = inst
     #random initial value
     self.loads[self.master_port] = 0
@@ -207,6 +207,13 @@ class Master(object):
       load = self.poll_load(self.elements[p])
       if load != None and load != -1:
         self.loads[p] = load
+        self.elements[p]["timeouts"] = 0
+      elif load == None:
+        #give it 3 tries to recover before giving up on it
+        #TODO: 3 is hardcoded
+        if self.elements[p]["timeouts"] < 3:
+          self.elements[p]["timeouts"] += 1
+          self.loads[p] = -1
   
   def poll_load(self, element):
     port = element["master_port"]

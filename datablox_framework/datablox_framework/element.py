@@ -73,16 +73,18 @@ class Element(threading.Thread):
     self.control_poller = None
     self.poller = None
     self.requests = 0
+    self.pushed_requests = 0
     self.alive = True
+    self.taks = None
 
   def run(self):
     try:
       self.context = zmq.Context()
       self.ready_ports()
       print self.name + " ports are ready"
-      self.src_start()
-      if self.input_ports != []:
-        self.start_listening()
+      if self.input_ports.keys() == []:
+        self.task = self.do_task()
+      self.start_listening()
     except KeyboardInterrupt:
       print "Stopping thread"
   
@@ -161,6 +163,13 @@ class Element(threading.Thread):
   
   def start_listening(self):
     while self.alive:
+      #TODO: only running do_task for sources, generalize this for all elements
+      if self.input_ports.keys() == []:
+        try:
+          self.task.next()
+        except StopIteration:
+          self.shutdown()
+        
       socks = dict(self.control_poller.poll(5))
       if socks != None and socks != {}:
         ports_with_data = [p for p in self.input_ports if p.socket in socks and socks[p.socket] == zmq.POLLIN]
@@ -200,10 +209,16 @@ class Element(threading.Thread):
           else:
             self.process_pull_query(p, log)
   
+  def get_load(self):
+    if self.input_ports.keys() == []:
+      return self.pushed_requests
+    else:
+      return self.requests
+    
   def process_master(self, control_data):
     control, data = control_data
     if control == "POLL":
-      load = json.dumps(self.requests)
+      load = json.dumps(self.get_load())
       self.master_port.socket.send(load)
     else:
       print self.name + " Warning ** could not understand master"
@@ -247,6 +262,9 @@ class Element(threading.Thread):
     for socket in port.sockets:
       socket.send(str(json_log))
   
+  def do_task(self):
+    raise NotImplementedError
+    
   def on_shutdown(self):
     pass
 
@@ -258,10 +276,6 @@ class Element(threading.Thread):
     print self.name + " has shutdown"
 
   def report_shutdown(self):
-    if len(self.input_ports.keys()) == 0:
-      #source don't have pulse for now
-      return
-
     print self.name + " waiting for master to poll to report shutdown"
     while True:
       control_data = json.loads(self.master_port.socket.recv())
@@ -273,10 +287,6 @@ class Element(threading.Thread):
       elif control == "CAN ADD":
         message = json.dumps((False, {}))
         self.master_port.socket.send(message)
-    
-  def src_start(self):
-    """Sources can start sending data"""
-    pass
     
   def on_load(self, config):
     raise NotImplementedError
@@ -309,6 +319,7 @@ class Element(threading.Thread):
     return port
 
   def push(self, port_name, log):
+    self.pushed_requests += 1
     port = self.find_port(port_name)
     self.send("PUSH", log.log, port)
   

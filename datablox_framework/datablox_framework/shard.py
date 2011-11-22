@@ -33,7 +33,7 @@ class Shard(Element):
   def process_master(self, control_data):
     control, data = control_data
     if control == "POLL":
-      load = json.dumps(self.requests)
+      load = json.dumps(self.get_load())
       self.master_port.socket.send(load)
     elif control == "CAN ADD":
       res = self.can_add_node()

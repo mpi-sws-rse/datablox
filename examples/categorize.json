@@ -2,8 +2,7 @@
     "elements": [
         {"id": "source",
          "name": "Dir-Src",
-         "args": {"directory": "/Users/saideep/Projects/datablox/blox"},
-         "at": "139.19.192.14"},
+         "args": {"directory": "."}},
         {"id": "categorizer", 
          "name": "Categorize", 
          "args": {}},

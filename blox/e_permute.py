@@ -6,9 +6,10 @@ class permute(Element):
   def get_words(self):
     return self.config["words"]
     
-  def src_start(self):
+  def do_task(self):
     sleeptime = self.config["sleep"] if self.config.has_key("sleep") else 0
     for word in self.get_words():
+      t = time.time()
       #add a space to split words
       word += ' '
       work_queue = []
@@ -27,13 +28,15 @@ class permute(Element):
             log.log["word"].extend(work_queue)
             self.push("output", log)
             work_queue = []
+            if time.time() - t > 3:
+              yield
+              t = time.time()
       if work_queue != []:
         log = Log()
         log.log["word"] = []
         #TODO: just copy the list instead
         log.log["word"].extend(work_queue)
         self.push("output", log)
-    self.shutdown()
 
   def on_load(self, config):
     self.name = "permute"

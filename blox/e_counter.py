@@ -2,7 +2,7 @@ from element import *
 import time
 
 class counter(Element):
-  def src_start(self):
+  def do_task(self):
     for i in range(5):
       log = Log()
       log.log["value"] = [self.count]
@@ -10,7 +10,7 @@ class counter(Element):
       self.push("output", log)
       self.count = self.count + 1
       time.sleep(1)
-    self.shutdown()
+      yield
 
   def on_load(self, config):
     self.name = "Counter"

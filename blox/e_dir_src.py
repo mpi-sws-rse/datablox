@@ -7,7 +7,7 @@ class dir_src(Element):
   def indexible_file(self, path):
     return path.endswith('.txt') or path.endswith('.py') or path.endswith('.java')
   
-  def src_start(self):
+  def do_task(self):
     path = os.path.expanduser(self.config["directory"])
     sleeptime = self.config["sleep"] if self.config.has_key("sleep") else 0
     #using the ip-address for now
@@ -38,6 +38,7 @@ class dir_src(Element):
         log.set_log(listing)
         self.push("output", log)
         time.sleep(sleeptime)
+        yield
     
     token = {"token": self.config["directory"]}
     log = Log()

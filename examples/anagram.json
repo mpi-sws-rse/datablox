@@ -2,10 +2,10 @@
     "elements": [
         {"id": "source", 
          "name": "permute", 
-         "args": {"words": ["salsadance"]}},
+         "args": {"words": ["potters"]}},
         {"id": "filter",
          "name": "Filter-Shard",
-          "args": {"nodes": 2}},
+          "args": {"nodes": 3}},
         {"id": "sink", 
         "name": "Dump", 
         "args": {}}

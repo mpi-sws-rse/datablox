@@ -14,7 +14,7 @@ class dynamic_join(Element):
   def process_master(self, control_data):
     control, data = control_data
     if control == "POLL":
-      load = json.dumps(self.requests)
+      load = json.dumps(self.get_load())
       self.master_port.socket.send(load)
     elif control == "ADD JOIN":
       #print self.name + " got ADD JOIN from master"

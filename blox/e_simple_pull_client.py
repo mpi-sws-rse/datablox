@@ -6,10 +6,10 @@ class simple_pull_client(Element):
     self.add_port("output", Port.PULL, Port.UNNAMED, ["number"])
     print "Simple-pull-client element loaded"
 
-  def src_start(self):
+  def do_task(self):
     log = Log()
     log.log["number"] = 23
     res = self.pull("output", log)
     number = res.log["result"]
     print self.name + " got result " + str(number)
-    self.shutdown()
+    yield

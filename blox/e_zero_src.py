@@ -2,7 +2,7 @@ from element import *
 import time
 
 class zero_src(Element):
-  def src_start(self):
+  def do_task(self):
     sleeptime = self.config["sleep"] if self.config.has_key("sleep") else 0
     numzeros = self.config["num_zeros"] if self.config.has_key("num_zeros") else 10
     for i in range(0,numzeros):
@@ -11,7 +11,7 @@ class zero_src(Element):
       print "Sending a zero"
       self.push("output", log)
       time.sleep(sleeptime)
-    self.shutdown()
+      yield
 
   def on_load(self, config):
     self.name = "0-Src"

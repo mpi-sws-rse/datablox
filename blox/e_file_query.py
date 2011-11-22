@@ -8,7 +8,7 @@ class file_query(Element):
     self.interactive = True
     print "File-query element loaded"
 
-  def src_start(self):
+  def do_task(self):
     if self.interactive:
       self.do_interactive()
     else:
@@ -45,4 +45,4 @@ class file_query(Element):
       category = category.capitalize()
       print "Searching for: " + query + " in category " + category
       self.query(query, category)
-    self.shutdown()
+      yield
