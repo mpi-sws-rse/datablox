@@ -10,18 +10,24 @@ The configuration file should provide a dictionary with two fields: "elements" w
 
 An element object is identified by an identifier. For example, in order to utilize a directory listing element to output all the files of the current working directory, we write::
 
-  "elements": [
-      {"source": ["Dir-Src", {"directory": "."}]}
-  ]
+    "elements": [
+        {"id": "source", 
+         "name": "Dir-Src", 
+         "args": {"directory": "."}}
+    ]
 
-``["Dir-Src", {"directory": "."}]`` creates a directory lister element with arguments {"directory": "."}. The arguments tell the element to list the specified directory. We then assign an identifier "source" to the element so we can refer to it later when we are connecting it to other elements.
+This creates a directory lister element with arguments {"directory": "."}. The arguments tell the element to list the specified directory. We then assign an identifier "source" to the element so we can refer to it later when we are connecting it to other elements.
 
 Let's add another element to it::
 
-  "elements": [
-      {"source": ["Dir-Src", {"directory": "."}]},
-      {"sink": ["Dump", {}]}
-  ]
+    "elements": [
+        {"id": "source", 
+         "name": "Dir-Src", 
+         "args": {"directory": "."}},
+        {"id": "sink", 
+        "name": "Dump", 
+        "args": {}}
+    ]
 
 This creates a Dump element which just prints all the information it receives on the terminal.
 
@@ -35,15 +41,20 @@ We know that "Dir-Src" has an output port called "output" from its documentation
 
 This gives us our configuration file::
 
-  {
-      "elements": [
-          {"source": ["Dir-Src", {"directory": "."}]},
-          {"sink": ["Dump", {}]}
-      ],
-      "connections": [
-          [{"source": "output"}, {"sink": "input"}]
-      ]
-  }
+{
+    "elements": [
+        {"id": "source", 
+         "name": "Dir-Src", 
+         "args": {"directory": "."}},
+        {"id": "sink", 
+        "name": "Dump", 
+        "args": {}}
+    ],
+
+    "connections": [
+        [{"source": "output"}, {"sink": "input"}]
+    ]
+}
 
 Save this somewhere /path/to/example.json. Now, to run the tool, cd to the datablox project directory and run::
 
