@@ -3,11 +3,13 @@ import sys
 import zmq
 import json
 import time
+from optparse import OptionParser
+
 from element import *
 from shard import *
 
 class Master(object):
-  def __init__(self, config_file):
+  def __init__(self, config_file, ip_addr_list):
     self.master_port = 6500
     self.blox_run_dir = "/Users/saideep/Downloads/blox"
     self.element_classes = []
@@ -16,7 +18,7 @@ class Master(object):
     self.shard_nodes = {}
     self.num_parallel = 0
     self.ip_pick = 0
-    self.ipaddress_hash = self.get_ipaddress_hash()
+    self.ipaddress_hash = self.get_ipaddress_hash(ip_addr_list)
     self.context = zmq.Context()
     self.port_num_gen = PortNumberGenerator()
     self.add_blox_to_path(os.environ["BLOXPATH"])
@@ -25,11 +27,10 @@ class Master(object):
     self.run()
 
   #TODO: Fix this
-  def get_ipaddress_hash(self):
+  def get_ipaddress_hash(self, ipaddresses):
     #ipaddresses = ["139.19.157.13", "139.19.192.14", "139.19.193.85", "139.19.157.14", "139.19.157.15"]
     #ipaddresses = ["139.19.157.13", "139.19.157.14", "139.19.157.15"]
     #ipaddresses = ["127.0.0.1"]
-    ipaddresses = sys.argv[2:]
     d = {}
     for ip in ipaddresses:
       d[ip] = 0
@@ -359,6 +360,18 @@ class Master(object):
         from_port = "output"
       to_element = element_hash[to_name]
       self.connect_node(from_element, from_port, to_element, to_port)
-  
+
+def main(argv):
+  usage = "%prog [options] config_file ip_address1 ip_address2 ..."
+  parser = OptionParser(usage=usage)
+  # TODO: add some options
+  (options, args) = parser.parse_args(argv)
+
+  if len(args)<2:
+    parser.error("Need to specify config_file and at least one ip address")
+
+  Master(args[0], args[1:])
+
+
 if __name__ == "__main__":
-  Master(sys.argv[1])
+  main(sys.argv[1:])
