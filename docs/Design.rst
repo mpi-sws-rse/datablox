@@ -1,11 +1,11 @@
 Design
 =========
 
-The design of datablox is inspired by Click modular router. As with click, the idea is to have simple modules which compose together in interesting ways to perform various functions. The basic module is called an **element**. An element is expected to perform one well-defined task. For example, a file-crawler element can list all the files in a file-system along with their metadata or a filter element can select only certain data which satisfies a criterion etc. Each element belongs to one **element-class**, which is the blue-print describing how instances of the class should behave.
+The design of datablox is inspired by Click modular router. As with Click, the idea is to have simple modules which compose together in interesting ways to perform various functions. The basic module is called an **element** and it usually performs one well-defined task. For example, a file-crawler element can list all the files in a file-system along with their metadata or a filter element can select only certain data which satisfy a criterion. Each element belongs to one **element-class**, which is the blue-print describing how instances of the class should behave.
 
 Elements are composed together through ports. An element can have any number of input and output ports. Elements communicate with one another when the output port of one element is connected to the input port of another. The communication is always initiated by the output port. Ports are typed and different ports usually have different semantics.
 
-Data exchanged between ports is called a **log**. A log is a list of arbitrary key-value pairs, currently stored as json objects.
+Data exchanged between ports is called a **log**. A log is a list of arbitrary key-value pairs.
 
 Ports are of two types:
 
@@ -51,6 +51,8 @@ The datablox system consists of two main classes: **Master** and **Care-taker**.
 - It runs elements on a node when requested by getting the configuration parameters from the Master
 - It measures the load on the node and returns this data when requested by the Master
 - It removes elements which are not running and sometimes force-quits running elements if Master requests it
+
+Logs are currently stored as json objects.
 
 Implementation
 ===============

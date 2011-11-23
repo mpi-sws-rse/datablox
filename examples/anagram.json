@@ -2,7 +2,7 @@
     "elements": [
         {"id": "source", 
          "name": "permute", 
-         "args": {"words": ["potters"]}},
+         "args": {"words": ["deutschebank"]}},
         {"id": "filter",
          "name": "Filter-Shard",
           "args": {"nodes": 3}},
