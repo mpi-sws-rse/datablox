@@ -37,9 +37,9 @@ To ensure the system is setup correctly, please run the example mentioned above 
 
 Other examples to try are:
 
-anagram.json - prints all anagrams of a word listed in the configuration file
-counter.json - counts numbers
-categorize.json - takes a list of files and categorizes them based on their file extension
+ * anagram.json - prints all anagrams of a word listed in the configuration file
+ * counter.json - counts numbers
+ * categorize.json - takes a list of files and categorizes them based on their file extension
 
 Debugging
 ===========
