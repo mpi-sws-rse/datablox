@@ -45,8 +45,6 @@ class dir_src(Element):
     log.set_log(token)
     self.push("output", log)
     
-    self.shutdown()
-
   def on_load(self, config):
     self.config = config
     self.name = "Dir-Src:" + config["directory"]

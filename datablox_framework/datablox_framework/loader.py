@@ -7,11 +7,11 @@ from optparse import OptionParser
 
 from element import *
 from shard import *
+import naming
 
 class Master(object):
-  def __init__(self, config_file, ip_addr_list):
+  def __init__(self, bloxpath, config_file, ip_addr_list):
     self.master_port = 6500
-    self.blox_run_dir = "/Users/saideep/Downloads/blox"
     self.element_classes = []
     self.elements = {}
     self.loads = {}
@@ -21,7 +21,8 @@ class Master(object):
     self.ipaddress_hash = self.get_ipaddress_hash(ip_addr_list)
     self.context = zmq.Context()
     self.port_num_gen = PortNumberGenerator()
-    self.add_blox_to_path(os.environ["BLOXPATH"])
+    self.bloxpath = bloxpath
+    self.add_blox_to_path(bloxpath)
     self.setup_connections(config_file)
     self.start_elements()
     self.run()
@@ -53,28 +54,19 @@ class Master(object):
     except ValueError:
       sys.path.append(blox_dir)
   
-  def element_path(self, element_name):
-    file_name = 'e_' + element_name.lower().replace('-', '_') + '.py'
-    return os.path.join(os.environ["BLOXPATH"], file_name)
-  
-  def element_class_name(self, element_name):
-    return element_name.lower().replace('-', '_')
-  
-  def element_module(self, element_name):
-    return 'e_' + element_name.lower().replace('-', '_')
-  
   def is_shard(self, element_name):
-    return self.element_class_name(element_name).endswith('_shard')
+    return naming.element_class_name(element_name).endswith('_shard')
   
-  def element_class(self, element_name):
-    module_name = self.element_module(element_name)
-    element_name = self.element_class_name(element_name)
+  def element_class(self, element_name, version=naming.DEFAULT_VERSION):
+    module_name = naming.element_module(element_name, version)
+    element_name = naming.element_class_name(element_name)
     module = __import__(module_name)
     element_class = getattr(module, element_name)
     return element_class
     
-  def create_element(self, name, config, pin_ipaddress=None):
-    path = self.element_path(name)
+  def create_element(self, name, config, version=naming.DEFAULT_VERSION,
+                     pin_ipaddress=None):
+    path = naming.element_path(self.bloxpath, name, version)
     if not os.path.isfile(path):
       print "Could not find the element " + path
       raise NameError
@@ -111,7 +103,8 @@ class Master(object):
     print "num elements in shard %d" % (len(element_configs))
     if element_type.has_key("output_port"):
       #optimization: creating the join element on the same node as the shard
-      join = self.create_element("dynamic-join", {}, shard["ipaddress"])
+      join = self.create_element("dynamic-join", {},
+                                 pin_ipaddress=shard["ipaddress"])
       join_port_num = self.port_num_gen.new_port()
       join_url = self.url(join["ipaddress"], join_port_num)
       join["join_port_num"] = join_port_num
@@ -346,7 +339,8 @@ class Master(object):
       element_name = e["name"] 
       element_config = e["args"]
       element_ip = e["at"] if e.has_key("at") else None
-      element = self.create_element(element_name, element_config, element_ip)
+      element = self.create_element(element_name, element_config,
+                                    pin_ipaddress=element_ip)
       element_hash[element_id] = element
     
     for f, t in config["connections"]:
@@ -370,7 +364,13 @@ def main(argv):
   if len(args)<2:
     parser.error("Need to specify config_file and at least one ip address")
 
-  Master(args[0], args[1:])
+  if not os.environ.has_key("BLOXPATH"):
+    parser.error("Need to set BLOXPATH environment variable")
+  bloxpath = os.environ["BLOXPATH"]
+  if not os.path.isdir(bloxpath):
+    parser.error("BLOXPATH %s does not exist or is not a directory" % bloxpath)
+    
+  Master(bloxpath, args[0], args[1:])
 
 
 if __name__ == "__main__":

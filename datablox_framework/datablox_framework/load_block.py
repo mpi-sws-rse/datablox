@@ -1,8 +1,10 @@
-from element import *
-from shard import *
 import json
 import sys
 import os
+
+import naming
+from element import *
+from shard import *
 
 def read_configuration(configuration_file_name):
   with open(configuration_file_name) as f:
@@ -13,13 +15,8 @@ def get_one(_list):
   return _list[0]
   
 def is_shard(element_name):
-  return element_name.endswith('_shard')
+  return naming.element_class_name(element_name).endswith('_shard')
 
-def element_module(element_name):
-  return 'e_' + element_name.lower().replace('-', '_')
-
-def element_class_name(element_name):
-  return element_name.lower().replace('-', '_')
 
 def start(blox_dir, configuration_file_name):
   try:
@@ -29,15 +26,16 @@ def start(blox_dir, configuration_file_name):
 
   config = read_configuration(configuration_file_name)
   print config
-  
-  module_name = element_module(config["name"])
-  element_name = element_class_name(config["name"])
-  module = __import__(module_name)
-  element_class = getattr(module, element_name)
+
+  element_class = \
+    naming.get_element_class(config["name"],
+                             config["version"]
+                               if config.has_key("version")
+                               else naming.DEFAULT_VERSION)
   inst = element_class(config["master_port"])
   inst.on_load(config["args"])
 
-  if is_shard(element_name):
+  if is_shard(config["name"]):
     num_elements = config["num_elements"]
     inst.num_nodes = num_elements
     for i in range(num_elements):
