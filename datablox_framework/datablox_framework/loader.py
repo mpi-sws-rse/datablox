@@ -58,11 +58,7 @@ class Master(object):
     return naming.element_class_name(element_name).endswith('_shard')
   
   def element_class(self, element_name, version=naming.DEFAULT_VERSION):
-    module_name = naming.element_module(element_name, version)
-    element_name = naming.element_class_name(element_name)
-    module = __import__(module_name)
-    element_class = getattr(module, element_name)
-    return element_class
+    return naming.get_element_class(element_name, version)
     
   def create_element(self, name, config, version=naming.DEFAULT_VERSION,
                      pin_ipaddress=None):
@@ -229,7 +225,18 @@ class Master(object):
 
   def stop_all(self):
     print "Master: trying to stop all elements"
-    raise NotImplementedError
+    for ip in self.ipaddress_hash.keys():
+      self.stop_one(ip)
+    print "done, quitting"
+    
+  def stop_one(self, ipaddress):
+    socket = self.context.socket(zmq.REQ)
+    message = json.dumps(("STOP ALL", {}))
+    socket.connect(self.url(ipaddress, 5000))
+    socket.send(message)
+    print "waiting for caretaker at %s to stop all elements " % ipaddress
+    res = json.loads(socket.recv())
+    socket.close()
     
   def parallelize(self):
     for p in self.loads.keys():

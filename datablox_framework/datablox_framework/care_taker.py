@@ -2,8 +2,15 @@ import zmq
 import json
 import os
 import sys
+import subprocess
 from optparse import OptionParser
 
+def stop_all(proccesses):
+  print "care-taker: stopping all blocks"
+  for p in proccesses:
+    p.terminate()
+  print "done"
+  
 def main(argv):
   usage = "%prog [options]"
   parser = OptionParser(usage=usage)
@@ -28,6 +35,7 @@ def main(argv):
   socket.bind('tcp://*:5000')
   os.system("rm *.json")
   file_num = 0
+  proccesses = []
   while True:
     try:
       message = socket.recv()
@@ -39,16 +47,20 @@ def main(argv):
         file_num += 1
         with open(config_name, 'w') as config_file:
           json.dump(data, config_file)
-        command = "python load_block.py "
-        command += bloxpath
-        command += " " + config_name
-        command += " &"
-        os.system(command)
+        command = ["python", "load_block.py", bloxpath, config_name]
+        p = subprocess.Popen(command)
+        proccesses.append(p)
+        socket.send(json.dumps(True))
+      elif control == "STOP ALL":
+        stop_all(proccesses)
+        proccesses = []
         socket.send(json.dumps(True))
       else:
         print "**Warning could not understand master"
     except KeyboardInterrupt:
       print "Stopping care_taker"
+      stop_all(proccesses)
+      proccesses = []
       break
 
 if __name__ == "__main__":
