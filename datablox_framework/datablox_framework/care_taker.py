@@ -1,8 +1,28 @@
 import zmq
 import json
 import os
+import sys
+from optparse import OptionParser
 
-def main():
+def main(argv):
+  usage = "%prog [options]"
+  parser = OptionParser(usage=usage)
+  parser.add_option("-b", "--bloxpath", dest="bloxpath", default=None,
+                    help="use this path instead of the environment variable BLOXPATH")
+                    
+  (options, args) = parser.parse_args(argv)
+
+  bloxpath = options.bloxpath
+  
+  if bloxpath == None: 
+    if not os.environ.has_key("BLOXPATH"):
+      parser.error("Need to set BLOXPATH environment variable or pass it as an argument")
+    else:
+      bloxpath = os.environ["BLOXPATH"]
+
+  if not os.path.isdir(bloxpath):
+    parser.error("BLOXPATH %s does not exist or is not a directory" % bloxpath)
+  
   context = zmq.Context()
   socket = context.socket(zmq.REP)
   socket.bind('tcp://*:5000')
@@ -20,7 +40,7 @@ def main():
         with open(config_name, 'w') as config_file:
           json.dump(data, config_file)
         command = "python load_block.py "
-        command += os.environ["BLOXPATH"]
+        command += bloxpath
         command += " " + config_name
         command += " &"
         os.system(command)
@@ -32,4 +52,4 @@ def main():
       break
 
 if __name__ == "__main__":
-  main()
+  main(sys.argv[1:])

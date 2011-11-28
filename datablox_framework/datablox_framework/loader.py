@@ -358,15 +358,22 @@ class Master(object):
 def main(argv):
   usage = "%prog [options] config_file ip_address1 ip_address2 ..."
   parser = OptionParser(usage=usage)
-  # TODO: add some options
+  parser.add_option("-b", "--bloxpath", dest="bloxpath", default=None,
+                    help="use this path instead of the environment variable BLOXPATH")
+                    
   (options, args) = parser.parse_args(argv)
 
   if len(args)<2:
     parser.error("Need to specify config_file and at least one ip address")
 
-  if not os.environ.has_key("BLOXPATH"):
-    parser.error("Need to set BLOXPATH environment variable")
-  bloxpath = os.environ["BLOXPATH"]
+  bloxpath = options.bloxpath
+  
+  if bloxpath == None: 
+    if not os.environ.has_key("BLOXPATH"):
+      parser.error("Need to set BLOXPATH environment variable or pass it as an argument")
+    else:
+      bloxpath = os.environ["BLOXPATH"]
+
   if not os.path.isdir(bloxpath):
     parser.error("BLOXPATH %s does not exist or is not a directory" % bloxpath)
     
