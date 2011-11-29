@@ -1,4 +1,4 @@
-Design
+Architecture
 =========
 
 The design of datablox is inspired by Click modular router. As with Click, the idea is to have simple modules which compose together in interesting ways to perform various functions. The basic module is called an **element** and it usually performs one well-defined task. For example, a file-crawler element can list all the files in a file-system along with their metadata or a filter element can select only certain data which satisfy a criterion. Each element belongs to one **element-class**, which is the blue-print describing how instances of the class should behave.
@@ -43,10 +43,10 @@ Shard
     3. Once a new element has been added, it takes care of any migration that need to happen to initialize it.
     4. If it gets a log from a Push port, it forwards it to one or more elements for processing. Similarly, if it gets a Pull query, it requests one or more elements for results, aggregates them and returns the aggregate.
 
-Architecture
+Implementation
 =============
 
-The datablox system consists of two main classes: **Master** and **Care-taker**. The master is responsible for coordinating all the 4 tasks that the framework performs (mentioned above) with the help of Care-taker processes running on each node under the system. On each node, the Care-taker process listens to the requests from Master and takes the following actions:
+The datablox system consists of two main runtime units: **Master** and **Care-taker**. The master is responsible for coordinating all the 4 tasks that the framework performs (mentioned above) with the help of Care-taker processes running on each node under the system. On each node, the Care-taker process listens to the requests from Master and takes the following actions:
 
 - It runs elements on a node when requested by getting the configuration parameters from the Master
 - It measures the load on the node and returns this data when requested by the Master
@@ -54,7 +54,7 @@ The datablox system consists of two main classes: **Master** and **Care-taker**.
 
 Logs are currently stored as json objects.
 
-Implementation
+Implementation Details
 ===============
 
 The framework is written in python and the element-classes should provide python interfaces. The connection queues among elements are maintained through ZeroMQ. Setting up of nodes and initial deployment is handled through Engage.
