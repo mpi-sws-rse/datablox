@@ -1,0 +1,18 @@
+{
+    "elements": [
+        {"id": "source",
+         "name": "Dir-Src",
+         "args": {"directory": "."}},
+        {"id": "hash", 
+         "name": "Secure-Hash", 
+         "args": {}},
+        {"id": "sink",
+         "name": "Dump", 
+         "args": {"sleep": 0}}
+    ],
+
+    "connections": [
+        [{"source": "output"}, {"hash": "input"}],
+        [{"hash": "output"}, {"sink": "input"}]
+    ]
+}

@@ -11,6 +11,21 @@ class Log(object):
   def set_log(self, log):
     self.log = log
   
+  def append_field(self, key, values):
+    self.log[key] = values
+  
+  def iter_flatten(self):
+    if self.log.keys() == []:
+      yield {}
+    else:
+      #all field-lists should have the same length
+      #so get the length of the first field
+      count = len(self.log[self.log.keys()[0]])
+      for i in range(count):
+        nd = {}
+        for k in self.log.keys():
+          nd[k] = self.log[k][i]
+        yield nd
   
 class Port(object):
       PULL = 0

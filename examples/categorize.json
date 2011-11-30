@@ -2,7 +2,7 @@
     "elements": [
         {"id": "source",
          "name": "Dir-Src",
-         "args": {"directory": "."}},
+         "args": {"directory": ".", "only_metadata": true}},
         {"id": "categorizer", 
          "name": "Categorize", 
          "args": {}},

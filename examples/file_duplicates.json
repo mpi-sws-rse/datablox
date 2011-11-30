@@ -1,0 +1,22 @@
+{
+    "elements": [
+        {"id": "crawler",
+         "name": "Dir-Src", 
+         "args": {"directory": "."}},
+        {"id": "hash",
+         "name": "Secure-Hash", 
+         "args": {}},
+        {"id": "categorizer",
+         "name": "Categorize", 
+         "args": {}},
+        {"id": "sink", 
+        "name": "File-Mongo", 
+        "args": {"crawlers": 1}}
+    ],
+
+    "connections": [
+        [{"crawler": "output"}, {"hash": "input"}],
+        [{"hash": "output"}, {"categorizer": "input"}],
+        [{"categorizer": "output"}, {"sink": "input"}]
+    ]
+}

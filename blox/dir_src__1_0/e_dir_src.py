@@ -31,8 +31,9 @@ class dir_src(Element):
         listing["size"] = [stat.st_size]
         listing["perm"] = [stat.st_mode]
         listing["owner"] = [stat.st_uid]
-        # with open(path) as f:
-        #   listing["data"] = [f.read()]
+        if not self.config.has_key('only_metadata') or self.config['only_metadata'] == False:
+          with open(path) as f:
+            listing["data"] = [f.read()]
         
         log = Log()
         log.set_log(listing)

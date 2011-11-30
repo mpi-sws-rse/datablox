@@ -21,41 +21,27 @@ class categorize(Element):
     else:
       return "Unknown"
   
+  def get_categories(self, log):
+    paths = log["path"]
+    categories = [self.find_category(p) for p in paths]
+    return categories
+  
+  def get_names(self, log):
+    paths = log["path"]
+    names = [os.path.split(p)[-1] for p in paths]
+    return names
+    
   def comment(self, path):
     p = os.popen("file " + path)
     return p.read()
     
   def recv_push(self, port, log):
-    new_log = {}
     if log.log.has_key("token"):
       print self.name + " got the finish token for directory " + log.log["token"]
-      new_log = {}
-      new_log["token"] = log.log["token"]
     else:
-      log = log.log
-      paths = log["path"]
-      categories = []
-      names = []
-      # comments = []
-    
-      for path in paths:
-        categories.append(self.find_category(path))
-        # comments.append(self.comment(path))
-        names.append(os.path.split(path)[-1])
-      
-      new_log["name"] = names
-      new_log["path"] = paths
-      new_log["size"] = log["size"]
-      new_log["perm"] = log["perm"]
-      new_log["owner"] = log["owner"]
-      if log.has_key("data"):
-        new_log["data"] = log["data"]
-        
-      new_log["category"] = categories
-      # new_log["comments"] = comments
-    
-    nl = Log()
-    nl.set_log(new_log)
-    self.push("output", nl)
+      log.append_field("name", self.get_names(log.log))
+      log.append_field("category", self.get_categories(log.log))
+          
+    self.push("output", log)
     if self.config.has_key("sleep"):
       time.sleep(self.config["sleep"])

@@ -24,27 +24,11 @@ class file_mongo(Element):
         self.crawler_done = True
         self.process_outstanding_queries()
     else:
-      # print self.name + " adding entries " + str(log.log["name"])
       entries = []
-      log = log.log
-      names = log["name"]
-      paths = log["path"]
-      sizes = log["size"]
-      perms = log["perm"]
-      owners = log["owner"]
-      categories = log["category"]
-    
-      for i in range(0, len(paths)):
-        # remove the old entry corresponding to this file
-        self.file_data.remove({"path" : paths[i]})
-        entry = {"path": paths[i],
-                 "name": names[i],
-                 "size": sizes[i],
-                 "perm": perms[i],
-                 "owner": owners[i],
-                 "category": categories[i]
-                 }
-        entries.append(entry)
+      for l in log.iter_flatten():
+        # print self.name + " adding entry " + str(l)
+        self.file_data.remove({"path" : l["path"]})
+        entries.append(l)
       self.file_data.insert(entries)
 
   def recv_pull_query(self, port_name, log):
