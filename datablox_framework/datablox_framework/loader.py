@@ -386,6 +386,8 @@ def main(argv):
     
   Master(bloxpath, args[0], args[1:])
 
+def call_from_console_script():
+    sys.exit(main(sys.argv[1:]))
 
 if __name__ == "__main__":
   main(sys.argv[1:])

@@ -8,7 +8,7 @@
         }
       ]
     },
-    { "key":{"name":"datablox_framework", "version":"1.0"},
+    { "key":{"name":"datablox-framework", "version":"1.0"},
       "mgr_module_name":"engage.drivers.genforma.easy_install",
       "packages": [
         { "type": "Archive",

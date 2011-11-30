@@ -32,5 +32,93 @@
           }
         ]
       }
-   }
+   },
+   { "key": {"name":"datablox-framework", "version":"1.0"},
+     "display_name": "Datablox framework",
+     "input_ports": {
+        "host": {
+          "genforma_home": "path"
+        },
+        "python": {
+          "home" : "path",
+          "PYTHONPATH": "path",
+          "python_bin_dir": "path"
+        },
+	"setuptools" : { "easy_install" : "string" }
+     },
+      "output_ports" : {
+        "pkg_info": {
+          "test_module": {"type":"string", "fixed-value":"datablox_framework"}
+        },
+        "datablox_framework": {
+          "BLOXPATH": {"type":"path",
+                       "fixed-value": "${input_ports.host.genforma_home}/blox"},
+          "care_taker_exe": {
+            "type":"path", "fixed-value":"${input_ports.python.python_bin_dir}/datablox-care-taker"
+          },
+          "loader_exe": {
+            "type":"path", "fixed-value":"${input_ports.python.python_bin_dir}/datablox-loader"
+          }
+        }
+      },
+     "inside": {
+        "one-of": [
+          { "key": {"name": "ubuntu-linux", "version":"9.10"},
+            "port_mapping": {"host":"host"}},
+          { "key": {"name": "ubuntu-linux", "version":"10.04"},
+            "port_mapping": {"host":"host"}},
+          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
+                                                 "less-than":"10.7"}},
+            "port_mapping": {"host":"host"}}
+        ]
+     },
+     "environment": {
+        "all-of": [
+          { "key": {"name":"python",
+                    "version":{"greater-than-or-equal":"2.5"}},
+            "port_mapping": {"python":"python"}
+          },
+          { "key": {"name":"setuptools",
+                    "version":{"greater-than-or-equal":"0.6"}},
+            "port_mapping": {"setuptools":"setuptools"}
+          },
+          { "key": {"name":"pyzmq-abstract",
+                    "version":{"greater-than-or-equal":"2.1"}}}
+      ]}
+   },
+   { "key": {"name":"datablox-care-taker", "version":"1.0"},
+     "display_name": "Datablox Caretaker process",
+     "config_port": {
+       "pid_file": {
+         "type":"path",
+         "default":"${input_ports.host.log_directory}/datablox_care_taker.pid"}
+     },
+     "input_ports": {
+        "host": {
+          "log_directory": "path"
+        },
+        "datablox_framework": {
+          "BLOXPATH": "path",
+          "care_taker_exe": "path"
+        }
+      },
+     "inside": {
+        "one-of": [
+          { "key": {"name": "ubuntu-linux", "version":"9.10"},
+            "port_mapping": {"host":"host"}},
+          { "key": {"name": "ubuntu-linux", "version":"10.04"},
+            "port_mapping": {"host":"host"}},
+          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
+                                                 "less-than":"10.7"}},
+            "port_mapping": {"host":"host"}}
+        ]
+     },
+     "environment": {
+        "all-of": [
+          { "key": {"name":"datablox-framework", "version":"1.0"},
+                    "version":{"greater-than-or-equal":""},
+            "port_mapping": {"datablox_framework":"datablox_framework"}}
+        ]
+    }
+  }
 ]
