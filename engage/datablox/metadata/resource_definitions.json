@@ -53,8 +53,8 @@
         "datablox_framework": {
           "BLOXPATH": {"type":"path",
                        "fixed-value": "${input_ports.host.genforma_home}/blox"},
-          "care_taker_exe": {
-            "type":"path", "fixed-value":"${input_ports.python.python_bin_dir}/datablox-care-taker"
+          "caretaker_exe": {
+            "type":"path", "fixed-value":"${input_ports.python.python_bin_dir}/datablox-caretaker"
           },
           "loader_exe": {
             "type":"path", "fixed-value":"${input_ports.python.python_bin_dir}/datablox-loader"
@@ -86,20 +86,30 @@
                     "version":{"greater-than-or-equal":"2.1"}}}
       ]}
    },
-   { "key": {"name":"datablox-care-taker", "version":"1.0"},
+   { "key": {"name":"datablox-caretaker", "version":"1.0"},
      "display_name": "Datablox Caretaker process",
      "config_port": {
+       "config_dir": {
+         "type":"path",
+         "default":"${input_ports.host.genforma_home}/datablox_caretaker"
+       },
        "pid_file": {
          "type":"path",
-         "default":"${input_ports.host.log_directory}/datablox_care_taker.pid"}
+         "default":"${input_ports.host.genforma_home}/datablox_caretaker/caretaker.pid"
+       },
+       "log_file": {
+         "type":"path",
+         "default":"${input_ports.host.log_directory}/datablox_caretaker.log"
+       }
      },
      "input_ports": {
         "host": {
+          "genforma_home": "path",
           "log_directory": "path"
         },
         "datablox_framework": {
           "BLOXPATH": "path",
-          "care_taker_exe": "path"
+          "caretaker_exe": "path"
         }
       },
      "inside": {

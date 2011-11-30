@@ -11,7 +11,7 @@ setup(
     zip_safe=False,
     entry_points = {
         'console_scripts': [
-          'datablox-care-taker = datablox_framework.care_taker:call_from_console_script',
+          'datablox-caretaker = datablox_framework.care_taker:call_from_console_script',
           'datablox-loader = datablox_framework.loader:call_from_console_script'
             ]},
     install_requires=[],

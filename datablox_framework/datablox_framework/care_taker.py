@@ -1,6 +1,7 @@
 import zmq
 import json
 import os
+import os.path
 import sys
 import subprocess
 from optparse import OptionParser
@@ -16,6 +17,8 @@ def main(argv):
   parser = OptionParser(usage=usage)
   parser.add_option("-b", "--bloxpath", dest="bloxpath", default=None,
                     help="use this path instead of the environment variable BLOXPATH")
+  parser.add_option("--config-dir", dest="config_dir", default=".",
+                    help="directory to use for storing configuration files for the individual blocks")
                     
   (options, args) = parser.parse_args(argv)
 
@@ -29,11 +32,14 @@ def main(argv):
 
   if not os.path.isdir(bloxpath):
     parser.error("BLOXPATH %s does not exist or is not a directory" % bloxpath)
-  
+
+  config_dir = os.path.abspath(os.path.expanduser(options.config_dir))
+  if not os.path.isdir(config_dir):
+    parser.error("Configuration file directory %s does not exist or is not a directory" % config_dir)
   context = zmq.Context()
   socket = context.socket(zmq.REP)
   socket.bind('tcp://*:5000')
-  os.system("rm *.json")
+  os.system("rm %s/*.json" % config_dir)
   file_num = 0
   proccesses = []
   while True:
@@ -43,11 +49,14 @@ def main(argv):
       print control_data
       control, data = control_data
       if control == "ADD NODE":
-        config_name = data["name"] + str(file_num) + ".json"
+        config_name = os.path.join(config_dir,
+                                   data["name"] + str(file_num) + ".json")
         file_num += 1
         with open(config_name, 'w') as config_file:
           json.dump(data, config_file)
-        command = ["python", "load_block.py", bloxpath, config_name]
+        load_block_script = os.path.join(os.path.dirname(__file__),
+                                         "load_block.py")
+        command = [sys.executable, load_block_script, bloxpath, config_name]
         p = subprocess.Popen(command)
         proccesses.append(p)
         socket.send(json.dumps(True))

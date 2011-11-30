@@ -3,8 +3,8 @@
      "key": {"name":"dynamic-host", "version":"*"}
   },
   {
-    "id": "datablox",
-    "key": {"name":"datablox-framework", "version":"1.0"},
+    "id": "caretaker",
+    "key": {"name":"datablox-caretaker", "version":"1.0"},
     "inside": {
       "id": "master-host",
       "key": {"name":"dynamic-host", "version":"*"},
