@@ -2,7 +2,7 @@
     "elements": [
         {"id": "crawler",
          "name": "Dir-Src", 
-         "args": {"directory": "."}},
+         "args": {"directory": "~"}},
         {"id": "hash",
          "name": "Secure-Hash", 
          "args": {}},
@@ -11,12 +11,16 @@
          "args": {}},
         {"id": "sink", 
         "name": "File-Mongo", 
-        "args": {"crawlers": 1}}
+        "args": {"crawlers": 1}},
+        {"id": "query",
+         "name": "Duplicates-Query",
+         "args": {}}
     ],
 
     "connections": [
         [{"crawler": "output"}, {"hash": "input"}],
         [{"hash": "output"}, {"categorizer": "input"}],
-        [{"categorizer": "output"}, {"sink": "input"}]
+        [{"categorizer": "output"}, {"sink": "input"}],
+        [{"query": "query"}, {"sink": "file_duplicates"}]
     ]
 }

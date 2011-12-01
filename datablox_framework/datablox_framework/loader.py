@@ -173,7 +173,7 @@ class Master(object):
     url = self.url(e["ipaddress"], p)
     syncclient = self.context.socket(zmq.REQ)
     syncclient.connect(url)
-    print "syncing with url " + url
+    print "syncing with element %s at url %s" % (e["name"], url)
     syncclient.send('')
     # wait for synchronization reply
     syncclient.recv()

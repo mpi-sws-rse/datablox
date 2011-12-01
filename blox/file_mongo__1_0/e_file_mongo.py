@@ -8,6 +8,7 @@ class file_mongo(Element):
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["name", "size", "perm", "owner"])
     self.add_port("file_data", Port.PULL, Port.UNNAMED, ["name"])
     self.add_port("dir_aggregates", Port.PULL, Port.UNNAMED, ["name"])
+    self.add_port("file_duplicates", Port.PULL, Port.UNNAMED, [])
     print "File-mongo element loaded"
     self.connection = Connection()
     db = self.connection['file_db']
@@ -77,6 +78,18 @@ class file_mongo(Element):
                "avg_size": avg_size
               }
       print "returning aggregates"
+    elif port_name == "file_duplicates":
+      hc = self.file_data.distinct('hash')
+      hashes = [c for c in hc]
+      dupe_hashes = []
+      dupe_files = []
+      for hash in hashes:
+        files = [f["path"] for f in self.file_data.find({'hash': hash})]
+        if len(files) > 1:
+          dupe_hashes.append(hash)
+          dupe_files.append(files)
+      entry["hash"] = dupe_hashes
+      entry["files"] = dupe_files
     else:
       print "Got a request from unknown port"
     
