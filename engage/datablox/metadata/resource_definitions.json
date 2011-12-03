@@ -130,5 +130,61 @@
             "port_mapping": {"datablox_framework":"datablox_framework"}}
         ]
     }
+  },
+  { "key": {"name":"Dir-Src", "version":"1.0"},
+    "display_name": "Directory Source block",
+    "input_ports": {
+      "datablox_framework": {
+        "BLOXPATH": "path"
+      }
+    },
+    "output_ports": {
+      "block_info": {
+          "home":{
+            "type":"path",
+            "fixed-value":"${input_ports.datablox_framework.BLOXPATH}/dir_src__1_0"
+          }
+      }
+    },
+    "inside": {
+       "one-of": [
+          { "key": {"name": "ubuntu-linux", "version":"9.10"}},
+          { "key": {"name": "ubuntu-linux", "version":"10.04"}},
+          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
+                                                 "less-than":"10.7"}}}
+        ]
+     },
+    "environment": {
+      "key": {"name":"datablox-framework", "version":"1.0"},
+      "port_mapping": {"datablox_framework":"datablox_framework"}
+    }
+  },
+  { "key": {"name":"Dump", "version":"1.0"},
+    "display_name": "Dump block",
+    "input_ports": {
+      "datablox_framework": {
+        "BLOXPATH": "path"
+      }
+    },
+    "output_ports": {
+      "block_info": {
+          "home":{
+            "type":"path",
+            "fixed-value":"${input_ports.datablox_framework.BLOXPATH}/dump__1_0"
+          }
+      }
+    },
+    "inside": {
+       "one-of": [
+          { "key": {"name": "ubuntu-linux", "version":"9.10"}},
+          { "key": {"name": "ubuntu-linux", "version":"10.04"}},
+          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
+                                                 "less-than":"10.7"}}}
+        ]
+     },
+    "environment": {
+      "key": {"name":"datablox-framework", "version":"1.0"},
+      "port_mapping": {"datablox_framework":"datablox_framework"}
+    }
   }
 ]

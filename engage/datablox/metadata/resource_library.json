@@ -16,5 +16,23 @@
           "location": "datablox_framework.tgz"
         }
       ]
+    },
+    { "key":{"name":"Dir-Src", "version":"1.0"},
+      "mgr_module_name":"engage.drivers.datablox.generic_blox_driver",
+      "packages": [
+        { "type": "Archive",
+          "package_class": "GzippedTarArchive",
+          "location": "Dir_Src__1_0.tgz"
+        }
+      ]
+    },
+    { "key":{"name":"Dump", "version":"1.0"},
+      "mgr_module_name":"engage.drivers.datablox.generic_blox_driver",
+      "packages": [
+        { "type": "Archive",
+          "package_class": "GzippedTarArchive",
+          "location": "Dump__1_0.tgz"
+        }
+      ]
     }
 ]

@@ -10,5 +10,23 @@
       "key": {"name":"dynamic-host", "version":"*"},
       "port_mapping": {"host": "host"}
     }
+  },
+  {
+    "id": "Dir-Src",
+    "key": {"name":"Dir-Src", "version":"1.0"},
+    "inside": {
+      "id": "master-host",
+      "key": {"name":"dynamic-host", "version":"*"},
+      "port_mapping": {"host": "host"}
+    }
+  },
+  {
+    "id": "Dump",
+    "key": {"name":"Dump", "version":"1.0"},
+    "inside": {
+      "id": "master-host",
+      "key": {"name":"dynamic-host", "version":"*"},
+      "port_mapping": {"host": "host"}
+    }
   }
 ]
