@@ -14,6 +14,9 @@ class Log(object):
   def append_field(self, key, values):
     self.log[key] = values
   
+  def remove_field(self, key):
+    del self.log[key]
+
   def iter_flatten(self):
     if self.log.keys() == []:
       yield {}
@@ -26,6 +29,13 @@ class Log(object):
         for k in self.log.keys():
           nd[k] = self.log[k][i]
         yield nd
+  
+  #can use zip for this, but zip doesn't return a generator object
+  def iter_fields(self, *keys):
+    values = [self.log[key] for key in keys]
+    for i in range(0, len(values[0])):
+      row = [value[i] for value in values]
+      yield row
   
 class Port(object):
       PULL = 0
@@ -251,7 +261,7 @@ class Element(threading.Thread):
   def process_pull_query(self, port, log_data):
     log = Log()
     log.set_log(log_data)
-    print self.name + " got a pull query for port " + port.name
+    # print self.name + " got a pull query for port " + port.name
     self.recv_pull_query(port.name, log)
   
   def no_incoming(self):
@@ -346,7 +356,7 @@ class Element(threading.Thread):
     log_data = json.loads(res)
     log = Log()
     log.set_log(log_data)
-    print self.name + " got a pull result for port " + port_name
+    # print self.name + " got a pull result for port " + port_name
     return log
   
   def return_pull(self, port_name, log):

@@ -2,6 +2,7 @@ from element import *
 import time
 import sys, os, threading, time
 from datetime import datetime
+import base64
 
 class solr_index(Element):
   def on_load(self, config):
@@ -61,7 +62,7 @@ class solr_index(Element):
       print "adding " + paths[i]
       entry = {"path": paths[i],
                "name": os.path.split(paths[i])[-1],
-               "contents": data[i]}
+               "contents": base64.b64decode(data[i])}
       self.indexer.add(entry)
     
   def on_shutdown(self):

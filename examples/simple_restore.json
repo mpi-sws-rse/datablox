@@ -1,0 +1,23 @@
+{
+    "elements": [
+        {"id": "manager", 
+         "name": "Restore-Manager", 
+         "args": {"restore_file": "192.168.178.26:./care_taker.py"}},
+        {"id": "meta_index", 
+         "name": "Meta-Store",
+         "args": {}},
+        {"id": "chunk_index", 
+         "name": "Flat-Chunk-Index", 
+         "args": {}},
+        {"id": "chunk_store", 
+         "name": "Store", 
+         "args": {"store_directory": "/Users/saideep/Downloads/chunks"}}
+    ],
+
+    "connections": [
+        [{"manager": "meta_index"}, {"meta_index": "restore"}],
+        [{"manager": "chunk_index"}, {"chunk_index": "restore"}],
+        [{"chunk_index": "store"}, {"chunk_store": "input"}],
+        [{"chunk_index": "store_restore"}, {"chunk_store": "restore"}]
+    ]
+}

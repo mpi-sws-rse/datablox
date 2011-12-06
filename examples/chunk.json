@@ -1,0 +1,18 @@
+{
+    "elements": [
+        {"id": "source", 
+         "name": "Dir-Src", 
+         "args": {"directory": "."}},
+        {"id": "chunk", 
+         "name": "Chunk", 
+         "args": {"chunk_size": 50}},
+        {"id": "sink", 
+        "name": "Dump", 
+        "args": {"decode_fields": ["data"]}}
+    ],
+
+    "connections": [
+        [{"source": "output"}, {"chunk": "input"}],
+        [{"chunk": "output"}, {"sink": "input"}]
+    ]
+}
