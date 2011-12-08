@@ -2,10 +2,10 @@
     "elements": [
         {"id": "crawler1",
          "name": "Dir-Src", 
-         "args": {"directory": "~"}},
+         "args": {"directory": "."}},
         {"id": "crawler2",
          "name": "Dir-Src", 
-         "args": {"directory": "~"}},
+         "args": {"directory": "."}},
         {"id": "join",
          "name": "Join", 
          "args": {"joins": 2}},
@@ -15,11 +15,11 @@
         {"id": "indexer",
          "name": "Solr-index", 
          "args": {"crawlers": 2},
-         "at": "139.19.192.14"},
+         "at": "127.0.0.1"},
         {"id": "metaindexer",
          "name": "File-mongo", 
          "args": {"crawlers": 2},
-         "at": "139.19.192.14"}
+         "at": "127.0.0.1"}
     ],
 
     "connections": [

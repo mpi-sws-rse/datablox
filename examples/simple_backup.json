@@ -1,0 +1,34 @@
+{
+    "elements": [
+        {"id": "source", 
+         "name": "Dir-Src", 
+         "args": {"directory": "."}},
+        {"id": "chunk", 
+         "name": "Chunk", 
+         "args": {"chunk_size": 500}},
+        {"id": "chunk_fp", 
+         "name": "Fingerprint-Chunks", 
+         "args": {}},
+        {"id": "manager", 
+         "name": "Backup-Manager", 
+         "args": {}},
+        {"id": "meta_index", 
+         "name": "Meta-Store", 
+         "args": {}},
+        {"id": "chunk_index", 
+         "name": "Flat-Chunk-Index", 
+         "args": {}},
+        {"id": "chunk_store", 
+         "name": "Store", 
+         "args": {"store_directory": "/Users/saideep/Downloads/chunks"}}
+    ],
+
+    "connections": [
+        [{"source": "output"}, {"chunk": "input"}],
+        [{"chunk": "output"}, {"chunk_fp": "input"}],
+        [{"chunk_fp": "output"}, {"manager": "input"}],
+        [{"manager": "meta_index"}, {"meta_index": "input"}],
+        [{"manager": "chunk_index"}, {"chunk_index": "input"}],
+        [{"chunk_index": "store"}, {"chunk_store": "input"}]
+    ]
+}

@@ -1,6 +1,5 @@
 from element import *
 import os
-import time
 import hashlib
 
 class secure_hash(Element):
