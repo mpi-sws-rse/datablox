@@ -1,0 +1,9 @@
+
+[
+  { "type": "Archive",
+    "package_class": "GzippedTarArchive",
+    "location":"http://www.trieuvan.com/apache/lucene/solr/3.5.0/apache-solr-3.5.0.tgz",
+    "filename": "apache-solr-3.5.0.tgz",
+    "downloader": "HTTPDownloader"
+  }
+]

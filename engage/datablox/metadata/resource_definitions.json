@@ -186,5 +186,106 @@
       "key": {"name":"datablox-framework", "version":"1.0"},
       "port_mapping": {"datablox_framework":"datablox_framework"}
     }
+  },
+  { "key": {"name":"solr-block-schema-file", "version":"1.0"},
+    "display_name": "Schema file to be used for Solr block",
+    "comment": "The schema file is included in the extension as a 'package' and then copied by this resource to a well-known location. The solr install will then copy this to the right place in the solr file structure.",
+    "input_ports": {
+      "host": {
+        "genforma_home": "path"
+      }
+    },
+    "output_ports": {
+      "file_info": {
+        "file_path": {
+          "type": "path",
+          "fixed-value": "${input_ports.host.genforma_home}/solr_schema.xml"
+        }
+      }
+    },
+    "inside": {
+       "one-of": [
+          { "key": {"name": "ubuntu-linux", "version":"9.10"},
+            "port_mapping": {"host":"host"}},
+          { "key": {"name": "ubuntu-linux", "version":"10.04"},
+            "port_mapping": {"host":"host"}},
+          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
+                                                 "less-than":"10.7"}},
+            "port_mapping": {"host":"host"}}
+        ]
+     }
+  },
+  { "key": {"name":"apache-solr-jetty-server", "version":"3.5"},
+    "display_name": "Apache Solr running with the included Jetty server",
+    "input_ports": {
+      "host": {
+        "genforma_home": "path",
+        "log_directory": "path"
+      },
+      "jvm": {
+        "java_exe": "path"
+      },
+      "schema_file": {
+        "file_path": "path"
+      }
+   },
+   "output_ports": {
+     "solr": {
+       "home": {
+         "type":"path",
+         "fixed-value":"${input_ports.host.genforma_home}/solr"}
+       }
+    },
+     "inside": {
+        "one-of": [
+          { "key": {"name": "ubuntu-linux", "version":"9.10"},
+            "port_mapping": {"host":"host"}},
+          { "key": {"name": "ubuntu-linux", "version":"10.04"},
+            "port_mapping": {"host":"host"}},
+          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
+                                                 "less-than":"10.7"}},
+            "port_mapping": {"host":"host"}}
+        ]
+     },
+     "environment": {
+       "all-of": [
+         { "key": {"name":"java-virtual-machine-abstract",
+                   "version":{"greater-than-or-equal":"1.6"}},
+          "port_mapping": {"jvm":"jvm"}},
+         { "key": {"name":"solr-block-schema-file", "version":"1.0"},
+           "port_mapping": {"schema_file":"file_info"}}
+       ]
+     }
+  },
+  { "key": {"name":"Solr-index", "version":"1.0"},
+    "display_name": "Solr index bock",
+    "input_ports": {
+      "datablox_framework": {
+        "BLOXPATH": "path"
+      }
+    },
+    "output_ports": {
+      "block_info": {
+          "home":{
+            "type":"path",
+            "fixed-value":"${input_ports.datablox_framework.BLOXPATH}/solr_index__1_0"
+          }
+      }
+    },
+    "inside": {
+       "one-of": [
+          { "key": {"name": "ubuntu-linux", "version":"9.10"}},
+          { "key": {"name": "ubuntu-linux", "version":"10.04"}},
+          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
+                                                 "less-than":"10.7"}}}
+        ]
+     },
+    "environment": {
+      "all-of": [
+        { "key": {"name":"datablox-framework", "version":"1.0"},
+         "port_mapping": {"datablox_framework":"datablox_framework"}},
+        { "key": {"name":"apache-solr-jetty-server", "version":"3.5"}}
+      ]
+    }
   }
 ]

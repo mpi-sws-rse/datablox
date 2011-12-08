@@ -4,5 +4,7 @@
 datablox_framework/build
 datablox_framework/dist
 engage/datablox/sw_packages
+engage/engage-dist
+engage/packages
 datablox_framework/datablox_framework/*.json
 

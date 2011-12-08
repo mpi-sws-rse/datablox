@@ -22,7 +22,7 @@
       "packages": [
         { "type": "Archive",
           "package_class": "GzippedTarArchive",
-          "location": "Dir_Src__1_0.tgz"
+          "location": "dir_src__1_0.tgz"
         }
       ]
     },
@@ -31,8 +31,26 @@
       "packages": [
         { "type": "Archive",
           "package_class": "GzippedTarArchive",
-          "location": "Dump__1_0.tgz"
+          "location": "dump__1_0.tgz"
         }
       ]
-    }
+    },
+    { "key": {"name":"solr-block-schema-file", "version":"1.0"},
+      "mgr_module_name": "engage.drivers.genforma.copy_file",
+      "packages": [
+        { "type": "File",
+          "package_class": "FilePackage",
+          "location":"solr_schema.xml"
+        }
+     ]
+  },
+  { "key":{"name":"Solr-index", "version":"1.0"},
+    "mgr_module_name":"engage.drivers.datablox.generic_blox_driver",
+    "packages": [
+      { "type": "Archive",
+        "package_class": "GzippedTarArchive",
+        "location": "solr_index__1_0.tgz"
+      }
+    ]
+  }
 ]

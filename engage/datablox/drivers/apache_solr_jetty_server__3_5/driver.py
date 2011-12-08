@@ -1,5 +1,5 @@
 
-"""Resource manager for datablox-caretaker 1.0 
+"""Resource manager for apache-solr-jetty-server 3.5 
 """
 
 # Common stdlib imports
@@ -63,68 +63,78 @@ def make_context(resource_json, sudo_password_fn, dry_run=False):
     ctx = Context(resource_json, logger, __file__,
                   sudo_password_fn=sudo_password_fn,
                   dry_run=dry_run)
-    ctx.check_port('config_port',
-                  pid_file=unicode,
-                  config_dir=unicode,
-                  log_file=unicode)
-    ctx.check_port('input_ports.datablox_framework',
-                  caretaker_exe=unicode,
-                  BLOXPATH=unicode)
     ctx.check_port('input_ports.host',
-                  genforma_home=unicode)
+                  genforma_home=unicode,
+                  log_directory=unicode)
+    ctx.check_port('input_ports.schema_file',
+                  file_path=unicode)
+    ctx.check_port('input_ports.jvm',
+                  java_exe=unicode)
+    ctx.check_port('output_ports.solr',
+                  home=unicode)
 
     # add any extra computed properties here using the ctx.add() method.
+    home = ctx.props.output_ports.solr.home
+    example = os.path.join(home, "example")
+    ctx.add('startup_jar_file',
+            os.path.join(example, "start.jar"))
+    ctx.add('schema_file_target',
+            os.path.join(example, 'solr/conf/schema.xml'))
+    ctx.add('pid_file',
+            os.path.join(home, "apache_solr.pid"))
+    ctx.add('log_file',
+            os.path.join(ctx.props.input_ports.host.log_directory,
+                         "apache_solr.log"))
     return ctx
 
 
-# Now, define the main resource manager class for the driver. If this driver is
-# a service, inherit from service_manager.Manager instead of
-# resource_manager.Manager. If you need the sudo password, add
-# PasswordRepoMixin to the inheritance list.
-#
 class Manager(service_manager.Manager):
+    REQUIRES_ROOT_ACCESS = False
     def __init__(self, metadata, dry_run=False):
         package_name = "%s %s" % (metadata.key["name"],
                                   metadata.key["version"])
         service_manager.Manager.__init__(self, metadata, package_name)
         self.ctx = make_context(metadata.to_json(),
-                                None, # self._get_sudo_password,
+                                None,
                                 dry_run=dry_run)
 
     def validate_pre_install(self):
-        pass
+        p = self.ctx.props
+        self.ctx.r(check_installable_to_dir,
+                   p.output_ports.solr.home)
 
     def is_installed(self):
-        return os.path.exists(self.ctx.props.config_port.config_dir)
+        return os.path.exists(self.ctx.props.output_ports.solr.home)
 
     def install(self, package):
         p = self.ctx.props
-        self.ctx.r(ensure_dir_exists, p.config_port.config_dir)
-        # BLOXPATH should be created by datablox framework?
-        self.ctx.r(ensure_dir_exists,
-                   p.input_ports.datablox_framework.BLOXPATH)
+        self.ctx.r(extract_package_as_dir, package,
+                   p.output_ports.solr.home)
+        self.ctx.r(wrap_action(shutil.copy),
+                   p.input_ports.schema_file.file_path,
+                   p.schema_file_target)
 
     def validate_post_install(self):
-        pass
+        p = self.ctx.props
+        self.ctx.r(check_dir_exists,  p.output_ports.solr.home)
 
     def start(self):
         p = self.ctx.props
+        command_exe = p.input_ports.jvm.java_exe
         self.ctx.r(start_server,
-                   [p.input_ports.datablox_framework.caretaker_exe,
-                    "--bloxpath=%s" % p.input_ports.datablox_framework.BLOXPATH,
-                    "--config-dir=%s" % p.config_port.config_dir],
-                   p.config_port.log_file,
-                   p.config_port.pid_file)
-
-    def stop(self):
-        p = self.ctx.props
-        self.ctx.r(stop_server,
-                   p.config_port.pid_file)
+                   [command_exe, "-jar", p.startup_jar_file],
+                   p.log_file,
+                   p.pid_file,
+                   cwd=os.path.dirname(p.startup_jar_file))
 
     def is_running(self):
         p = self.ctx.props
         return self.ctx.rv(get_server_status,
-                           p.config_port.pid_file) != None
+                           p.pid_file) != None
+
+    def stop(self):
+        p = self.ctx.props
+        self.ctx.r(stop_server, p.pid_file)
 
     def get_pid_file_path(self):
-        return self.ctx.props.config_port.pid_file
+        return self.ctx.props.pid_file
