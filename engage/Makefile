@@ -34,9 +34,12 @@ dist-from-src: engage-ext
 # download any packages that are particularly costly to download so we
 # can include in the distribution. This is mainly for testing. Need to think
 # about what to do in the distributed deployment scenario.
-download-packages:
+download-packages: $(PACKAGE_DIR)
+	cd $(PACKAGE_DIR); make -f ../makefile.packages all
+
+$(PACKAGE_DIR):
 	mkdir -p $(PACKAGE_DIR)
-	cd $(PACKAGE_DIR); wget -O apache-solr-3.5.0.tgz http://www.trieuvan.com/apache/lucene/solr/3.5.0/apache-solr-3.5.0.tgz
+
 
 
 test-deploy:

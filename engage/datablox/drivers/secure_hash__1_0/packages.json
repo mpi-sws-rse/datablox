@@ -1,0 +1,6 @@
+[
+  { "type": "Archive",
+    "package_class": "GzippedTarArchive",
+    "location": "secure_hash__1_0.tgz"
+  }
+]

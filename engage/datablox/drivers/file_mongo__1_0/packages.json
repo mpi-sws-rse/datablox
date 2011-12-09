@@ -1,0 +1,6 @@
+[
+  { "type": "Archive",
+    "package_class": "GzippedTarArchive",
+    "location": "file_mongo__1_0.tgz"
+  }
+]

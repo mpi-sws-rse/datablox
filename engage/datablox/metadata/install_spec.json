@@ -37,5 +37,42 @@
       "key": {"name":"dynamic-host", "version":"*"},
       "port_mapping": {"host": "host"}
     }
+  },
+  {
+    "id": "File-Mongo",
+    "key": {"name":"File-Mongo", "version":"1.0"},
+    "inside": {
+      "id": "master-host",
+      "key": {"name":"dynamic-host", "version":"*"},
+      "port_mapping": {"host": "host"}
+    }
+  },
+  {
+    "id": "Secure-Hash",
+    "key": {"name":"Secure-Hash", "version":"1.0"},
+    "inside": {
+      "id": "master-host",
+      "key": {"name":"dynamic-host", "version":"*"},
+      "port_mapping": {"host": "host"}
+    }
+  },
+ {
+    "id": "Categorize",
+    "key": {"name":"Categorize", "version":"1.0"},
+    "inside": {
+      "id": "master-host",
+      "key": {"name":"dynamic-host", "version":"*"},
+      "port_mapping": {"host": "host"}
+    }
+  },
+  {
+    "id": "Duplicates-Query",
+    "key": {"name":"Duplicates-Query", "version":"1.0"},
+    "inside": {
+      "id": "master-host",
+      "key": {"name":"dynamic-host", "version":"*"},
+      "port_mapping": {"host": "host"}
+    }
   }
+
 ]
