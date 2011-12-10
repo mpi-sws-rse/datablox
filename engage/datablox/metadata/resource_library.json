@@ -8,7 +8,7 @@
         }
       ]
     },
-    { "key":{"name":"Dir-Src", "version":"1.0"},
+    { "key":{"name":"dir-src", "version":"1.0"},
       "mgr_module_name":"engage.drivers.datablox.generic_blox_driver",
       "packages": [
         { "type": "Archive",
@@ -17,7 +17,7 @@
         }
       ]
     },
-    { "key":{"name":"Dump", "version":"1.0"},
+    { "key":{"name":"dump", "version":"1.0"},
       "mgr_module_name":"engage.drivers.datablox.generic_blox_driver",
       "packages": [
         { "type": "Archive",
@@ -35,7 +35,7 @@
         }
      ]
   },
-  { "key":{"name":"Solr-index", "version":"1.0"},
+  { "key":{"name":"solr-index", "version":"1.0"},
     "mgr_module_name":"engage.drivers.datablox.generic_blox_driver",
     "packages": [
       { "type": "Archive",

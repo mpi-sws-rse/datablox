@@ -13,7 +13,7 @@
   },
   {
     "id": "Dir-Src",
-    "key": {"name":"Dir-Src", "version":"1.0"},
+    "key": {"name":"dir-src", "version":"1.0"},
     "inside": {
       "id": "master-host",
       "key": {"name":"dynamic-host", "version":"*"},
@@ -22,7 +22,7 @@
   },
   {
     "id": "Dump",
-    "key": {"name":"Dump", "version":"1.0"},
+    "key": {"name":"dump", "version":"1.0"},
     "inside": {
       "id": "master-host",
       "key": {"name":"dynamic-host", "version":"*"},
@@ -31,7 +31,7 @@
   },
   {
     "id": "Solr",
-    "key": {"name":"Solr-index", "version":"1.0"},
+    "key": {"name":"solr-index", "version":"1.0"},
     "inside": {
       "id": "master-host",
       "key": {"name":"dynamic-host", "version":"*"},
@@ -40,7 +40,7 @@
   },
   {
     "id": "File-Mongo",
-    "key": {"name":"File-Mongo", "version":"1.0"},
+    "key": {"name":"file-mongo", "version":"1.0"},
     "inside": {
       "id": "master-host",
       "key": {"name":"dynamic-host", "version":"*"},
@@ -49,7 +49,7 @@
   },
   {
     "id": "Secure-Hash",
-    "key": {"name":"Secure-Hash", "version":"1.0"},
+    "key": {"name":"secure-hash", "version":"1.0"},
     "inside": {
       "id": "master-host",
       "key": {"name":"dynamic-host", "version":"*"},
@@ -58,7 +58,7 @@
   },
  {
     "id": "Categorize",
-    "key": {"name":"Categorize", "version":"1.0"},
+    "key": {"name":"categorize", "version":"1.0"},
     "inside": {
       "id": "master-host",
       "key": {"name":"dynamic-host", "version":"*"},
@@ -67,7 +67,25 @@
   },
   {
     "id": "Duplicates-Query",
-    "key": {"name":"Duplicates-Query", "version":"1.0"},
+    "key": {"name":"duplicates-query", "version":"1.0"},
+    "inside": {
+      "id": "master-host",
+      "key": {"name":"dynamic-host", "version":"*"},
+      "port_mapping": {"host": "host"}
+    }
+  },
+  {
+    "id": "Join",
+    "key": {"name":"join", "version":"1.0"},
+    "inside": {
+      "id": "master-host",
+      "key": {"name":"dynamic-host", "version":"*"},
+      "port_mapping": {"host": "host"}
+    }
+  },
+  {
+    "id": "File-query",
+    "key": {"name":"file-query", "version":"1.0"},
     "inside": {
       "id": "master-host",
       "key": {"name":"dynamic-host", "version":"*"},

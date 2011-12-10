@@ -1,5 +1,5 @@
 [
-  { "key": {"name":"Secure-Hash", "version":"1.0"},
+  { "key": {"name":"secure-hash", "version":"1.0"},
     "display_name": "Resource for datablox block Secure-Hash",
     "input_ports": {
       "datablox_framework": {

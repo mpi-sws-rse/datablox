@@ -1,5 +1,5 @@
 [
-  { "key": {"name":"Duplicates-Query", "version":"1.0"},
+  { "key": {"name":"duplicates-query", "version":"1.0"},
     "display_name": "Resource for datablox block Duplicates-Query",
     "input_ports": {
       "datablox_framework": {

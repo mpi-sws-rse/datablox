@@ -1,5 +1,5 @@
 [
-  { "key": {"name":"Categorize", "version":"1.0"},
+  { "key": {"name":"categorize", "version":"1.0"},
     "display_name": "Resource for datablox block Categorize",
     "input_ports": {
       "datablox_framework": {

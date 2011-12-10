@@ -97,7 +97,7 @@
         ]
     }
   },
-  { "key": {"name":"Dir-Src", "version":"1.0"},
+  { "key": {"name":"dir-src", "version":"1.0"},
     "display_name": "Directory Source block",
     "input_ports": {
       "datablox_framework": {
@@ -125,7 +125,7 @@
       "port_mapping": {"datablox_framework":"datablox_framework"}
     }
   },
-  { "key": {"name":"Dump", "version":"1.0"},
+  { "key": {"name":"dump", "version":"1.0"},
     "display_name": "Dump block",
     "input_ports": {
       "datablox_framework": {
@@ -223,7 +223,7 @@
        ]
      }
   },
-  { "key": {"name":"Solr-index", "version":"1.0"},
+  { "key": {"name":"solr-index", "version":"1.0"},
     "display_name": "Solr index bock",
     "input_ports": {
       "datablox_framework": {

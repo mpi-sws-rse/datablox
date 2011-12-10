@@ -1,6 +1,6 @@
 [
-  { "key": {"name":"file-mongo", "version":"1.0"},
-    "display_name": "Resource for datablox block File-Mongo",
+  { "key": {"name":"join", "version":"1.0"},
+    "display_name": "Resource for datablox block join",
     "input_ports": {
       "datablox_framework": {
         "BLOXPATH": "path"
@@ -10,7 +10,7 @@
       "block_info": {
           "home":{
             "type":"path",
-            "fixed-value":"${input_ports.datablox_framework.BLOXPATH}/file_mongo__1_0"
+            "fixed-value":"${input_ports.datablox_framework.BLOXPATH}/join__1_0"
           }
       }
     },
@@ -23,12 +23,8 @@
         ]
      },
     "environment": {
-      "all-of": [
-       { "key": {"name":"datablox-framework", "version":"1.0"},
-         "port_mapping": {"datablox_framework":"datablox_framework"}},
-       { "key": {"name":"pymongo", "version":"2.1"}},
-       { "key": {"name":"mongodb", "version":"2.0"}}
-     ]
+      "key": {"name":"datablox-framework", "version":"1.0"},
+      "port_mapping": {"datablox_framework":"datablox_framework"}
     }
   }
 ]
