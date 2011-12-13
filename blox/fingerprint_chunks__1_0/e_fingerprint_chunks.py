@@ -8,6 +8,7 @@ class fingerprint_chunks(Element):
     self.config = config
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["chunks"])
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["chunks", "fingerprints"])
+    #self.buffer_limit = 5000
 
   def hash(self, c):
     return hashlib.sha224(c).hexdigest()
@@ -21,4 +22,4 @@ class fingerprint_chunks(Element):
     for c in log.log["chunks"]:
       chunk_hashes.append(self.get_hashes(c))
     log.append_field("fingerprints", chunk_hashes)
-    self.push("output", log)
+    self.buffered_push("output", log)

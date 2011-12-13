@@ -63,7 +63,10 @@ class solr_index(Element):
       entry = {"path": paths[i],
                "name": os.path.split(paths[i])[-1],
                "contents": base64.b64decode(data[i])}
-      self.indexer.add(entry)
+      try:
+        self.indexer.add(entry)
+      except Exception, e:
+          print "Failed to add doc %s due to: %r" % (paths[i], e)
     
   def on_shutdown(self):
     self.indexer.commit()

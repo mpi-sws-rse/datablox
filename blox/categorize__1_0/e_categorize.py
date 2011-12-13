@@ -42,6 +42,6 @@ class categorize(Element):
       log.append_field("name", self.get_names(log.log))
       log.append_field("category", self.get_categories(log.log))
           
-    self.push("output", log)
+    self.buffered_push("output", log)
     if self.config.has_key("sleep"):
       time.sleep(self.config["sleep"])

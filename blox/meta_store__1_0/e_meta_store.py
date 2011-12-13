@@ -36,7 +36,7 @@ class meta_store(Element):
         self.update_refs(path, fps)
         entry = {"path": path, "fingerprints": fps}
         entries.append(entry)
-        print "%s: adding file %s" % (self.name, path)
+        # print "%s: adding file %s" % (self.name, path)
       else:
         print "**%s could not understand command %s" % (self.name, command)
     

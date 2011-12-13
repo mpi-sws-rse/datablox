@@ -26,7 +26,7 @@ class backup_manager(Element):
     clog = Log()
     clog.append_field("chunk", chunks)
     clog.append_field("fingerprint", fps)
-    self.push("chunk_index", clog)
+    self.buffered_push("chunk_index", clog)
         
   def recv_push(self, port, log):
     self.add_chunks(log)

@@ -11,4 +11,4 @@ class join(Element):
   def recv_push(self, port, log):
     nl = Log()
     nl.set_log(log.log)
-    self.push("output", nl)
+    self.buffered_push("output", nl)

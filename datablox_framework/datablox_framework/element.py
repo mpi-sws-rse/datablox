@@ -2,7 +2,7 @@ import zmq
 import time
 import json
 import threading
-import collections
+from collections import defaultdict
 
 class Log(object):
   def __init__(self):
@@ -100,7 +100,10 @@ class Element(threading.Thread):
     self.requests = 0
     self.pushed_requests = 0
     self.alive = True
-    self.taks = None
+    self.task = None
+    self.buffer_limit = 50
+    self.current_buffer_size = defaultdict(int)
+    self.buffered_pushes = defaultdict(list)
 
   def run(self):
     try:
@@ -213,7 +216,7 @@ class Element(threading.Thread):
           self.process_control(p, log)
       
       #now deal with data ports
-      socks = dict(self.poller.poll(500))
+      socks = dict(self.poller.poll(5))
       if socks != None and socks != {}:
         ports_with_data = [p for p in self.input_ports if p.socket in socks and socks[p.socket] == zmq.POLLIN]
         push_ports = [p for p in ports_with_data if p.port_type == Port.PUSH]
@@ -224,6 +227,8 @@ class Element(threading.Thread):
           (control, log) = json.loads(message)
           if control == "END":
             self.process_stop(p, log)
+          elif control == "BUFFERED PUSH":
+            self.process_buffered_push(p, log)
           else:
             self.process_push(p, log)
         for p in pull_ports:
@@ -258,6 +263,11 @@ class Element(threading.Thread):
     self.requests += 1
     self.recv_push(port.name, log)
   
+  def process_buffered_push(self, port, logs):
+    #print self.name + " got buffered push"
+    for log in logs:
+      self.process_push(port, log)
+    
   def process_pull_query(self, port, log_data):
     log = Log()
     log.set_log(log_data)
@@ -294,6 +304,8 @@ class Element(threading.Thread):
     pass
 
   def shutdown(self):
+    self.flush_ports()
+    
     for p in self.output_ports.keys():
       self.send("END", (self.name, p.name), p)
     self.alive = False
@@ -348,6 +360,26 @@ class Element(threading.Thread):
     port = self.find_port(port_name)
     self.send("PUSH", log.log, port)
   
+  def buffered_push(self, port_name, log):
+    self.buffered_pushes[port_name].append(log.log)
+    self.current_buffer_size[port_name] += 1
+    if self.current_buffer_size[port_name] > self.buffer_limit:
+      self.flush_port(port_name)
+  
+  def flush_ports(self):
+    print self.name + " flushing all ports"
+    for port_name in self.buffered_pushes.keys():
+      self.flush_port(port_name)
+  
+  def flush_port(self, port_name):
+    # print "%s: flushing port: %s" % (self.name, port_name)
+    buffered_pushes = self.buffered_pushes[port_name]
+    port = self.find_port(port_name)
+    self.send("BUFFERED PUSH", buffered_pushes, port)
+    self.pushed_requests += self.current_buffer_size[port_name]
+    self.buffered_pushes[port_name] = []
+    self.current_buffer_size[port_name] = 0
+  
   #pull is blocking for now
   def pull(self, port_name, log):
     port = self.find_port(port_name)
@@ -360,6 +392,7 @@ class Element(threading.Thread):
     return log
   
   def return_pull(self, port_name, log):
+    self.requests += 1
     port = self.find_port(port_name)
     log_data = json.dumps(log.log)
     port.socket.send(log_data)

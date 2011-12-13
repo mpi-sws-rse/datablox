@@ -11,6 +11,8 @@ class flat_chunk_index(Element):
     self.add_port("reference", Port.PULL, Port.UNNAMED, ["command"])
     self.add_port("restore", Port.PULL, Port.UNNAMED, ["fingerprint"])
     self.chunk_index = redis.StrictRedis()
+    self.total_chunks = 0
+    self.duplicate_chunks = 0
 
   def add_chunk(self, chunk):
     log = Log()
@@ -23,12 +25,17 @@ class flat_chunk_index(Element):
     for c, fp in log.iter_fields("chunk", "fingerprint"):
       res = self.chunk_index.get(fp)
       if res:
-        print "Chunk already in the database"
+        # print "Chunk already in the database"
+        self.duplicate_chunks += 1
       else:
         chunk_id = self.add_chunk(c)
         self.chunk_index.set(fp, chunk_id)
-        print "Chunk wasn't in the database - added to %s" % chunk_id
+        # print "Chunk wasn't in the database - added to %s" % chunk_id
+        self.total_chunks += 1
   
+  def on_shutdown(self):
+    print "%s: total chunks added: %d, duplicate chunks: %d" % (self.name, self.total_chunks, self.duplicate_chunks)
+    
   def return_store_locs(self, port, log):
     fps = log.log["fingerprint"]
     chunk_ids = [self.chunk_index.get(fp) for fp in fps]

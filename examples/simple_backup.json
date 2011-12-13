@@ -2,10 +2,10 @@
     "elements": [
         {"id": "source", 
          "name": "Dir-Src", 
-         "args": {"directory": "."}},
+         "args": {"directory": "/home/saideep"}},
         {"id": "chunk", 
          "name": "Chunk", 
-         "args": {"chunk_size": 500}},
+         "args": {"chunk_size": 4096}},
         {"id": "chunk_fp", 
          "name": "Fingerprint-Chunks", 
          "args": {}},
@@ -14,13 +14,16 @@
          "args": {}},
         {"id": "meta_index", 
          "name": "Meta-Store", 
-         "args": {}},
+         "args": {},
+         "at": "139.19.192.25"},
         {"id": "chunk_index", 
          "name": "Flat-Chunk-Index", 
-         "args": {}},
+         "args": {},
+         "at": "139.19.157.13"},
         {"id": "chunk_store", 
          "name": "Store", 
-         "args": {"store_directory": "/Users/saideep/Downloads/chunks"}}
+         "args": {"store_directory": "/home/saideep/chunks"},
+         "at": "139.19.157.15"}
     ],
 
     "connections": [

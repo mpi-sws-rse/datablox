@@ -4,6 +4,7 @@ import time
 
 class chunk(Element):
   def on_load(self, config):
+    #self.buffer_limit = 5000
     self.name = "Chunk"
     self.config = config
     #default to 4KB chunks if size is not given, but I'm not sure if python 'char' is one byte
@@ -25,4 +26,4 @@ class chunk(Element):
       new_log = Log()
       new_log.append_field("path", log.log["path"])
       new_log.append_field("chunks", chunks)
-      self.push("output", new_log)
+      self.buffered_push("output", new_log)

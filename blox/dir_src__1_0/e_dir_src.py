@@ -11,9 +11,29 @@ class dir_src(Element):
         return True
     return False
   
+  def send_file(self, volume, path, stat):
+    listing = {}
+    listing["path"] = [volume + ":" + path]
+    listing["size"] = [stat.st_size]
+    listing["perm"] = [stat.st_mode]
+    listing["owner"] = [stat.st_uid]
+    if not self.config.has_key('only_metadata') or self.config['only_metadata'] == False:
+      with open(path) as f:
+        listing["data"] = [base64.b64encode(f.read())]
+    
+    log = Log()
+    log.set_log(listing)
+    self.buffered_push("output", log)
+  
+  def send_token(self):
+    token = {"token": self.config["directory"]}
+    log = Log()
+    log.set_log(token)
+    self.buffered_push("output", log)
+    
   def do_task(self):
     path = os.path.expanduser(self.config["directory"])
-    sleeptime = self.config["sleep"] if self.config.has_key("sleep") else 0
+    files_sent = 0
     #using the ip-address for now
     try:
       volume_name = socket.gethostbyname(socket.gethostname())
@@ -26,29 +46,16 @@ class dir_src(Element):
           continue
         try:
           stat = os.stat(path)
-        except:
+          self.send_file(volume_name, path, stat)
+          files_sent += 1
+          if files_sent > self.files_limit:
+            files_sent = 0
+            yield
+        except OSError:
           print "not dealing with file " + path
           continue
-        
-        listing = {}
-        listing["path"] = [volume_name + ":" + path]
-        listing["size"] = [stat.st_size]
-        listing["perm"] = [stat.st_mode]
-        listing["owner"] = [stat.st_uid]
-        if not self.config.has_key('only_metadata') or self.config['only_metadata'] == False:
-          with open(path) as f:
-            listing["data"] = [base64.b64encode(f.read())]
-        
-        log = Log()
-        log.set_log(listing)
-        self.push("output", log)
-        time.sleep(sleeptime)
-        yield
-    
-    token = {"token": self.config["directory"]}
-    log = Log()
-    log.set_log(token)
-    self.push("output", log)
+    yield
+    self.send_token()
     
   def on_load(self, config):
     self.config = config
@@ -56,4 +63,5 @@ class dir_src(Element):
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["path", "size", "perm", "owner"])
     #if only_index is not specified, we use empty string as every path ends with an empty string
     self.only_index = config["only_index"] if config.has_key("only_index") else ['']
+    self.files_limit = 50
     print "Dir-Src element loaded"

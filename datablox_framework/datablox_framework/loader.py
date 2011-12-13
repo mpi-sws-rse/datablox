@@ -157,7 +157,8 @@ class Master(object):
           print "Master: no more running nodes, quitting"
           return
         self.parallelize()
-        time.sleep(4)
+        #todo: hard coded 10
+        time.sleep(10)
       except KeyboardInterrupt:
         self.stop_all()
         break
