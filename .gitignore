@@ -6,5 +6,7 @@ datablox_framework/dist
 engage/datablox/sw_packages
 engage/engage-dist
 engage/packages
+engage/adapter_pkg/build
+engage/adapter_pkg/dist
 datablox_framework/datablox_framework/*.json
 

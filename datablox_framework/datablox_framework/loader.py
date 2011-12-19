@@ -9,6 +9,20 @@ from element import *
 from shard import *
 import naming
 
+try:
+  import datablox_engage_adapter.file_locator
+  using_engage = True
+except ImportError:
+  using_engage = False
+
+if using_engage:
+  engage_file_locator = datablox_engage_adapter.file_locator.FileLocator()
+  print "Running with Engage deployment home at %s" % \
+    engage_file_locator.get_dh()
+else:
+  engage_file_locator = None
+
+
 class Master(object):
   def __init__(self, bloxpath, config_file, ip_addr_list):
     self.master_port = 6500
@@ -58,7 +72,7 @@ class Master(object):
     return naming.element_class_name(element_name).endswith('_shard')
   
   def element_class(self, element_name, version=naming.DEFAULT_VERSION):
-    return naming.get_element_class(element_name, version)
+    return naming.get_block_class(element_name, version)
     
   def create_element(self, name, config, version=naming.DEFAULT_VERSION,
                      pin_ipaddress=None):
@@ -375,9 +389,15 @@ def main(argv):
     parser.error("Need to specify config_file and at least one ip address")
 
   bloxpath = options.bloxpath
-  
-  if bloxpath == None: 
-    if not os.environ.has_key("BLOXPATH"):
+
+  # The priorities for obtaining bloxpath are:
+  # 1. Command line option
+  # 2. If engage is installed, use file locator to get bloxpath
+  # 3. Otherwise, lookfor BLOXPATH environment variable
+  if bloxpath == None:
+    if using_engage:
+      bloxpath = engage_file_locator.get_blox_dir()
+    elif not os.environ.has_key("BLOXPATH"):
       parser.error("Need to set BLOXPATH environment variable or pass it as an argument")
     else:
       bloxpath = os.environ["BLOXPATH"]

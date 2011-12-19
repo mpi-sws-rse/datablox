@@ -93,7 +93,8 @@
         "all-of": [
           { "key": {"name":"datablox-framework", "version":"1.0"},
                     "version":{"greater-than-or-equal":""},
-            "port_mapping": {"datablox_framework":"datablox_framework"}}
+            "port_mapping": {"datablox_framework":"datablox_framework"}},
+          {"key":{"name":"datablox-engage-adapter", "version":"1.0"}}
         ]
     }
   },
@@ -253,5 +254,43 @@
         { "key": {"name":"apache-solr-jetty-server", "version":"3.5"}}
       ]
     }
+  },
+  { "key": {"name":"datablox-engage-adapter", "version":"1.0"},
+    "display_name": "Engage adapter for Datablox",
+     "input_ports": {
+        "python": {
+          "home" : "path",
+          "PYTHONPATH": "path",
+          "python_bin_dir": "path"
+        },
+	"setuptools" : { "easy_install" : "string" }
+     },
+    "output_ports" : {
+      "pkg_info": {
+        "test_module": {"type":"string",
+                        "fixed-value":"datablox_engage_adapter"}
+      }
+    },
+    "inside": {
+       "one-of": [
+          { "key": {"name": "ubuntu-linux", "version":"9.10"}},
+          { "key": {"name": "ubuntu-linux", "version":"10.04"}},
+          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
+                                                 "less-than":"10.7"}}}
+        ]
+     },
+     "environment": {
+        "all-of": [
+          { "key": {"name":"python",
+                    "version":{"greater-than-or-equal":"2.5"}},
+            "port_mapping": {"python":"python"}
+          },
+          { "key": {"name":"setuptools",
+                    "version":{"greater-than-or-equal":"0.6"}},
+            "port_mapping": {"setuptools":"setuptools"}
+          },
+          { "key": {"name":"pyzmq-abstract",
+                    "version":{"greater-than-or-equal":"2.1"}}}
+      ]}
   }
 ]

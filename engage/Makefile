@@ -5,6 +5,7 @@ BLOXPATH=$(shell cd ../blox; pwd)
 ENGAGE_DIST=$(ENGAGE_EXT_HOME)/engage-dist
 TEST_DEPLOY_HOME=$(shell cd ~; pwd)/apps
 PACKAGE_DIR=$(ENGAGE_EXT_HOME)/packages
+ADAPTER_DIR=$(ENGAGE_EXT_HOME)/adapter_pkg
 
 # The following two are only valid if you are running an internal build
 # at genForma.
@@ -17,9 +18,12 @@ engage-ext:
 	mkdir -p $(ENGAGE_EXT_HOME)/datablox/sw_packages
 	@cd $(ENGAGE_EXT_HOME)/..; tar czf $(ENGAGE_EXT_HOME)/datablox/sw_packages/datablox_framework.tgz datablox_framework
 	@echo "Created package datablox_framework.tgz"
+	cd $(ENGAGE_EXT_HOME); tar czf $(ENGAGE_EXT_HOME)/datablox/sw_packages/datablox_engage_adapter.tgz adapter_pkg
+	@echo "Created package datablox_engage_adapter.tgz"
 	@cd $(BLOXPATH); for dir in `ls`; do if [ -d "$$dir" ]; then tar czf $(ENGAGE_EXT_HOME)/datablox/sw_packages/$$dir.tgz $$dir; echo "Created package $$dir.tgz"; fi; done
 	cp $(BLOXPATH)/solr_index__1_0/schema.xml $(ENGAGE_EXT_HOME)/datablox/sw_packages/solr_schema.xml
 	@echo "Built Engage extension"
+
 
 # The dist-from-src target assumes that there's a built engage distribution
 # under ../../code/build_output/engage. The code is copied to ./engage-dist
@@ -55,6 +59,8 @@ help:
 clean:
 	rm -rf $(ENGAGE_EXT_HOME)/datablox/sw_packages
 	rm -rf $(ENGAGE_DIST)
+	rm -rf $(ADAPTER_DIR)/dist
+	rm -rf $(ADAPTER_DIR)/build
 
 # clean everything, including the package dir
 clean-all: clean

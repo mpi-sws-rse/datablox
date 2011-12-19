@@ -31,8 +31,11 @@ def element_submodule(element_name):
   return "e_" + mangle_string(element_name)
 
 
-def get_element_class(element_name, version):
+def get_block_class(element_name, version):
   module_name = element_module(element_name, version)
   module = __import__(module_name)
   submodule = getattr(module, element_submodule(element_name))
   return getattr(submodule, element_class_name(element_name))
+
+def get_block_resource_key(element_name, version):
+  return {u"name":unicode(element_name.lower()), u"version":unicode(version)}

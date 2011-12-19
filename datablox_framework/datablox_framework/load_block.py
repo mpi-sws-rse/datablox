@@ -6,6 +6,13 @@ import naming
 from element import *
 from shard import *
 
+try:
+  import datablox_engage_adapter.install
+  using_engage = True
+except ImportError:
+  using_engage = False
+
+
 def read_configuration(configuration_file_name):
   with open(configuration_file_name) as f:
     return json.load(f)
@@ -27,11 +34,14 @@ def start(blox_dir, configuration_file_name):
   config = read_configuration(configuration_file_name)
   print config
 
+  block_version = config["version"] if config.has_key("version") \
+                                    else naming.DEFAULT_VERSION
+  if using_engage:
+    resource_key = naming.get_block_resource_key(config["name"],
+                                                 block_version)
+    datablox_engage_adapter.install.install_block(resource_key)
   element_class = \
-    naming.get_element_class(config["name"],
-                             config["version"]
-                               if config.has_key("version")
-                               else naming.DEFAULT_VERSION)
+    naming.get_block_class(config["name"], block_version)
   inst = element_class(config["master_port"])
   inst.on_load(config["args"])
 
