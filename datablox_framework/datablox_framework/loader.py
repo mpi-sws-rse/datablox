@@ -19,6 +19,7 @@ if using_engage:
   engage_file_locator = datablox_engage_adapter.file_locator.FileLocator()
   print "Running with Engage deployment home at %s" % \
     engage_file_locator.get_dh()
+  import datablox_engage_adapter.install
 else:
   engage_file_locator = None
 
@@ -361,6 +362,12 @@ class Master(object):
       element_name = e["name"] 
       element_config = e["args"]
       element_ip = e["at"] if e.has_key("at") else None
+      element_version = e["version"] if e.has_key("version") \
+                                     else naming.DEFAULT_VERSION
+      if using_engage:
+        resource_key = naming.get_block_resource_key(element_name,
+                                                     element_version)
+        datablox_engage_adapter.install.install_block(resource_key)
       element = self.create_element(element_name, element_config,
                                     pin_ipaddress=element_ip)
       element_hash[element_id] = element

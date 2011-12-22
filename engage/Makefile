@@ -53,8 +53,10 @@ test-deploy:
 	cd $(ENGAGE_DIST); ./bootstrap.py $(TEST_DEPLOY_HOME)
 	cd $(TEST_DEPLOY_HOME)/engage/bin; ./deployer $(ENGAGE_EXT_HOME)/datablox/metadata/install_spec.json
 
+test: engage-ext dist-from-src test-deploy
+
 help:
-	@echo "Targets are all engage-ext dist-from-src test-deploy download-packages clean clean-all"
+	@echo "Targets are all engage-ext dist-from-src test-deploy test download-packages clean clean-all"
 
 clean:
 	rm -rf $(ENGAGE_EXT_HOME)/datablox/sw_packages
@@ -66,4 +68,4 @@ clean:
 clean-all: clean
 	rm -rf $(PACKAGE_DIR)
 
-.PHONY: all clean clean-all dist-from-src engage-ext help download-packages
+.PHONY: all clean clean-all dist-from-src engage-ext help download-packages test

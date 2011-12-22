@@ -35,15 +35,6 @@
         }
      ]
   },
-  { "key":{"name":"solr-index", "version":"1.0"},
-    "mgr_module_name":"engage.drivers.datablox.generic_blox_driver",
-    "packages": [
-      { "type": "Archive",
-        "package_class": "GzippedTarArchive",
-        "location": "solr_index__1_0.tgz"
-      }
-    ]
-  },
   { "key":{"name":"datablox-engage-adapter", "version":"1.0"},
     "mgr_module_name":"engage.drivers.genforma.easy_install",
     "packages": [
