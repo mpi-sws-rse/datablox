@@ -35,10 +35,10 @@ def define_error(error_code, msg):
 
 # error codes
 # FILL IN
-ERR_TBD = 0
+ERR_BAD_PW_FILE = 1
 
-define_error(ERR_TBD,
-             _("Replace this with your error codes"))
+define_error(ERR_BAD_PW_FILE,
+             _("Master password file path seems to be changed from the default, which is not supported. Expecting %(exp)s, got %(act)s"))
 
 
 # setup logging
@@ -72,11 +72,16 @@ def make_context(resource_json, sudo_password_fn, dry_run=False):
                   BLOXPATH=unicode)
     ctx.check_port('input_ports.host',
                   genforma_home=unicode)
+    ctx.check_port('input_ports.master_password_file',
+                   password_file=unicode)
 
     # add any extra computed properties here using the ctx.add() method.
     return ctx
 
 
+def np(path):
+    return os.path.abspath(os.path.expanduser(path))
+    
 # Now, define the main resource manager class for the driver. If this driver is
 # a service, inherit from service_manager.Manager instead of
 # resource_manager.Manager. If you need the sudo password, add
@@ -92,7 +97,17 @@ class Manager(service_manager.Manager):
                                 dry_run=dry_run)
 
     def validate_pre_install(self):
-        pass
+        """The password file resource lets one change the location of
+        the master password file, but we don't currently support that.
+        """
+        p = self.ctx.props
+        act_pw_file = np(p.input_ports.master_password_file.password_file)
+        exp_pw_file = np(os.path.join(p.input_ports.host.genforma_home,
+                                      "config/master.pw"))
+        if act_pw_file != exp_pw_file:
+            raise UserError(errors[ERR_BAD_PW_FILE],
+                            msg_args={"act":act_pw_file,
+                                      "exp":exp_pw_file})
 
     def is_installed(self):
         return os.path.exists(self.ctx.props.config_port.config_dir)

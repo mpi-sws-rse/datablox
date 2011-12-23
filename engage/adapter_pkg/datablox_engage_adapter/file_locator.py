@@ -36,6 +36,8 @@ class FileLocator(object):
     self.deployer_exe = os.path.join(self.engage_dir,
                                      "bin/deployer")
     check_file(self.deployer_exe)
+    self.master_pw_file = os.path.join(self.config_dir, "master.pw")
+    check_file(self.master_pw_file)
 
   def get_dh(self):
     return self.dh
@@ -67,3 +69,6 @@ class FileLocator(object):
 
   def get_deployer_exe(self):
     return self.deployer_exe
+
+  def get_master_pw_file(self):
+    return self.master_pw_file

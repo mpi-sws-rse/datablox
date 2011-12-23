@@ -19,7 +19,7 @@ def main(argv):
                     help="use this path instead of the environment variable BLOXPATH")
   parser.add_option("--config-dir", dest="config_dir", default=".",
                     help="directory to use for storing configuration files for the individual blocks")
-                    
+
   (options, args) = parser.parse_args(argv)
 
   bloxpath = options.bloxpath

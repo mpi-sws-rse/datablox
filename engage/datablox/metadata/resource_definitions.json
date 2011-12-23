@@ -76,6 +76,9 @@
         "datablox_framework": {
           "BLOXPATH": "path",
           "caretaker_exe": "path"
+        },
+        "master_password_file": {
+          "password_file": "path"
         }
       },
      "inside": {
@@ -94,7 +97,9 @@
           { "key": {"name":"datablox-framework", "version":"1.0"},
                     "version":{"greater-than-or-equal":""},
             "port_mapping": {"datablox_framework":"datablox_framework"}},
-          {"key":{"name":"datablox-engage-adapter", "version":"1.0"}}
+          {"key":{"name":"datablox-engage-adapter", "version":"1.0"}},
+          {"key":{"name":"master-password-file", "version":"1.0"},
+           "port_mapping": {"master_password_file":"master_password_file"}}
         ]
     }
   },
