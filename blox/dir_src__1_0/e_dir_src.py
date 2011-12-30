@@ -4,20 +4,36 @@ import os
 import socket
 import base64
 
+import filetype_utils
+
 class dir_src(Element):
-  def indexible_file(self, path):
-    for e in self.only_index:
-      if path.endswith(e):
-        return True
-    return False
-  
+  def indexable_file(self, path):
+    """If true, the file can be indexed by the indexing engine (e.g. contains
+    text content). We will only send the data if this returns True.
+    """
+    if self.only_index:
+      for e in self.only_index:
+        if path.endswith(e):
+          return True
+      return False
+    else:
+      return filetype_utils.is_indexable_file(path)
+
+  def include_file(self, path):
+    """Returns True if we should send this file's metadata (and potentially
+    content if it is indexable).
+    """
+    return True
+    
   def send_file(self, volume, path, stat):
     listing = {}
     listing["path"] = [volume + ":" + path]
     listing["size"] = [stat.st_size]
     listing["perm"] = [stat.st_mode]
     listing["owner"] = [stat.st_uid]
-    if not self.config.has_key('only_metadata') or self.config['only_metadata'] == False:
+    filetype = [filetype_utils.get_type_description(path),]
+    listing["filetype"] = filetype if filetype else "unknown"
+    if (not self.config.has_key('only_metadata') or self.config['only_metadata'] == False) and self.indexable_file(path):
       with open(path) as f:
         listing["data"] = [base64.b64encode(f.read())]
     
@@ -42,7 +58,7 @@ class dir_src(Element):
     for root, dirnames, filenames in os.walk(path):
       for filename in filenames:
         path = os.path.join(root, filename)
-        if not self.indexible_file(path):
+        if not self.include_file(path):
           continue
         try:
           stat = os.stat(path)
@@ -61,7 +77,8 @@ class dir_src(Element):
     self.config = config
     self.name = "Dir-Src:" + config["directory"]
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["path", "size", "perm", "owner"])
-    #if only_index is not specified, we use empty string as every path ends with an empty string
-    self.only_index = config["only_index"] if config.has_key("only_index") else ['']
+    #if only_index is not specified, we set only_index to None and then
+    # use the MIME type to determine the files to index.
+    self.only_index = config["only_index"] if config.has_key("only_index") else None
     self.files_limit = 50
     print "Dir-Src element loaded"

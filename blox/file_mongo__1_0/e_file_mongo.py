@@ -26,7 +26,8 @@ class file_mongo(Element):
         self.process_outstanding_queries()
     else:
       entries = []
-      log.remove_field("data")
+      if log.log.has_key("data"):
+        log.remove_field("data")
       for l in log.iter_flatten():
         # print self.name + " adding entry " + str(l)
         self.file_data.remove({"path" : l["path"]})

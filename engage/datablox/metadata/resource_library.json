@@ -43,5 +43,18 @@
         "location": "datablox_engage_adapter.tgz"
       }
     ]
+  },
+  { "key":{"name":"filetypes", "version":"0.1"},
+    "mgr_module_name":"engage.drivers.genforma.pip",
+    "packages": [
+      { "type": "Archive",
+        "package_class": "GzippedTarArchive",
+        "location": "filetypes-0.1.tar.gz"
+      },
+      { "type": "Reference",
+        "package_class": "PipLink",
+        "location": "filetypes==0.1"
+      }
+    ]
   }
 ]
