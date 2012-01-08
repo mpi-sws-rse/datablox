@@ -1,0 +1,13 @@
+{
+  "resource_def_file_name": "resource_definitions.json",
+  "software_library_file_name": "resource_library.json",
+  "log_level": "Debug",
+  "application_name": "Datablox",
+  "install_spec_options": [
+  {
+    "choice_name":"Datablox master node", "file_name": "install_spec.json",
+    "config_properties": [
+    ]
+   }
+  ] 
+}

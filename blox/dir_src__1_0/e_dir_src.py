@@ -1,8 +1,10 @@
 from element import *
 import time
 import os
+import os.path
 import socket
 import base64
+from logging import ERROR, WARN, INFO, DEBUG
 
 import filetype_utils
 
@@ -25,14 +27,16 @@ class dir_src(Element):
     """
     return True
     
-  def send_file(self, volume, path, stat):
+  def send_file(self, host, volume, path, stat):
     listing = {}
-    listing["path"] = [volume + ":" + path]
+    listing["path"] = [host + ":" + path]
     listing["size"] = [stat.st_size]
     listing["perm"] = [stat.st_mode]
     listing["owner"] = [stat.st_uid]
-    filetype = [filetype_utils.get_type_description(path),]
-    listing["filetype"] = filetype if filetype else "unknown"
+    (filetype,category) = filetype_utils.get_file_description_and_category(path)
+    listing["volume"] = [volume,]
+    listing["filetype"] = [filetype,]
+    listing["category"] = [category,]
     if (not self.config.has_key('only_metadata') or self.config['only_metadata'] == False) and self.indexable_file(path):
       with open(path) as f:
         listing["data"] = [base64.b64encode(f.read())]
@@ -41,20 +45,22 @@ class dir_src(Element):
     log.set_log(listing)
     self.buffered_push("output", log)
   
-  def send_token(self):
-    token = {"token": self.config["directory"]}
+  def send_token(self, volume_name):
+    token = {"token": volume_name}
     log = Log()
     log.set_log(token)
     self.buffered_push("output", log)
     
   def do_task(self):
-    path = os.path.expanduser(self.config["directory"])
+    path = os.path.abspath(os.path.expanduser(self.config["directory"]))
     files_sent = 0
-    #using the ip-address for now
     try:
-      volume_name = socket.gethostbyname(socket.gethostname())
+      ## #using the ip-address for now
+      ## volume_name = socket.gethostbyname(socket.gethostname())
+      host = socket.gethostname()
     except:
-      volume_name = "local"
+      host = "local"
+    volume_name = host + ":" + path
     for root, dirnames, filenames in os.walk(path):
       for filename in filenames:
         path = os.path.join(root, filename)
@@ -62,16 +68,16 @@ class dir_src(Element):
           continue
         try:
           stat = os.stat(path)
-          self.send_file(volume_name, path, stat)
+          self.send_file(host, volume_name, path, stat)
           files_sent += 1
           if files_sent > self.files_limit:
             files_sent = 0
             yield
         except OSError:
-          print "not dealing with file " + path
+          self.log(WARN, "not dealing with file " + path)
           continue
     yield
-    self.send_token()
+    self.send_token(volume_name)
     
   def on_load(self, config):
     self.config = config
@@ -81,4 +87,4 @@ class dir_src(Element):
     # use the MIME type to determine the files to index.
     self.only_index = config["only_index"] if config.has_key("only_index") else None
     self.files_limit = 50
-    print "Dir-Src element loaded"
+    self.log(INFO, "Dir-Src element loaded")

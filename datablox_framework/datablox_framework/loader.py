@@ -75,7 +75,7 @@ class Master(object):
   def element_class(self, element_name, version=naming.DEFAULT_VERSION):
     return naming.get_block_class(element_name, version)
     
-  def create_element(self, name, config, version=naming.DEFAULT_VERSION,
+  def create_element(self, name, e_id, config, version=naming.DEFAULT_VERSION,
                      pin_ipaddress=None):
     path = naming.element_path(self.bloxpath, name, version)
     if not os.path.isfile(path):
@@ -90,7 +90,7 @@ class Master(object):
 
     self.master_port += 2
     connections = {}
-    inst = {"name": name, "args": config, 
+    inst = {"name": name, "id": e_id if e_id else name, "args": config, 
           "connections": connections, "master_port": self.master_port,
           "ipaddress": ipaddress, "timeouts": 0}
     self.elements[self.master_port] = inst
@@ -114,7 +114,8 @@ class Master(object):
     print "num elements in shard %d" % (len(element_configs))
     if element_type.has_key("output_port"):
       #optimization: creating the join element on the same node as the shard
-      join = self.create_element("dynamic-join", {},
+      # TODO: create a unique id for each shard
+      join = self.create_element("dynamic-join", None, {},
                                  pin_ipaddress=shard["ipaddress"])
       join_port_num = self.port_num_gen.new_port()
       join_url = self.url(join["ipaddress"], join_port_num)
@@ -125,7 +126,7 @@ class Master(object):
     for i in range(len(element_configs)):
       output_port = "output"+str(i)
       element_config = element_configs[i]
-      e = self.create_element(element_name, element_config)
+      e = self.create_element(element_name, None, element_config)
       self.connect_node(shard, output_port, e, input_port)
       if element_type.has_key("output_port"):
         #TODO: remove hardcoded join input port name
@@ -140,6 +141,7 @@ class Master(object):
   def start_element(self, element):
     config = {}
     config["name"] = element["name"]
+    config["id"] = element["id"]
     config["args"] = element["args"]
     config["master_port"] = self.url(element["ipaddress"], element["master_port"])
     config["ports"] = element["connections"]
@@ -278,7 +280,7 @@ class Master(object):
   
   def do_parallelize(self, element, config):
     node_type = element["node_type"]
-    new_node = self.create_element(node_type["name"], config)
+    new_node = self.create_element(node_type["name"], None, config)
     port_number = self.port_num_gen.new_port()
     connection_url = self.url(new_node["ipaddress"], port_number)
     print "Master: trying to parallelize %s with url %s" % (element["name"], connection_url)
@@ -358,7 +360,7 @@ class Master(object):
     self.setup_initial_node_counts(config)
     element_hash = {}
     for e in config["elements"]:
-      element_id = e["id"]
+      element_id = e["id"] if e.has_key("id") else None
       element_name = e["name"] 
       element_config = e["args"]
       element_ip = e["at"] if e.has_key("at") else None
@@ -368,7 +370,7 @@ class Master(object):
         resource_key = naming.get_block_resource_key(element_name,
                                                      element_version)
         datablox_engage_adapter.install.install_block(resource_key)
-      element = self.create_element(element_name, element_config,
+      element = self.create_element(element_name, element_id, element_config,
                                     pin_ipaddress=element_ip)
       element_hash[element_id] = element
     

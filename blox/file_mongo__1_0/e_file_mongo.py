@@ -1,6 +1,12 @@
+from logging import ERROR, WARN, INFO, DEBUG
+
 from element import *
 
 class file_mongo(Element):
+  def __init__(self, master_url):
+    Element.__init__(self, master_url)
+    self.volumes_processed = []
+    
   def on_load(self, config):
     import pymongo
     from pymongo import Connection
@@ -9,18 +15,32 @@ class file_mongo(Element):
     self.add_port("file_data", Port.PULL, Port.UNNAMED, ["name"])
     self.add_port("dir_aggregates", Port.PULL, Port.UNNAMED, ["name"])
     self.add_port("file_duplicates", Port.PULL, Port.UNNAMED, [])
-    print "File-mongo element loaded"
+    self.add_port("completed", Port.PUSH, Port.UNNAMED, ["key"])
     self.connection = Connection()
     db = self.connection['file_db']
     self.file_data = db.file_data
     self.crawler_done = False
     self.num_tokens = config["crawlers"]
     self.queries = []
+    self.log(INFO, "File-mongo element loaded")
 
+  def emit_completed_message(self, volume, is_last):
+    self.volumes_processed.append(volume)
+    log = Log()
+    log.set_log({"key": [volume]})
+    self.push("completed", log)
+    if is_last:
+      log = Log()
+      log.set_log({"token":self.volumes_processed})
+      self.push("completed", log)
+      self.log(INFO, "emitted finish token: %s" % self.volumes_processed)
+    
   def recv_push(self, port, log):
     if log.log.has_key("token"):
-      print self.name + " got the finish token for directory " + log.log["token"]
+      self.log(INFO, "got the finish token for directory " + log.log["token"])
       self.num_tokens = self.num_tokens - 1
+      self.log(DEBUG, " num_tokens = %d" % self.num_tokens) # XXX
+      self.emit_completed_message(log.log["token"], self.num_tokens==0)
       if self.num_tokens == 0:
         self.crawler_done = True
         self.process_outstanding_queries()
@@ -36,7 +56,7 @@ class file_mongo(Element):
 
   def recv_pull_query(self, port_name, log):
     if not self.crawler_done:
-      print self.name + " got a pull request, but waiting for crawler to be done"
+      self.log(DEBUG, "got a pull request, but waiting for crawler to be done")
       self.queries.append((port_name, log))
     else:
       self.process_query(port_name, log)
@@ -79,7 +99,7 @@ class file_mongo(Element):
                "num_files": num_files,
                "avg_size": avg_size
               }
-      print "returning aggregates"
+      self.log(DEBUG, "returning aggregates")
     elif port_name == "file_duplicates":
       hc = self.file_data.distinct('hash')
       hashes = [c for c in hc]
@@ -93,7 +113,7 @@ class file_mongo(Element):
       entry["hash"] = dupe_hashes
       entry["files"] = dupe_files
     else:
-      print "Got a request from unknown port"
+      self.log(WARN, "Got a request from unknown port")
     
     ret_log = Log()
     ret_log.set_log(entry)

@@ -35,6 +35,9 @@ dist-from-src: engage-ext
 	cp -r $(ENGAGE_BUILD_OUTPUT) $(ENGAGE_DIST)
 	cd $(ENGAGE_DIST); ./install_extension.py ../datablox
 
+update-engage:
+	if ! [ -d $(ENGAGE_DIST) ]; then echo "Cloning Engage from github"; git clone https://github.com/genforma/engage.git ./engage-dist; else cd $(ENGAGE_DIST); git pull origin master; fi
+
 # download any packages that are particularly costly to download so we
 # can include in the distribution. This is mainly for testing. Need to think
 # about what to do in the distributed deployment scenario.
@@ -51,7 +54,7 @@ test-deploy:
 	rm -rf $(TEST_DEPLOY_HOME)
 	if [ -d $(PACKAGE_DIR) ]; then cp $(PACKAGE_DIR)/* $(ENGAGE_DIST)/sw_packages; fi
 	cd $(ENGAGE_DIST); ./bootstrap.py $(TEST_DEPLOY_HOME)
-	cd $(TEST_DEPLOY_HOME)/engage/bin; ./deployer $(ENGAGE_EXT_HOME)/datablox/metadata/install_spec.json
+	cd $(TEST_DEPLOY_HOME)/engage/bin; ./install datablox
 
 test: engage-ext dist-from-src test-deploy
 
@@ -68,4 +71,4 @@ clean:
 clean-all: clean
 	rm -rf $(PACKAGE_DIR)
 
-.PHONY: all clean clean-all dist-from-src engage-ext help download-packages test
+.PHONY: all clean clean-all dist-from-src engage-ext help download-packages test update-engage

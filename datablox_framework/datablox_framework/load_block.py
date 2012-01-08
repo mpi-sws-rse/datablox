@@ -33,6 +33,8 @@ def start(blox_dir, configuration_file_name):
   element_class = \
     naming.get_block_class(config["name"], block_version)
   inst = element_class(config["master_port"])
+  inst.id = config["id"]
+  inst.name = config["name"]
   inst.on_load(config["args"])
 
   if is_shard(config["name"]):

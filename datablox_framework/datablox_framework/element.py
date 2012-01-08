@@ -3,6 +3,8 @@ import time
 import json
 import threading
 from collections import defaultdict
+import logging
+import sys
 
 class Log(object):
   def __init__(self):
@@ -83,7 +85,8 @@ class PortNumberGenerator(object):
 class Element(threading.Thread):
   def __init__(self, master_url):
     threading.Thread.__init__(self)
-    self.name = "__no_name__"
+    self.name = "__no_name__" # set just before call to on_load()
+    self.id = None # set just before call to on_load()
     self.connection_type = Port.AGNOSTIC
     master_port = Port("master", Port.MASTER, Port.UNNAMED, [])
     master_port.port_url = master_url
@@ -109,12 +112,12 @@ class Element(threading.Thread):
     try:
       self.context = zmq.Context()
       self.ready_ports()
-      print self.name + " ports are ready"
+      self.log(logging.INFO, "ports are ready")
       if self.input_ports.keys() == []:
         self.task = self.do_task()
       self.start_listening()
     except KeyboardInterrupt:
-      print "Stopping thread"
+      self.log(logging.INFO, "Stopping thread")
   
   def ready_ports(self):
     self.ready_master_port()
@@ -135,17 +138,19 @@ class Element(threading.Thread):
     #Listen to all inputs
     for p in self.input_ports:
       if p.socket == None:
-        print "%s has a port %s, url %d none" % (self.name, p.name, p.url)
+        self.log(logging.DEBUG,
+                 "has a port %s, url %d none" % (p.name, p.url))
         raise NameError
       self.poller.register(p.socket, zmq.POLLIN)
     
   def ready_master_port(self):
     self.bind_rep_port(self.master_port)
-    print self.name + " waiting for master to respond"
+    self.log(logging.INFO, "waiting for master to respond")
     #wait for master to synchronize
     self.master_port.socket.recv()
-    print self.name + " master's online, starting other ports"
+    self.log(logging.INFO, "master's online, starting other ports")
     ready_message = json.dumps(("CTRL", "READY"))
+    self.log_send("CTRL", ready_message, self.master_port)
     self.master_port.socket.send(ready_message)
   
   def ready_input_port(self, port):
@@ -206,12 +211,15 @@ class Element(threading.Thread):
         #process master instructions if any
         if socks.has_key(self.master_port.socket) and socks[self.master_port.socket] == zmq.POLLIN:
           message = json.loads(self.master_port.socket.recv())
-          self.process_master(message)
+          (control, data) = message
+          self.log_recv(control, message, self.master_port)
+          self.process_master(control, data)
       
         #process control instructions
         for p in control_ports:
           message = p.socket.recv()
           (control, log) = json.loads(message)
+          self.log_recv(control, message, p)
           assert(control == "CTRL")
           self.process_control(p, log)
       
@@ -224,7 +232,12 @@ class Element(threading.Thread):
       
         for p in push_ports:
           message = p.socket.recv()
-          (control, log) = json.loads(message)
+          try:
+            (control, log) = json.loads(message)
+          except:
+            self.log(logging.ERROR, "JSON parse error for message '%s' from %s" % (message, p.name))
+            raise
+          self.log_recv(control, message, p)
           if control == "END":
             self.process_stop(p, log)
           elif control == "BUFFERED PUSH":
@@ -234,6 +247,7 @@ class Element(threading.Thread):
         for p in pull_ports:
           message = p.socket.recv()
           (control, log) = json.loads(message)
+          self.log_recv(control, message, p)
           if control == "END":
             self.process_stop(p, log)
           else:
@@ -245,16 +259,16 @@ class Element(threading.Thread):
     else:
       return self.requests
     
-  def process_master(self, control_data):
-    control, data = control_data
+  def process_master(self, control, data):
     if control == "POLL":
       load = json.dumps(self.get_load())
+      self.log_send("POLL", load, self.master_port)
       self.master_port.socket.send(load)
     else:
-      print self.name + " Warning ** could not understand master"
+      self.log(logging.WARN, " Warning ** could not understand master")
   
   def process_control(self, control_data):
-    print "Element object %s should not be getting a control message" % (self.name)
+    self.log(logging.ERROR, "Element object %s should not be getting a control message" % (self.name))
     raise NotImplementedError
     
   def process_push(self, port, log_data):
@@ -284,7 +298,8 @@ class Element(threading.Thread):
     #we could have multiple nodes sending to an input port
     #DynamicJoin for example
     (element_name, recv_port_name) = stop_msg
-    print "(%s, %s) stopped on (%s, %s)" % (element_name, recv_port_name, self.name, port.name)
+    self.log(logging.INFO,
+             "(%s, %s) stopped on (%s, %s)" % (element_name, recv_port_name, self.name, port.name))
     self.input_ports[port] -= 1
     
     if self.no_incoming():
@@ -294,10 +309,19 @@ class Element(threading.Thread):
   def send(self, control, message, port):
     message = (control, message)
     json_log = json.dumps(message)
-    for socket in port.sockets:
-      socket.send(str(json_log))
+    self.log_send(control, json_log, port)
+    if hasattr(port, "sockets"):
+      for socket in port.sockets:
+        socket.send(str(json_log))
+    else:
+      self.log(logging.WARN,
+               "No connections to port %s, ignoring send of %s message" %
+               (port.name, control))
   
   def do_task(self):
+    """This method is only called when the element has no input ports (e.g. is
+    a data source).
+    """
     raise NotImplementedError
     
   def on_shutdown(self):
@@ -310,19 +334,21 @@ class Element(threading.Thread):
       self.send("END", (self.name, p.name), p)
     self.alive = False
     self.report_shutdown()
-    print self.name + " has shutdown"
+    self.log(logging.INFO, " Has shutdown")
 
   def report_shutdown(self):
-    print self.name + " waiting for master to poll to report shutdown"
+    self.log(logging.INFO, " waiting for master to poll to report shutdown")
     while True:
       control_data = json.loads(self.master_port.socket.recv())
       control, data = control_data
       if control == "POLL":
         message = json.dumps(-1)
+        self.log_send("''", message, self.master_port)
         self.master_port.socket.send(message)
         break
       elif control == "CAN ADD":
         message = json.dumps((False, {}))
+        self.log_send("''", message, self.master_port)
         self.master_port.socket.send(message)
     
   def on_load(self, config):
@@ -350,12 +376,16 @@ class Element(threading.Thread):
         port = p
     
     if port == None:
-      print self.name + " could not find port with name: " + port_name
+      self.log(logging.ERROR,
+               "could not find port with name: " + port_name)
       raise NameError
     
     return port
 
   def push(self, port_name, log):
+    assert self.current_buffer_size[port_name] == 0, \
+      "Attempt to do an unbuffered push on port '%s' that has buffered data" % \
+      port_name
     self.pushed_requests += 1
     port = self.find_port(port_name)
     self.send("PUSH", log.log, port)
@@ -367,7 +397,7 @@ class Element(threading.Thread):
       self.flush_port(port_name)
   
   def flush_ports(self):
-    print self.name + " flushing all ports"
+    self.log(logging.DEBUG, " flushing all ports")
     for port_name in self.buffered_pushes.keys():
       self.flush_port(port_name)
   
@@ -388,13 +418,14 @@ class Element(threading.Thread):
     log_data = json.loads(res)
     log = Log()
     log.set_log(log_data)
-    # print self.name + " got a pull result for port " + port_name
+    self.log_recv("PULL response", res, port)
     return log
   
   def return_pull(self, port_name, log):
     self.requests += 1
     port = self.find_port(port_name)
     log_data = json.dumps(log.log)
+    self.log_send('return_pull', log_data, port)
     port.socket.send(log_data)
     
   def get_input_port_url(self, input_port_name):
@@ -404,7 +435,7 @@ class Element(threading.Thread):
   def add_output_connection(self, output_port_name, connection_port_url):
     output_port = self.find_port(output_port_name)
     if output_port.port_type == Port.PULL and self.output_ports.has_key(output_port):
-      print self.name + " connecting to an already connected output PULL port"
+      self.log(logging.ERROR," connecting to an already connected output PULL port")
       raise NameError
     try:
       port_urls = getattr(output_port, "port_urls")
@@ -416,7 +447,39 @@ class Element(threading.Thread):
   def add_input_connection(self, input_port_name, connection_port_url):
     input_port = self.find_port(input_port_name)
     if self.input_ports.has_key(input_port):
-      print self.name + " connecting to an already connected input port"
+      self.log(logging.ERROR, " connecting to an already connected input port")
       raise NameError
     input_port.port_url = connection_port_url
     self.input_ports[input_port] = 1
+
+  def log(self, log_level, log_msg):
+    """This will eventually be a wrapper over the logging infrastructure.
+    Elements should call this to provide consistent logging. The printed log
+    messages will include the block id, so there is no need to include
+    that in the log_msg.
+    """
+    print "[" + self.id + "] " + log_msg
+    sys.stdout.flush()
+
+  def log_send(self, control, serialized_msg, port):
+    if len(serialized_msg) < 60:
+      self.log(logging.DEBUG,
+               "sending message '%s' => %s" % (control,
+                                               port.name))
+    else:
+      self.log(logging.DEBUG,
+               "sending message type %s len %d => %s" % (control,
+                                                         len(serialized_msg),
+                                                         port.name))
+      
+  def log_recv(self, control, serialized_msg, port):
+    if len(serialized_msg) < 60:
+      self.log(logging.DEBUG,
+               "received message %s => '%s'" % (port.name,
+                                                serialized_msg))
+    else:
+      self.log(logging.DEBUG,
+               "received message %s => type %s len %d" % (port.name,
+                                                          control,
+                                                          len(serialized_msg)))
+    

@@ -1,7 +1,16 @@
 Datablox Deployment
 ==============================
 
-Datablox topologies are deployed via Engage (http://github.com/genforma/engage). Each blox type has an associated Engage *driver* that can deploy and manage the software for the block and its dependent components. The datablox-specific extensions to Engage are organized as an Engage *extension* under ``datablox/engage/datablox``.  
+Datablox topologies are deployed via Engage
+(http://github.com/genforma/engage). Each blox type has an associated
+Engage *driver* that can deploy and manage the software for the block
+and its dependent components. The datablox-specific extensions to
+Engage are organized as an Engage *extension* under
+``datablox/engage/datablox``. 
+
+Getting Started
+-------------------------------
+
 
 
 Block Packaging
