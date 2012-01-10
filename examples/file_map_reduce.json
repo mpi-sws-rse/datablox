@@ -1,0 +1,28 @@
+{
+    "elements": [
+        {"id": "crawler1",
+         "name": "Dir-Src", 
+         "args": {"directory": "~/"}},
+        {"id": "save-metadata",
+         "name": "File-mongo", 
+         "args": {"crawlers": 1},
+         "at": "127.0.0.1"},
+        {"id": "map-reduce",
+         "name":"mongo-map-reduce",
+         "args":{
+           "database": "file_db",
+           "input_collection": "file_data",
+           "map_function": "function () {emit(this.filetype, {count: 1, size: this.size});}",
+          "reduce_function": "function (key, values) {var result = {filetype: key, count: 0, size: 0}; values.forEach(function (value) {result.count += 1; result.size += value.size;}); return result;}",
+          "output_collection":"file_types",
+          "query": {"volume":"${key}"},
+          "run_on_each_key": true
+         },
+         "at":"127.0.0.1"}
+    ],
+
+    "connections": [
+        [{"crawler1": "output"}, {"save-metadata": "input"}],
+        [{"save-metadata":"completed"}, {"map-reduce":"input"}]
+    ]
+}

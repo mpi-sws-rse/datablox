@@ -2,9 +2,12 @@
 # -*- py-indent-offset:2 -*- 
 from logging import ERROR, WARN, INFO, DEBUG
 import copy
+import re
 
 
 from element import *
+
+query_var_re = re.compile('^\\$\\{(.+)\\}$')
 
 class mongo_map_reduce(Element):
   """This block runs map-reduce on a mongo db collection.
@@ -22,6 +25,13 @@ class mongo_map_reduce(Element):
                          key. Otherwise run a single map reduce at the end.
    * scope             - Key/value pairs to be used as the 'scope' for the map
                          and reduce functions (similar to SQL bind variables).
+   * query             - If provided, this should be a json representation of
+                         a query to use on the initial map operation. Any string
+                         values in the query are checked to see if they have the
+                         form ${var}, where var is a key in the scope. If so, the
+                         string is replaced with the associated scope value. This is
+                         useful to filter the map by the key provided on the input
+                         port.
 
   Ports
   -----
@@ -76,12 +86,49 @@ class mongo_map_reduce(Element):
       self.scope = config["scope"]
     else:
       self.scope = None
+    if config.has_key("query"):
+      self.query = config["query"]
+      assert isinstance(self.query, dict)
+    else:
+      self.query = None
     # now we get the actual collection on which we wil be performing the map reduce
     database = pymongo.database.Database(self.connection, self.database_name)
     self.input_collection = pymongo.collection.Collection(database,
                                                           self.input_collection_name)
     self.log(INFO, "Mongo-Map-Reduce: element loaded")
 
+  def _create_query(self, scope):
+    """Given the query specified in the configuration, return a version that
+    substitutes the scope variables.
+    """
+    def subst(map):
+      r = {}
+      for (k, v) in map.items():
+        if isinstance(v, str) or isinstance(v, unicode):
+          mo = query_var_re.match(v)
+          if mo:
+            var = mo.group(1)
+            if scope.has_key(var):
+              r[k] = scope[var]
+            else:
+              self.log(WARN,
+                       "Query key %s references variable %s, which was not found in scope" % (k, var))
+              r[k] = v
+          else: # value is not a variable
+            r[k] = v
+        elif isinstance(v, dict):
+          r[k] = subst(v)
+        else:
+          r[k] = v
+      return r
+    if (not scope) or (not self.query):
+      # if no substition or there isn't a query, no need for further processing
+      return self.query
+    else:
+      q = subst(self.query)
+      self.log(DEBUG, "using query filter %s" % q.__repr__())
+      return q
+    
   def process_key(self, key):
     self.log(INFO, "Processing key %s" % key)
     if self.scope:
@@ -93,21 +140,23 @@ class mongo_map_reduce(Element):
     rf = self.Code(self.reduce_function, scope=scope)
     oc = self.input_collection.map_reduce(mf,
                                           rf,
-                                          self.output_collection_name)
+                                          self.output_collection_name,
+                                          query=self._create_query(scope))
     cnt = oc.count()
     self.log(INFO, "Successfully ran map reduce, output collection size was %d" % cnt)
 
   def process_all(self):
     self.log(INFO, "Processing map-reduce")
     if self.scope:
-      scope = copy.deepcopy(self.scope)
+      scope = self.scope
     else:
       scope = None
     mf = self.Code(self.map_function, scope=scope)
     rf = self.Code(self.reduce_function, scope=scope)
     oc = self.input_collection.map_reduce(mf,
                                           rf,
-                                          self.output_collection_name)
+                                          self.output_collection_name,
+                                          query=self._create_query(scope))
     cnt = oc.count()
     self.log(INFO, "Successfully ran map reduce, output collection size was %d" % cnt)
     

@@ -27,7 +27,7 @@ class file_mongo(Element):
   def emit_completed_message(self, volume, is_last):
     self.volumes_processed.append(volume)
     log = Log()
-    log.set_log({"key": [volume]})
+    log.set_log({"key": volume})
     self.push("completed", log)
     if is_last:
       log = Log()
