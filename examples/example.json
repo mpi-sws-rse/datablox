@@ -2,7 +2,7 @@
     "elements": [
         {"id": "source", 
          "name": "Dir-Src", 
-         "args": {"directory": "~", "only_metadata": true}},
+         "args": {"directory": ".", "only_metadata": true}},
         {"id": "sink", 
         "name": "Dump", 
         "args": {}}

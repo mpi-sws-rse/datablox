@@ -4,6 +4,7 @@ import os
 import os.path
 import sys
 import subprocess
+import signal
 from optparse import OptionParser
 
 def stop_all(proccesses):
@@ -11,8 +12,22 @@ def stop_all(proccesses):
   for p in proccesses:
     p.terminate()
   print "[caretaker] done"
+
+processes = []
+socket = None
+
+def shutdown():
+  stop_all()
+  socket.close()
+  sys.exit(0)
+  
+def sigterm_handler(signum, frame):
+  print "care-taker got SIGTERM"
+  shutdown()
   
 def main(argv):
+  global processes, socket
+  
   usage = "%prog [options]"
   parser = OptionParser(usage=usage)
   parser.add_option("-b", "--bloxpath", dest="bloxpath", default=None,
@@ -24,6 +39,7 @@ def main(argv):
 
   (options, args) = parser.parse_args(argv)
 
+  signal.signal(signal.SIGTERM, sigterm_handler)
   bloxpath = options.bloxpath
   
   if bloxpath == None: 
@@ -52,7 +68,6 @@ def main(argv):
   socket.bind('tcp://*:5000')
   os.system("rm %s/*.json" % config_dir)
   file_num = 0
-  proccesses = []
   while True:
     try:
       message = socket.recv()
@@ -71,22 +86,22 @@ def main(argv):
         if log_dir:
           command.append(log_dir)
         p = subprocess.Popen(command)
-        proccesses.append(p)
+        processes.append(p)
         socket.send(json.dumps(True))
       elif control == "STOP ALL":
-        stop_all(proccesses)
-        proccesses = []
+        stop_all()
+        processes = []
         socket.send(json.dumps(True))
       else:
         print "[caretaker] **Warning could not understand master"
     except KeyboardInterrupt:
       print "[caretaker] Stopping care_taker"
-      stop_all(proccesses)
-      proccesses = []
       break
+          
+  shutdown()
 
 def call_from_console_script():
-    sys.exit(main(sys.argv[1:]))
+    main(sys.argv[1:])
 
 if __name__ == "__main__":
   main(sys.argv[1:])
