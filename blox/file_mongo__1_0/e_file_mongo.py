@@ -1,4 +1,5 @@
 from logging import ERROR, WARN, INFO, DEBUG
+import time
 
 from element import *
 
@@ -47,11 +48,16 @@ class file_mongo(Element):
       entries = []
       if log.log.has_key("data"):
         log.remove_field("data")
+      cnt = 0
       for l in log.iter_flatten():
-        # print self.name + " adding entry " + str(l)
+        cnt += 1
         self.file_data.remove({"path" : l["path"]})
         entries.append(l)
+      stime = time.time()
       self.file_data.insert(entries)
+      etime = time.time()
+      self.log(DEBUG, "Insert of %d records took %.3f seconds" %
+               (cnt, (etime - stime)))
 
   def recv_pull_query(self, port_name, log):
     if not self.crawler_done:
