@@ -5,6 +5,8 @@ import threading
 from collections import defaultdict
 import logging
 import sys
+import os
+import os.path
 
 class Log(object):
   def __init__(self):
@@ -85,8 +87,13 @@ class PortNumberGenerator(object):
 class Element(threading.Thread):
   def __init__(self, master_url):
     threading.Thread.__init__(self)
-    self.name = "__no_name__" # set just before call to on_load()
-    self.id = None # set just before call to on_load()
+    # the following 4 fields will be initialized by load_block.start just
+    # before the call to on_load()
+    self.name = "__no_name__"
+    self.id = None
+    self.log_level = logging.INFO
+    self.logger = None
+    
     self.connection_type = Port.AGNOSTIC
     master_port = Port("master", Port.MASTER, Port.UNNAMED, [])
     master_port.port_url = master_url
@@ -394,15 +401,17 @@ class Element(threading.Thread):
     self.buffered_pushes[port_name].append(log.log)
     self.current_buffer_size[port_name] += 1
     if self.current_buffer_size[port_name] > self.buffer_limit:
+      self.log(logging.DEBUG, "port %s is full (%d messages)" %
+               (port_name, self.current_buffer_size[port_name]))
       self.flush_port(port_name)
   
   def flush_ports(self):
-    self.log(logging.DEBUG, " flushing all ports")
+    self.log(logging.DEBUG, "flushing all ports")
     for port_name in self.buffered_pushes.keys():
       self.flush_port(port_name)
   
   def flush_port(self, port_name):
-    # print "%s: flushing port: %s" % (self.name, port_name)
+    self.log(logging.DEBUG, "flushing port: %s" % port_name)
     buffered_pushes = self.buffered_pushes[port_name]
     port = self.find_port(port_name)
     self.send("BUFFERED PUSH", buffered_pushes, port)
@@ -452,16 +461,41 @@ class Element(threading.Thread):
     input_port.port_url = connection_port_url
     self.input_ports[input_port] = 1
 
+  def initialize_logging(self, log_directory=None):
+    """This should be called by load_block.py after the block object has
+    been constructed, but before on_load() is called.
+    """
+    self.logger = logging.getLogger(self.id)
+    self.logger.setLevel(self.log_level)
+    if log_directory:
+      logfile = os.path.join(log_directory,
+                             "%s_%d.log" % (self.id, os.getpid()))
+      handler = logging.FileHandler(logfile, delay=True)
+      handler.setLevel(self.log_level)
+      sys.stdout.write("[%s] logging %s\n" % (self.id, logfile))
+      sys.stdout.flush()
+    else:
+      handler = logging.StreamHandler()
+      handler.setLevel(self.log_level)
+    handler.setFormatter(logging.Formatter("[%(asctime)s][" + self.id +
+                                           "] %(message)s",
+                                           "%H:%M:%S"))
+    self.logger.addHandler(handler)
+    
   def log(self, log_level, log_msg):
-    """This will eventually be a wrapper over the logging infrastructure.
-    Elements should call this to provide consistent logging. The printed log
+    """Elements should call this to provide consistent logging. The printed log
     messages will include the block id, so there is no need to include
     that in the log_msg.
+
+    This should not be called in the __init__() method, as logging is not
+    initialized until just before on_load()
     """
-    print "[" + self.id + "] " + log_msg
-    sys.stdout.flush()
+    ## print "[" + self.id + "] " + log_msg
+    ## sys.stdout.flush()
+    self.logger.log(log_level, log_msg)
 
   def log_send(self, control, serialized_msg, port):
+    if self.log_level>=logging.DEBUG: return
     if len(serialized_msg) < 60:
       self.log(logging.DEBUG,
                "sending message '%s' => %s" % (control,
@@ -473,6 +507,7 @@ class Element(threading.Thread):
                                                          port.name))
       
   def log_recv(self, control, serialized_msg, port):
+    if self.log_level>=logging.DEBUG: return
     if len(serialized_msg) < 60:
       self.log(logging.DEBUG,
                "received message %s => '%s'" % (port.name,
