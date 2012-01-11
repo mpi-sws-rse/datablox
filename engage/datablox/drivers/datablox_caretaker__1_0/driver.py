@@ -71,7 +71,8 @@ def make_context(resource_json, sudo_password_fn, dry_run=False):
                   caretaker_exe=unicode,
                   BLOXPATH=unicode)
     ctx.check_port('input_ports.host',
-                  genforma_home=unicode)
+                   genforma_home=unicode,
+                   log_directory=unicode)
     ctx.check_port('input_ports.master_password_file',
                    password_file=unicode)
 
@@ -127,7 +128,8 @@ class Manager(service_manager.Manager):
         self.ctx.r(start_server,
                    [p.input_ports.datablox_framework.caretaker_exe,
                     "--bloxpath=%s" % p.input_ports.datablox_framework.BLOXPATH,
-                    "--config-dir=%s" % p.config_port.config_dir],
+                    "--config-dir=%s" % p.config_port.config_dir,
+                    "--log-dir=%s" % p.input_ports.host.log_directory],
                    p.config_port.log_file,
                    p.config_port.pid_file)
 

@@ -50,6 +50,7 @@ class dir_src(Element):
     log = Log()
     log.set_log(token)
     self.buffered_push("output", log)
+    self.flush_port("output")
     
   def do_task(self):
     path = os.path.abspath(os.path.expanduser(self.config["directory"]))

@@ -4,6 +4,7 @@ import zmq
 import json
 import time
 from optparse import OptionParser
+import logging
 
 from element import *
 from shard import *
@@ -24,8 +25,17 @@ else:
   engage_file_locator = None
 
 
+log_levels = {
+  "ERROR": logging.ERROR,
+  "WARN": logging.WARN,
+  "INFO": logging.INFO,
+  "DEBUG": logging.DEBUG,
+  "ALL": 1
+}
+  
 class Master(object):
-  def __init__(self, bloxpath, config_file, ip_addr_list):
+  def __init__(self, bloxpath, config_file, ip_addr_list,
+               log_level=logging.INFO):
     self.master_port = 6500
     self.element_classes = []
     self.elements = {}
@@ -33,6 +43,7 @@ class Master(object):
     self.shard_nodes = {}
     self.num_parallel = 0
     self.ip_pick = 0
+    self.log_level = log_level
     self.ipaddress_hash = self.get_ipaddress_hash(ip_addr_list)
     self.context = zmq.Context()
     self.port_num_gen = PortNumberGenerator()
@@ -143,6 +154,7 @@ class Master(object):
     config["name"] = element["name"]
     config["id"] = element["id"]
     config["args"] = element["args"]
+    config["log_level"] = self.log_level
     config["master_port"] = self.url(element["ipaddress"], element["master_port"])
     config["ports"] = element["connections"]
     #for the join element
@@ -391,6 +403,8 @@ def main(argv):
   parser = OptionParser(usage=usage)
   parser.add_option("-b", "--bloxpath", dest="bloxpath", default=None,
                     help="use this path instead of the environment variable BLOXPATH")
+  parser.add_option("-l", "--log-level", dest="log_level", default="INFO",
+                    help="Log level: ERROR|WARN|INFO|DEBUG|ALL")
                     
   (options, args) = parser.parse_args(argv)
 
@@ -413,8 +427,11 @@ def main(argv):
 
   if not os.path.isdir(bloxpath):
     parser.error("BLOXPATH %s does not exist or is not a directory" % bloxpath)
+
+  if options.log_level not in log_levels.keys():
+    parser.error("--log-level must be one of %s" % log_levels.keys())
     
-  Master(bloxpath, args[0], args[1:])
+  Master(bloxpath, args[0], args[1:], log_level=log_levels[options.log_level])
 
 def call_from_console_script():
     sys.exit(main(sys.argv[1:]))

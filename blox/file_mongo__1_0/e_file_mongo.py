@@ -39,7 +39,6 @@ class file_mongo(Element):
     if log.log.has_key("token"):
       self.log(INFO, "got the finish token for directory " + log.log["token"])
       self.num_tokens = self.num_tokens - 1
-      self.log(DEBUG, " num_tokens = %d" % self.num_tokens) # XXX
       self.emit_completed_message(log.log["token"], self.num_tokens==0)
       if self.num_tokens == 0:
         self.crawler_done = True

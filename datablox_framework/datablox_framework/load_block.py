@@ -1,6 +1,7 @@
 import json
 import sys
 import os
+import logging
 
 import naming
 from element import *
@@ -19,14 +20,13 @@ def is_shard(element_name):
   return naming.element_class_name(element_name).endswith('_shard')
 
 
-def start(blox_dir, configuration_file_name):
+def start(blox_dir, configuration_file_name, log_dir):
   try:
     sys.path.index(blox_dir)
   except ValueError:
     sys.path.append(blox_dir)
 
   config = read_configuration(configuration_file_name)
-  print config
 
   block_version = config["version"] if config.has_key("version") \
                                     else naming.DEFAULT_VERSION
@@ -35,6 +35,12 @@ def start(blox_dir, configuration_file_name):
   inst = element_class(config["master_port"])
   inst.id = config["id"]
   inst.name = config["name"]
+  inst.log_level = config["log_level"]
+
+  # intialize logging
+  inst.initialize_logging(log_directory=log_dir)
+  inst.log(logging.DEBUG, config)
+    
   inst.on_load(config["args"])
 
   if is_shard(config["name"]):
@@ -65,5 +71,9 @@ def start(blox_dir, configuration_file_name):
 if __name__ == "__main__":
   blox_dir = sys.argv[1]
   configuration_file_name = sys.argv[2]
+  if len(sys.argv)>3:
+    log_dir=sys.argv[3]
+  else:
+    log_dir=None
   
-  start(blox_dir, configuration_file_name)
+  start(blox_dir, configuration_file_name, log_dir=log_dir)
