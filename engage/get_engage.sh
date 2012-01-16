@@ -1,7 +1,9 @@
 #!/bin/bash
 # This shell script will get an engage distribution from either github or a
 # local genForma internal repository and build it. This needs to be run from
-# blox/engage.
+# blox/engage. If you want to use a specific branch in the github repository,
+# or force the script to always use github, set the environment variable
+# ENGAGE_GITHUB_BRANCH to your desired branch name (e.g. master).
 
 ENGAGE_DIST=`pwd`/engage-dist
 

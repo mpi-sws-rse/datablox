@@ -1,6 +1,7 @@
 
 all:
 	cd engage; make all
+	@echo "Completed datablox build"
 
 test:
 	cd engage; make test

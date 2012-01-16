@@ -7,6 +7,7 @@ ENGAGE_DIST=$(ENGAGE_EXT_HOME)/engage-dist
 TEST_DEPLOY_HOME=$(shell cd ~; pwd)/apps
 PACKAGE_DIR=$(ENGAGE_EXT_HOME)/packages
 ADAPTER_DIR=$(ENGAGE_EXT_HOME)/adapter_pkg
+PLATFORM=$(shell ./get_platform.sh)
 
 # The following two are only valid if you are running an internal build
 # at genForma.
@@ -37,14 +38,16 @@ engage-dist: engage-ext
 # can include in the distribution. This is mainly for testing. Need to think
 # about what to do in the distributed deployment scenario.
 download-packages: $(PACKAGE_DIR)
-	cd $(PACKAGE_DIR); make -f ../makefile.packages all
+	cd $(PACKAGE_DIR); make -f ../makefile.packages.$(PLATFORM) all
 
 $(PACKAGE_DIR):
 	mkdir -p $(PACKAGE_DIR)
 
+# just download packages needed for testing
+test-packages: $(PACKAGE_DIR)
+	cd $(PACKAGE_DIR); make -f ../makefile.packages.$(PLATFORM) test 
 
-
-test-deploy:
+test-deploy: test-packages
 	if [ -f $(TEST_DEPLOY_HOME)/config/installed_resources.json ]; then $(TEST_DEPLOY_HOME)/engage/bin/svcctl stop; fi
 	rm -rf $(TEST_DEPLOY_HOME)
 	if [ -d $(PACKAGE_DIR) ]; then cp $(PACKAGE_DIR)/* $(ENGAGE_DIST)/sw_packages; fi
@@ -61,7 +64,7 @@ test-run:
 	$(TEST_DEPLOY_HOME)/mongodb-2.0/bin/mongo --eval "db.getSisterDB('file_db').file_types.count()"
 	@echo "Test completed successfully"
 
-test: download-packages engage-ext engage-dist test-deploy test-run
+test: engage-ext engage-dist test-deploy test-run
 
 help:
 	@echo "Targets are all engage-ext engage-dist test-deploy test-run test download-packages clean clean-all"
@@ -76,4 +79,4 @@ clean:
 clean-all: clean
 	rm -rf $(PACKAGE_DIR)
 
-.PHONY: all clean clean-all engage-dist engage-ext help download-packages test-deploy test-run test
+.PHONY: all clean clean-all engage-dist engage-ext help download-packages test-deploy test-run test test-packages
