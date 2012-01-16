@@ -2,6 +2,9 @@
 all:
 	cd engage; make all
 
+test:
+	cd engage; make test
+
 
 clean:
 	cd datablox_framework; rm -rf ./build ./dist ./*.egg-info ./datablox_framework/*.json

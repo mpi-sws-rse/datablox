@@ -1,5 +1,6 @@
 
 SHELL=/bin/bash
+BLOX_HOME=$(shell cd ..; pwd)
 ENGAGE_EXT_HOME=$(shell pwd)
 BLOXPATH=$(shell cd ../blox; pwd)
 ENGAGE_DIST=$(ENGAGE_EXT_HOME)/engage-dist
@@ -12,7 +13,7 @@ ADAPTER_DIR=$(ENGAGE_EXT_HOME)/adapter_pkg
 GENFORMA_CODE_HOME=$(shell cd ../../; pwd)/code
 ENGAGE_BUILD_OUTPUT=$(GENFORMA_CODE_HOME)/build_output/engage
 
-all: engage-ext
+all: engage-ext engage-dist
 
 engage-ext:
 	mkdir -p $(ENGAGE_EXT_HOME)/datablox/sw_packages
@@ -25,18 +26,12 @@ engage-ext:
 	@echo "Built Engage extension"
 
 
-# The dist-from-src target assumes that there's a built engage distribution
-# under ../../code/build_output/engage. The code is copied to ./engage-dist
-# and then the datablox extension is installed.
-# This is only useful if you are running an internal build at genForma.
-dist-from-src: engage-ext
-	if ! [ -d $(ENGAGE_BUILD_OUTPUT) ]; then echo "Missing engage build output at $(ENGAGE_BUILD_OUTPUT)"; exit 1; fi
-	rm -rf $(ENGAGE_DIST)
-	cp -r $(ENGAGE_BUILD_OUTPUT) $(ENGAGE_DIST)
-	cd $(ENGAGE_DIST); ./install_extension.py ../datablox
 
-update-engage:
-	if ! [ -d $(ENGAGE_DIST) ]; then echo "Cloning Engage from github"; git clone https://github.com/genforma/engage.git ./engage-dist; else cd $(ENGAGE_DIST); git pull origin master; fi
+# Build a version of engage with the datablox extension
+engage-dist: engage-ext
+	cd $(ENGAGE_EXT_HOME); ./get_engage.sh
+	cd $(ENGAGE_DIST); ./install_extension.py -u ../datablox
+
 
 # download any packages that are particularly costly to download so we
 # can include in the distribution. This is mainly for testing. Need to think
@@ -56,10 +51,20 @@ test-deploy:
 	cd $(ENGAGE_DIST); ./bootstrap.py $(TEST_DEPLOY_HOME)
 	cd $(TEST_DEPLOY_HOME)/engage/bin; ./install datablox
 
-test: engage-ext dist-from-src test-deploy
+# Run a configuration involving dir-src, file-mongo, and mongo-map-reduce.
+# At the end, look for file type records (should be 2).
+test-run:
+	# substitute BLOX_HOME for the ~/ in the file map reduce scenario, so that
+	# we only crawl the datablox source tree
+	python -c "import sys; sys.stdout.write(open(sys.argv[1], 'rb').read().replace('~/', sys.argv[2]))" $(BLOX_HOME)/examples/file_map_reduce.json $(BLOX_HOME) >$(TEST_DEPLOY_HOME)/file_map_reduce.json
+	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master $(TEST_DEPLOY_HOME)/file_map_reduce.json 127.0.0.1
+	$(TEST_DEPLOY_HOME)/mongodb-2.0/bin/mongo --eval "db.getSisterDB('file_db').file_types.count()"
+	@echo "Test completed successfully"
+
+test: download-packages engage-ext engage-dist test-deploy test-run
 
 help:
-	@echo "Targets are all engage-ext dist-from-src test-deploy test download-packages clean clean-all"
+	@echo "Targets are all engage-ext engage-dist test-deploy test-run test download-packages clean clean-all"
 
 clean:
 	rm -rf $(ENGAGE_EXT_HOME)/datablox/sw_packages
@@ -71,4 +76,4 @@ clean:
 clean-all: clean
 	rm -rf $(PACKAGE_DIR)
 
-.PHONY: all clean clean-all dist-from-src engage-ext help download-packages test update-engage
+.PHONY: all clean clean-all engage-dist engage-ext help download-packages test-deploy test-run test
