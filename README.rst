@@ -63,6 +63,24 @@ killall python
 
 Note that this will kill other python processes unrelated to datablox.
 
+BUilding and Installing with Engage
+============================
+If you run "make all" from the top-level directory of datablox, it
+will build an Engage distribution that includes Datablox. This can
+then be used to install Datablox and start the caretaker process. When
+running under Engage, Datablox will automatically install any
+dependent components needed by individual blocks.
+
+
+Building on Ubuntu
+-------------------
+Here are the steps to build Datablox with Engage on Ubuntu::
+
+  apt-get install git-core g++ ocaml zlib1g-dev python2.6-dev # engage dependencies
+  git clone git://github.com/mpi-sws-rse/datablox.git
+  cd ./datablox
+  make all
+
 Documentation
 ==============
 

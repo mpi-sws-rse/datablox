@@ -49,7 +49,7 @@ if [ -d $ENGAGE_DIST ]; then
 fi
 
 if ! [ -d $ENGAGE_DIST ]; then
-  run git clone git@github.com:genforma/engage.git engage-dist
+  run git clone git://github.com/genforma/engage.git engage-dist
 fi
 cd $ENGAGE_DIST
 run git pull origin $ENGAGE_GITHUB_BRANCH
