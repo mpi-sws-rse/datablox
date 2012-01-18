@@ -1,6 +1,7 @@
 from element import *
 import time
 import base64
+from logging import ERROR, WARN, INFO, DEBUG
 
 class dump(Element):
   def on_load(self, config):
@@ -9,7 +10,7 @@ class dump(Element):
     self.add_port("input", Port.PUSH, Port.UNNAMED, [])
     self.sleep_time = config["sleep"] if config.has_key("sleep") else 0
     self.keys = config["decode_fields"] if config.has_key("decode_fields") else []
-    print "Dump element loaded"
+    self.log(INFO, "Dump element loaded")
 
   def decode_fields(self, log):
     for key in self.keys:
@@ -22,5 +23,5 @@ class dump(Element):
   
   def recv_push(self, port, log):
     self.decode_fields(log)
-    print "log is: " + str(log.log)
+    self.log(INFO, "log is: " + str(log.log))
     time.sleep(self.sleep_time)

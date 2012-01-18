@@ -1,7 +1,11 @@
 {
     "elements": [
-        {"source": ["Simple-pull-client", {}]},
-        {"sink": ["Simple-pull", {}]}
+        {"id": "source",
+         "name": "Simple-pull-client", 
+         "args": {}},
+        {"id": "sink",
+         "name": "Simple-pull", 
+         "args": {}}
     ],
 
     "connections": [

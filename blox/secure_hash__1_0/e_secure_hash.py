@@ -1,6 +1,7 @@
 from element import *
 import os
 import hashlib
+from logging import ERROR, WARN, INFO, DEBUG
 
 class secure_hash(Element):
   def on_load(self, config):
@@ -14,13 +15,17 @@ class secure_hash(Element):
     return hashlib.sha224(c).hexdigest()
 
   def get_hashes(self, log):
-    data_list = log["data"]
-    hash_list = [self.hash(d) for d in data_list]
-    return hash_list
+    try:
+      data_list = log["data"]
+      hash_list = [self.hash(d) for d in data_list]
+      return hash_list
+    except KeyError:
+      self.log(ERROR, "No data in log: %r" % log)
+      return []
     
   def recv_push(self, port, log):
     if log.log.has_key("token"):
-      print self.name + " got the finish token for directory " + log.log["token"]
+      self.log(INFO, self.name + " got the finish token for directory " + log.log["token"])
     else:
       hashes = self.get_hashes(log.log)
       log.append_field("hash", hashes)

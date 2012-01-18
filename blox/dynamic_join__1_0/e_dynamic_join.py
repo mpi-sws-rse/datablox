@@ -1,4 +1,5 @@
 from element import *
+from logging import ERROR, WARN, INFO, DEBUG
 
 class dynamic_join(Element):
   def on_load(self, config):
@@ -11,13 +12,11 @@ class dynamic_join(Element):
     nl.set_log(log.log)
     self.push("output", nl)
       
-  def process_master(self, control_data):
-    control, data = control_data
+  def process_master(self, control, data):
     if control == "POLL":
       load = json.dumps(self.get_load())
       self.master_port.socket.send(load)
     elif control == "ADD JOIN":
-      #print self.name + " got ADD JOIN from master"
       self.add_subscriber()
       self.master_port.socket.send(json.dumps(True))
       

@@ -1,6 +1,7 @@
 import os
 import sys
 from element import *
+from logging import ERROR, WARN, INFO, DEBUG
 
 class pick_mp3(Element):
   def on_load(self, config):
@@ -11,5 +12,5 @@ class pick_mp3(Element):
     files = log.log["name"]
     for path in files:
       if path.endswith(".mp3"):
-        print "FOUND an mp3: " + path
+        self.log(INFO, "FOUND an mp3: " + path)
   

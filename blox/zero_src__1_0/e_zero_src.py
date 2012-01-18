@@ -1,5 +1,6 @@
 from element import *
 import time
+from logging import ERROR, WARN, INFO, DEBUG
 
 class zero_src(Element):
   def do_task(self):
@@ -8,7 +9,7 @@ class zero_src(Element):
     for i in range(0,numzeros):
       log = Log()
       log.log["value"] = [0]
-      print "Sending a zero"
+      self.log(INFO, "Sending a zero")
       self.push("output", log)
       time.sleep(sleeptime)
       yield
@@ -17,4 +18,4 @@ class zero_src(Element):
     self.name = "0-Src"
     self.config = config
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["value"])
-    print "0-Src element loaded"
+    self.log(INFO, "0-Src element loaded")

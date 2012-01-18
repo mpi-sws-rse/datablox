@@ -1,6 +1,7 @@
 from element import *
 import time
 import itertools
+from logging import ERROR, WARN, INFO, DEBUG
 
 class permute(Element):
   def get_words(self):
@@ -43,4 +44,4 @@ class permute(Element):
     self.config = config
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["words"])
     self.log_len = 1000
-    print "0-Src element loaded"
+    self.log(INFO, "Permute element loaded")

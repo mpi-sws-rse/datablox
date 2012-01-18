@@ -1,5 +1,6 @@
 import redis
 from element import *
+from logging import ERROR, WARN, INFO, DEBUG
 
 class flat_chunk_index(Element):
   def on_load(self, config):
@@ -25,21 +26,19 @@ class flat_chunk_index(Element):
     for c, fp in log.iter_fields("chunk", "fingerprint"):
       res = self.chunk_index.get(fp)
       if res:
-        # print "Chunk already in the database"
         self.duplicate_chunks += 1
       else:
         chunk_id = self.add_chunk(c)
         self.chunk_index.set(fp, chunk_id)
-        # print "Chunk wasn't in the database - added to %s" % chunk_id
         self.total_chunks += 1
   
   def on_shutdown(self):
-    print "%s: total chunks added: %d, duplicate chunks: %d" % (self.name, self.total_chunks, self.duplicate_chunks)
+    self.log(INFO, "%s: total chunks added: %d, duplicate chunks: %d" % (self.name, self.total_chunks, self.duplicate_chunks))
     
   def return_store_locs(self, port, log):
     fps = log.log["fingerprint"]
     chunk_ids = [self.chunk_index.get(fp) for fp in fps]
-    print chunk_ids
+    self.log(INFO, chunk_ids)
     # chunk_ids = []
     # for fp in fps:
     #   i = self.chunk_index.get(fp)

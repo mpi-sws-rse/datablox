@@ -1,6 +1,7 @@
 from element import *
 import os
 import time
+from logging import ERROR, WARN, INFO, DEBUG
 
 class store(Element):
   def on_load(self, config):
@@ -38,4 +39,4 @@ class store(Element):
       log.append_field("chunk", chunks)
       self.return_pull(port, log)
     else:
-      print "**%s did not implement actions on port %s" % (self.name, port)
+      self.log(INFO, "**%s did not implement actions on port %s" % (self.name, port))

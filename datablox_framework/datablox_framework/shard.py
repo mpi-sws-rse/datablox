@@ -30,8 +30,7 @@ class Shard(Element):
     port = self.port_name(node_num)
     self.push(port, log)
   
-  def process_master(self, control_data):
-    control, data = control_data
+  def process_master(self, control, data):
     if control == "POLL":
       load = json.dumps(self.get_load())
       self.master_port.socket.send(load)

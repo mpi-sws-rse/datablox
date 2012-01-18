@@ -10,9 +10,9 @@ from optparse import OptionParser
 processes = []
 socket = None
 
-def stop_all(proccesses):
+def stop_all():
   print "[caretaker] stopping all blocks"
-  for p in proccesses:
+  for p in processes:
     p.terminate()
   print "[caretaker] done"
 
@@ -22,7 +22,7 @@ def shutdown():
   sys.exit(0)
   
 def sigterm_handler(signum, frame):
-  print "care-taker got SIGTERM"
+  print "[caretaker] got SIGTERM"
   shutdown()
   
 def main(argv):

@@ -2,7 +2,7 @@
     "elements": [
         {"id": "source",
          "name": "Dir-Src",
-         "args": {"directory": "."}},
+         "args": {"directory": ".", "only_index": [""]}},
         {"id": "hash", 
          "name": "Secure-Hash", 
          "args": {}},

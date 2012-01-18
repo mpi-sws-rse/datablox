@@ -1,5 +1,6 @@
 from element import *
 import base64
+from logging import ERROR, WARN, INFO, DEBUG
 
 class restore_manager(Element):
   def on_load(self, config):
@@ -28,9 +29,9 @@ class restore_manager(Element):
   
   def do_task(self):
     fps = self.fetch_file_fps(self.filepath)
-    print fps
+    self.log(INFO, fps)
     chunks = self.fetch_chunks(fps)
-    print chunks
+    self.log(INFO, chunks)
     with open('restored', 'w') as f:
       f.write(self.concat_chunks(chunks))
       

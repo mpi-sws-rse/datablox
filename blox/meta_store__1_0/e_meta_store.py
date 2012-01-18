@@ -1,6 +1,7 @@
 from element import *
 import os
 import time
+from logging import ERROR, WARN, INFO, DEBUG
 
 class meta_store(Element):
   def on_load(self, config):
@@ -36,9 +37,8 @@ class meta_store(Element):
         self.update_refs(path, fps)
         entry = {"path": path, "fingerprints": fps}
         entries.append(entry)
-        # print "%s: adding file %s" % (self.name, path)
       else:
-        print "**%s could not understand command %s" % (self.name, command)
+        self.log(INFO, "**%s could not understand command %s" % (self.name, command))
     
     self.file_index.insert(entries)
 
@@ -53,7 +53,7 @@ class meta_store(Element):
       log.append_field("fingerprints", fps)
       self.return_pull(port, log)
     else:
-      print "**%s did not implement actions on port %s" % (self.name, port)
+      self.log(ERROR, "**%s did not implement actions on port %s" % (self.name, port))
     
   def on_shutdown(self):
     self.connection.disconnect()

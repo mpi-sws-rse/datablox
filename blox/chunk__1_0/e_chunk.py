@@ -1,6 +1,7 @@
 from element import *
 import os
 import time
+from logging import ERROR, WARN, INFO, DEBUG
 
 class chunk(Element):
   def on_load(self, config):
@@ -17,7 +18,7 @@ class chunk(Element):
     
   def recv_push(self, port, log):
     if log.log.has_key("token"):
-      print self.name + " got the finish token for directory " + log.log["token"]
+      self.log(INFO, self.name + " got the finish token for directory " + log.log["token"])
     else:
       chunks = []
       for d in log.log["data"]:

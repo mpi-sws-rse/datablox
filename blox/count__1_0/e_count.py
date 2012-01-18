@@ -1,5 +1,6 @@
 from element import *
 import time
+from logging import ERROR, WARN, INFO, DEBUG
 
 class count(Element):
   def on_load(self, config):
@@ -7,7 +8,7 @@ class count(Element):
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["value"])
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["value"])
     self.count = 0
-    print "NULL element loaded"
+    self.log(INFO, "NULL element loaded")
 
   def recv_push(self, port, log):
     self.count = self.count + 1
