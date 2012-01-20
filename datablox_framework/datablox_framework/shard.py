@@ -1,8 +1,8 @@
-from element import *
+from block import *
 
-class Shard(Element):
+class Shard(Block):
   def __init__(self, master_port_num):
-    Element.__init__(self, master_port_num)
+    Block.__init__(self, master_port_num)
     self.num_nodes = 0
     
   def minimum_nodes(self):
@@ -53,12 +53,12 @@ class Shard(Element):
   
   def register_new_node(self, node_num, port_url):
     nt = self.node_type()
-    port_type = Port.PULL if nt["port_type"] == "PULL" else Port.PUSH
+    port_type = Port.QUERY if nt["port_type"] == "QUERY" else Port.PUSH
     print self.name + " adding port " + "output"+str(node_num) + " with url " + port_url
-    port = Element.add_port(self, "output"+str(node_num), port_type, Port.UNNAMED, [])
+    port = Block.add_port(self, "output"+str(node_num), port_type, Port.UNNAMED, [])
     port.port_urls = [port_url]
     self.output_ports[port] = 1
     self.ready_output_port(port)
     
   # def add_output_connection(self, output_port_name, connection_port_num):
-  #   Element.add_output_connection(self, output_port_name, connection_port_num)
+  #   Block.add_output_connection(self, output_port_name, connection_port_num)

@@ -199,7 +199,7 @@
      -->
 
     <!-- One can also specify an existing Analyzer class that has a
-         default constructor via the class attribute on the analyzer element
+         default constructor via the class attribute on the analyzer block
     <fieldType name="text_greek" class="solr.TextField">
       <analyzer class="org.apache.lucene.analysis.el.GreekAnalyzer"/>
     </fieldType>

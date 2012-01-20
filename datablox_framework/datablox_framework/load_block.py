@@ -4,7 +4,7 @@ import os
 import logging
 
 import naming
-from element import *
+from block import *
 from shard import *
 
 
@@ -16,8 +16,8 @@ def get_one(_list):
   assert(len(_list) == 1)
   return _list[0]
   
-def is_shard(element_name):
-  return naming.element_class_name(element_name).endswith('_shard')
+def is_shard(block_name):
+  return naming.block_class_name(block_name).endswith('_shard')
 
 
 def start(blox_dir, configuration_file_name, log_dir):
@@ -30,9 +30,9 @@ def start(blox_dir, configuration_file_name, log_dir):
 
   block_version = config["version"] if config.has_key("version") \
                                     else naming.DEFAULT_VERSION
-  element_class = \
+  block_class = \
     naming.get_block_class(config["name"], block_version)
-  inst = element_class(config["master_port"])
+  inst = block_class(config["master_port"])
   inst.id = config["id"]
   inst.name = config["name"]
   inst.log_level = config["log_level"]
@@ -44,9 +44,9 @@ def start(blox_dir, configuration_file_name, log_dir):
   inst.on_load(config["args"])
 
   if is_shard(config["name"]):
-    num_elements = config["num_elements"]
-    inst.num_nodes = num_elements
-    for i in range(num_elements):
+    num_blocks = config["num_blocks"]
+    inst.num_nodes = num_blocks
+    for i in range(num_blocks):
       output_port = "output"+str(i)
       inst.add_port(output_port, Port.PUSH, Port.UNNAMED, [])
 

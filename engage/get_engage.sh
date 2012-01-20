@@ -52,7 +52,7 @@ if ! [ -d $ENGAGE_DIST ]; then
   run git clone git://github.com/genforma/engage.git engage-dist
 fi
 cd $ENGAGE_DIST
-run git pull origin $ENGAGE_GITHUB_BRANCH
+run git query origin $ENGAGE_GITHUB_BRANCH
 run git checkout $ENGAGE_GITHUB_BRANCH
 
 cd $ENGAGE_DIST

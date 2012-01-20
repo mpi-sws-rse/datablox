@@ -4,23 +4,23 @@ Configuration Language
 
 The system is configured using json. Please see the examples folder for some json configuration files.
 
-Essentially, we want the configuration file to list all the elements that we would use, along with arguments to initialize them, and connections between elements. 
+Essentially, we want the configuration file to list all the blocks that we would use, along with arguments to initialize them, and connections between blocks. 
 
-The configuration file should provide a dictionary with two fields: "elements" which specifies what elements are used by the system and "connections" which specifies the connections between them.
+The configuration file should provide a dictionary with two fields: "blocks" which specifies what blocks are used by the system and "connections" which specifies the connections between them.
 
-An element object is identified by an identifier. For example, in order to utilize a directory listing element to output all the files of the current working directory, we write::
+A block object is identified by an identifier. For example, in order to utilize a directory listing block to output all the files of the current working directory, we write::
 
-    "elements": [
+    "blocks": [
         {"id": "source", 
          "name": "Dir-Src", 
          "args": {"directory": "."}}
     ]
 
-This creates a directory lister element with arguments {"directory": "."}. The arguments tell the element to list the specified directory. We then assign an identifier "source" to the element so we can refer to it later when we are connecting it to other elements.
+This creates a directory lister block with arguments {"directory": "."}. The arguments tell the block to list the specified directory. We then assign an identifier "source" to the block so we can refer to it later when we are connecting it to other blocks.
 
-Let's add another element to it::
+Let's add another block to it::
 
-    "elements": [
+    "blocks": [
         {"id": "source", 
          "name": "Dir-Src", 
          "args": {"directory": "."}},
@@ -29,7 +29,7 @@ Let's add another element to it::
         "args": {}}
     ]
 
-This creates a Dump element which just prints all the information it receives on the terminal.
+This creates a Dump block which just prints all the information it receives on the terminal.
 
 Now for the connections. Let's connect the source and the sink::
 
@@ -37,12 +37,12 @@ Now for the connections. Let's connect the source and the sink::
       [{"source": "output"}, {"sink": "input"}]
   ]
 
-We know that "Dir-Src" has an output port called "output" from its documentation (or source code) and "Dump" element has an input port called "input". Here we specify that those ports should be connected. If we have more connections, they are listed in the same way in the "connections" list.
+We know that "Dir-Src" has an output port called "output" from its documentation (or source code) and "Dump" block has an input port called "input". Here we specify that those ports should be connected. If we have more connections, they are listed in the same way in the "connections" list.
 
 This gives us our configuration file::
 
 {
-    "elements": [
+    "blocks": [
         {"id": "source", 
          "name": "Dir-Src", 
          "args": {"directory": "."}},

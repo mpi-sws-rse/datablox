@@ -17,7 +17,7 @@ Individual blox depend on several others:
  * pymongo 2.0.1 for Mongodb (also requires Mongodb to be running)
  * sunburnt 0.5 for Solr (sunburnt in turn requires httplib2 and lxml)
 
-See the .meta file in the element's subdirectory (under blox/) for details on a given element.
+See the .meta file in the block's subdirectory (under blox/) for details on a given block.
 
 
 Running
@@ -29,7 +29,7 @@ Before running loader or care_taker, please set the following environment variab
 
 export BLOXPATH=path_to_datablox/blox
 
-Loader requires a json configuration file which specifies the topology. Some configuration files are present in examples directory. Loader takes the json configuration file and a list of ip-addresses (of nodes in which datablox can run) and distributes the elements described in the configuration among the different nodes. 
+Loader requires a json configuration file which specifies the topology. Some configuration files are present in examples directory. Loader takes the json configuration file and a list of ip-addresses (of nodes in which datablox can run) and distributes the blocks described in the configuration among the different nodes. 
 
 For example, to run example.json in the local machine, the command would be (assuming it is being run in the datablox project directory):
 
@@ -57,7 +57,7 @@ Debugging
 
 The best way to test a configuration is to run it on the local machine first before deploying it to a cluster.
 
-During the run if either the loader or any of the care_takers displays any exceptions and you want to restart, you will have to kill loader, care_takers and any elements that may be running in any of the nodes. An easy way to do that would be to kill all python processes in all the nodes with:
+During the run if either the loader or any of the care_takers displays any exceptions and you want to restart, you will have to kill loader, care_takers and any blocks that may be running in any of the nodes. An easy way to do that would be to kill all python processes in all the nodes with:
 
 killall python
 
@@ -85,6 +85,6 @@ Documentation
 ==============
 
 See docs folder for the description of configuration language.
-blox_meta folder contains documentation and requirements for individual elements.
+blox_meta folder contains documentation and requirements for individual blocks.
 
 Copyright 2011, MPI-SWS and genForma Corporation

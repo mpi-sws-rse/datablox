@@ -1,0 +1,10 @@
+Input ports: 
+    "input" - PUSH
+Output ports:
+    "query" - QUERY
+
+Requirements:
+
+Solr running the example server on the default port. But the schema file for the example server should be replaced with schema.xml in this folder.
+
+Sunburnt for python

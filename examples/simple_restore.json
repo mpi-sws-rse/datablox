@@ -1,5 +1,5 @@
 {
-    "elements": [
+    "blocks": [
         {"id": "manager", 
          "name": "Restore-Manager", 
          "args": {"restore_file": "192.168.178.26:./care_taker.py"}},

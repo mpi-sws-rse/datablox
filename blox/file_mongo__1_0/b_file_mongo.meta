@@ -1,0 +1,10 @@
+Input ports: 
+    "input" - PUSH
+Output ports:
+    "dir_aggregates" - QUERY
+    "file_data" - QUERY
+
+Requirements:
+
+Mongodb running on the default port
+pymongo

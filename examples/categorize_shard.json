@@ -1,5 +1,5 @@
 {
-    "elements": [
+    "blocks": [
         {"id": "source", 
          "name": "Dir-Src", 
          "args": {"directory": ".", "sleep": 1}},

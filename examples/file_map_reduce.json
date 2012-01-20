@@ -1,5 +1,5 @@
 {
-    "elements": [
+    "blocks": [
         {"id": "crawler1",
          "name": "Dir-Src", 
          "args": {"directory": "~/"}},

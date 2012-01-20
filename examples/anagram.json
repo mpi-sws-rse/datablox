@@ -1,8 +1,8 @@
 {
-    "elements": [
+    "blocks": [
         {"id": "source", 
          "name": "permute", 
-         "args": {"words": ["salsadance"]}},
+         "args": {"words": ["salsadanc"]}},
         {"id": "filter",
          "name": "Filter-Shard",
           "args": {"nodes": 3}},

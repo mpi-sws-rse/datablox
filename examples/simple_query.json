@@ -1,11 +1,11 @@
 {
     "blocks": [
         {"id": "source",
-         "name": "Zero-Src", 
+         "name": "Simple-query-client", 
          "args": {}},
         {"id": "sink",
-         "name": "Dump", 
-         "args": {"sleep": 1}}
+         "name": "Simple-query", 
+         "args": {}}
     ],
 
     "connections": [
