@@ -40,7 +40,6 @@ class permute(Block):
         self.push("output", log)
 
   def on_load(self, config):
-    self.name = "permute"
     self.config = config
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["words"])
     self.log_len = 1000

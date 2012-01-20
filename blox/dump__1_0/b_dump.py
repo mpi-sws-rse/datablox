@@ -5,7 +5,6 @@ from logging import ERROR, WARN, INFO, DEBUG
 
 class dump(Block):
   def on_load(self, config):
-    self.name = "Dump"
     self.config = config
     self.add_port("input", Port.PUSH, Port.UNNAMED, [])
     self.sleep_time = config["sleep"] if config.has_key("sleep") else 0

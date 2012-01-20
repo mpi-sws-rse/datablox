@@ -4,7 +4,6 @@ from logging import ERROR, WARN, INFO, DEBUG
 
 class restore_manager(Block):
   def on_load(self, config):
-    self.name = "Restore-Manager"
     self.config = config
     self.filepath = config["restore_file"]
     self.add_port("chunk_index", Port.QUERY, Port.UNNAMED, ["fingerprint"])

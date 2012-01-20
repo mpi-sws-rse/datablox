@@ -82,7 +82,6 @@ class dir_src(Block):
     
   def on_load(self, config):
     self.config = config
-    self.name = "Dir-Src:" + config["directory"]
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["path", "size", "perm", "owner"])
     #if only_index is not specified, we set only_index to None and then
     # use the MIME type to determine the files to index.

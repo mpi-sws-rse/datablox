@@ -5,7 +5,6 @@ from logging import ERROR, WARN, INFO, DEBUG
 
 class base64_decode(Block):
   def on_load(self, config):
-    self.name = "base64_decode"
     self.config = config
     if not config.has_key("fields"):
       self.log(ERROR, "base64_decode should know which fields to decode")

@@ -14,7 +14,6 @@ class counter(Block):
       yield
 
   def on_load(self, config):
-    self.name = "Counter"
     self.count = 0
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["value"])
     self.log(INFO, "Counter-Src block loaded")

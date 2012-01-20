@@ -76,7 +76,6 @@ class lucene_index(Block):
         QueryParser, IndexSearcher, StandardAnalyzer, SimpleFSDirectory, File, \
         VERSION, initVM, Version
     
-    self.name = "Lucene-index"
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["name"])
     self.add_port("query", Port.QUERY, Port.UNNAMED, ["query"])
     self.vm = lucene.initVM()
@@ -90,7 +89,7 @@ class lucene_index(Block):
   def recv_push(self, port, log):
     self.vm.attachCurrentThread()
     if log.log.has_key("token"):
-      self.log(INFO, self.name + " got the finish token for the directory " + log.log["token"])
+      self.log(INFO, self.id + " got the finish token for the directory " + log.log["token"])
       # self.indexer.optimize_index()
       # self.crawler_done = True
       # self.process_outstanding_queries()
@@ -110,7 +109,7 @@ class lucene_index(Block):
     
   def recv_query(self, port_name, log):
     if not self.crawler_done:
-      self.log(INFO, self.name + " got a query request, but waiting for crawler to be done")
+      self.log(INFO, self.id + " got a query request, but waiting for crawler to be done")
       self.queries.append((port_name, log))
     else:
       self.process_query(port_name, log)

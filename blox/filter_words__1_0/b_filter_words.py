@@ -4,7 +4,6 @@ import time
 
 class filter_words(Block):
   def on_load(self, config):
-    self.name = "Filter-Words"
     self.config = config
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["words"])
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["words"])

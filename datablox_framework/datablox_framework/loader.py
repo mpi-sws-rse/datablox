@@ -97,7 +97,7 @@ class Master(object):
 
     self.master_port += 2
     connections = {}
-    inst = {"name": name, "id": e_id if e_id else name, "args": config, 
+    inst = {"name": name, "id": e_id, "args": config, 
           "connections": connections, "master_port": self.master_port,
           "ipaddress": ipaddress, "timeouts": 0}
     self.blocks[self.master_port] = inst
@@ -112,6 +112,12 @@ class Master(object):
 
     return inst
 
+  def shard_block_id(self, shard, block_num):
+    return shard["id"] + "-element-" + str(block_num)
+  
+  def shard_join_id(self, shard):
+    return shard["id"] + "-join"
+    
   def populate_shard(self, shard):
     block_configs = shard["initial_configs"]
     assert(len(block_configs) > 0)
@@ -122,7 +128,7 @@ class Master(object):
     if block_type.has_key("output_port"):
       #optimization: creating the join block on the same node as the shard
       # TODO: create a unique id for each shard
-      join = self.create_block("dynamic-join", None, {},
+      join = self.create_block("dynamic-join", self.shard_join_id(shard), {},
                                  pin_ipaddress=shard["ipaddress"])
       join_port_num = self.port_num_gen.new_port()
       join_url = self.url(join["ipaddress"], join_port_num)
@@ -133,7 +139,7 @@ class Master(object):
     for i in range(len(block_configs)):
       output_port = "output"+str(i)
       block_config = block_configs[i]
-      e = self.create_block(block_name, None, block_config)
+      e = self.create_block(block_name, self.shard_block_id(shard, i), block_config)
       self.connect_node(shard, output_port, e, input_port)
       if block_type.has_key("output_port"):
         #TODO: remove hardcoded join input port name
@@ -297,17 +303,17 @@ class Master(object):
       print "Master did not get any result for parallelize from %s" % block["name"]
       return (False, None)
   
-  def do_parallelize(self, block, config):
-    node_type = block["node_type"]
-    new_node = self.create_block(node_type["name"], None, config)
+  def do_parallelize(self, shard, config):
+    node_type = shard["node_type"]
+    new_node = self.create_block(node_type["name"], self.shard_block_id(shard, len(shard["initial_configs"])), config)
     port_number = self.port_num_gen.new_port()
     connection_url = self.url(new_node["ipaddress"], port_number)
-    print "Master: trying to parallelize %s with url %s" % (block["name"], connection_url)
+    print "Master: trying to parallelize %s with url %s" % (shard["name"], connection_url)
     #TODO: rename initial_configs 
-    block["initial_configs"].append(config)
-    self.connect_node(block, "output"+str(len(block["initial_configs"])), new_node, node_type["input_port"], connection_url)
-    if block.has_key("join_node"):
-      join = block["join_node"]
+    shard["initial_configs"].append(config)
+    self.connect_node(shard, "output"+str(len(shard["initial_configs"])), new_node, node_type["input_port"], connection_url)
+    if shard.has_key("join_node"):
+      join = shard["join_node"]
       join_url = self.url(join["ipaddress"], join["join_port_num"])
       #TODO: hardcoded join input port
       self.connect_node(new_node, node_type["output_port"], join, "input", join_url)
@@ -328,14 +334,14 @@ class Master(object):
       return
 
     socket = self.context.socket(zmq.REQ)
-    port = block["master_port"]
-    socket.connect(self.url(block["ipaddress"], port))
+    port = shard["master_port"]
+    socket.connect(self.url(shard["ipaddress"], port))
     message = json.dumps(("SHOULD ADD", {"port_url": connection_url}))
     socket.send(message)
     message = self.timed_recv(socket, 8000)
     socket.close()
     if message != None:
-      print "Master: done parallelizing " + block["name"]
+      print "Master: done parallelizing " + shard["name"]
       self.num_parallel += 1
     else:
       print "Master didn't get a reply for should_add"

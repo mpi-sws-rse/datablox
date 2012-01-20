@@ -4,7 +4,6 @@ from logging import ERROR, WARN, INFO, DEBUG
 
 class count(Block):
   def on_load(self, config):
-    self.name = "Count"
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["value"])
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["value"])
     self.count = 0

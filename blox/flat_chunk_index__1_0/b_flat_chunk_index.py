@@ -4,7 +4,6 @@ from logging import ERROR, WARN, INFO, DEBUG
 
 class flat_chunk_index(Block):
   def on_load(self, config):
-    self.name = "Flat-Chunk-Index"
     self.config = config
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["chunk", "fingerprint"])
     self.add_port("store", Port.QUERY, Port.UNNAMED, ["command", "chunk"])
@@ -33,7 +32,7 @@ class flat_chunk_index(Block):
         self.total_chunks += 1
   
   def on_shutdown(self):
-    self.log(INFO, "%s: total chunks added: %d, duplicate chunks: %d" % (self.name, self.total_chunks, self.duplicate_chunks))
+    self.log(INFO, "%s: total chunks added: %d, duplicate chunks: %d" % (self.id, self.total_chunks, self.duplicate_chunks))
     
   def return_store_locs(self, port, log):
     fps = log.log["fingerprint"]
@@ -43,7 +42,7 @@ class flat_chunk_index(Block):
     # for fp in fps:
     #   i = self.chunk_index.get(fp)
     #   if i == None:
-    #     print "**%s Did not get any chunk for hash %s" % (self.name, fp)
+    #     print "**%s Did not get any chunk for hash %s" % (self.id, fp)
     #   chunk_ids.append(i)
     log = Log()
     log.append_field("chunk_id", chunk_ids)

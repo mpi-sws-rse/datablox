@@ -3,7 +3,6 @@ from logging import ERROR, WARN, INFO, DEBUG
 
 class dynamic_join(Block):
   def on_load(self, config):
-    self.name = "DynamicJoin"
     self.join_input_port = self.add_port("input", Port.PUSH, Port.UNNAMED, [])
     self.add_port("output", Port.PUSH, Port.UNNAMED, [])
   

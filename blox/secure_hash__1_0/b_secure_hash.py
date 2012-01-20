@@ -5,7 +5,6 @@ from logging import ERROR, WARN, INFO, DEBUG
 
 class secure_hash(Block):
   def on_load(self, config):
-    self.name = "Secure-Hash"
     self.config = config
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["data"])
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["data", "hash"])
@@ -25,7 +24,7 @@ class secure_hash(Block):
     
   def recv_push(self, port, log):
     if log.log.has_key("token"):
-      self.log(INFO, self.name + " got the finish token for directory " + log.log["token"])
+      self.log(INFO, self.id + " got the finish token for directory " + log.log["token"])
     else:
       hashes = self.get_hashes(log.log)
       log.append_field("hash", hashes)

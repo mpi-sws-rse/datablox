@@ -2,7 +2,6 @@ from block import *
 
 class backup_manager(Block):
   def on_load(self, config):
-    self.name = "Backup-Manager"
     self.config = config
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["path", "chunks", "fingerprints"])
     self.add_port("chunk_index", Port.PUSH, Port.UNNAMED, ["chunk", "fingerprint"])

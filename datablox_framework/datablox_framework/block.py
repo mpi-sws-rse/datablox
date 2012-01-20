@@ -89,7 +89,6 @@ class Block(threading.Thread):
     threading.Thread.__init__(self)
     # the following 4 fields will be initialized by load_block.start just
     # before the call to on_load()
-    self.name = "__no_name__"
     self.id = None
     self.log_level = logging.INFO
     self.logger = None
@@ -275,7 +274,7 @@ class Block(threading.Thread):
       self.log(logging.WARN, " Warning ** could not understand master")
   
   def process_control(self, control_data):
-    self.log(logging.ERROR, "Block object %s should not be getting a control message" % (self.name))
+    self.log(logging.ERROR, "Block object %s should not be getting a control message" % (self.id))
     raise NotImplementedError
     
   def process_push(self, port, log_data):
@@ -285,14 +284,14 @@ class Block(threading.Thread):
     self.recv_push(port.name, log)
   
   def process_buffered_push(self, port, logs):
-    #print self.name + " got buffered push"
+    #print self.id + " got buffered push"
     for log in logs:
       self.process_push(port, log)
     
   def process_query(self, port, log_data):
     log = Log()
     log.set_log(log_data)
-    # print self.name + " got a query query for port " + port.name
+    # print self.id + " got a query query for port " + port.name
     self.recv_query(port.name, log)
   
   def no_incoming(self):
@@ -306,7 +305,7 @@ class Block(threading.Thread):
     #DynamicJoin for example
     (block_name, recv_port_name) = stop_msg
     self.log(logging.INFO,
-             "(%s, %s) stopped on (%s, %s)" % (block_name, recv_port_name, self.name, port.name))
+             "(%s, %s) stopped on (%s, %s)" % (block_name, recv_port_name, self.id, port.name))
     self.input_ports[port] -= 1
     
     if self.no_incoming():
@@ -338,7 +337,7 @@ class Block(threading.Thread):
     self.flush_ports()
     
     for p in self.output_ports.keys():
-      self.send("END", (self.name, p.name), p)
+      self.send("END", (self.id, p.name), p)
     self.alive = False
     self.report_shutdown()
     self.log(logging.INFO, " Has shutdown")

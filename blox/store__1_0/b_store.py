@@ -5,7 +5,6 @@ from logging import ERROR, WARN, INFO, DEBUG
 
 class store(Block):
   def on_load(self, config):
-    self.name = "store"
     self.config = config
     self.store_dir = os.path.expanduser(self.config["store_directory"])
     self.add_port("input", Port.QUERY, Port.UNNAMED, ["chunk"])
@@ -39,4 +38,4 @@ class store(Block):
       log.append_field("chunk", chunks)
       self.return_query_res(port, log)
     else:
-      self.log(INFO, "**%s did not implement actions on port %s" % (self.name, port))
+      self.log(INFO, "**%s did not implement actions on port %s" % (self.id, port))

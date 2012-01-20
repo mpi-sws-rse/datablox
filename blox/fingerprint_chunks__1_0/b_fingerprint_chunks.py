@@ -4,7 +4,6 @@ import hashlib
 
 class fingerprint_chunks(Block):
   def on_load(self, config):
-    self.name = "Fingerprint-Chunks"
     self.config = config
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["chunks"])
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["chunks", "fingerprints"])

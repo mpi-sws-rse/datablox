@@ -6,7 +6,6 @@ from logging import ERROR, WARN, INFO, DEBUG
 class chunk(Block):
   def on_load(self, config):
     #self.buffer_limit = 5000
-    self.name = "Chunk"
     self.config = config
     #default to 4KB chunks if size is not given, but I'm not sure if python 'char' is one byte
     self.chunk_size = config.get("chunk_size", 4096)
@@ -18,7 +17,7 @@ class chunk(Block):
     
   def recv_push(self, port, log):
     if log.log.has_key("token"):
-      self.log(INFO, self.name + " got the finish token for directory " + log.log["token"])
+      self.log(INFO, self.id + " got the finish token for directory " + log.log["token"])
     else:
       chunks = []
       for d in log.log["data"]:

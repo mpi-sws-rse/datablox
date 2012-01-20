@@ -8,7 +8,6 @@ class meta_store(Block):
     import pymongo
     from pymongo import Connection
     
-    self.name = "meta-store"
     self.config = config
     self.connection = Connection()
     self.added = []
@@ -38,7 +37,7 @@ class meta_store(Block):
         entry = {"path": path, "fingerprints": fps}
         entries.append(entry)
       else:
-        self.log(INFO, "**%s could not understand command %s" % (self.name, command))
+        self.log(INFO, "**%s could not understand command %s" % (self.id, command))
     
     self.file_index.insert(entries)
 
@@ -53,7 +52,7 @@ class meta_store(Block):
       log.append_field("fingerprints", fps)
       self.return_query_res(port, log)
     else:
-      self.log(ERROR, "**%s did not implement actions on port %s" % (self.name, port))
+      self.log(ERROR, "**%s did not implement actions on port %s" % (self.id, port))
     
   def on_shutdown(self):
     self.connection.disconnect()

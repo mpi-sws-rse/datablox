@@ -54,7 +54,7 @@ class mongo_map_reduce(Block):
   def _check_config(self, property, config):
     if not config.has_key(property):
       raise Exception("%s: configuration missing required property '%s'" %
-                      (self.name, property))
+                      (self.id, property))
     
   def on_load(self, config):
     import pymongo
@@ -63,7 +63,6 @@ class mongo_map_reduce(Block):
     from pymongo import Connection
     from bson.code import Code
     self.Code = Code
-    self.name = "Mongo-Map-Reduce"
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["key"])
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["key"])
     self.connection = Connection()

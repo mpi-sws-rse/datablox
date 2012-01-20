@@ -8,7 +8,6 @@ from logging import ERROR, WARN, INFO, DEBUG
 class solr_index(Block):
   def on_load(self, config):
     import sunburnt
-    self.name = "Solr-index"
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["name"])
     self.add_port("query", Port.QUERY, Port.UNNAMED, ["query"])
     self.crawler_done = False
@@ -19,7 +18,7 @@ class solr_index(Block):
   
   def recv_push(self, port, log):
     if log.log.has_key("token"):
-      self.log(INFO, self.name + " got the finish token for the directory " + log.log["token"])
+      self.log(INFO, self.id + " got the finish token for the directory " + log.log["token"])
       self.num_tokens = self.num_tokens - 1
       if self.num_tokens == 0:
         self.crawler_done = True
@@ -74,7 +73,7 @@ class solr_index(Block):
     
   def recv_query(self, port_name, log):
     if not self.crawler_done:
-      self.log(INFO, self.name + " got a query request, but waiting for crawler to be done")
+      self.log(INFO, self.id + " got a query request, but waiting for crawler to be done")
       self.queries.append((port_name, log))
     else:
       self.process_query(port_name, log)

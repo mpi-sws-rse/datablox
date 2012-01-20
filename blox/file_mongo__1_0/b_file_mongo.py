@@ -11,7 +11,6 @@ class file_mongo(Block):
   def on_load(self, config):
     import pymongo
     from pymongo import Connection
-    self.name = "File-mongo"
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["name", "size", "perm", "owner"])
     self.add_port("file_data", Port.QUERY, Port.UNNAMED, ["name"])
     self.add_port("dir_aggregates", Port.QUERY, Port.UNNAMED, ["name"])

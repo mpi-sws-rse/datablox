@@ -5,7 +5,6 @@ from logging import ERROR, WARN, INFO, DEBUG
 
 class categorize(Block):
   def on_load(self, config):
-    self.name = "Categorize"
     self.config = config
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["path", "size", "perm", "owner"])
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["path", "name", "size", "perm", "owner", "category"])
@@ -38,7 +37,7 @@ class categorize(Block):
     
   def recv_push(self, port, log):
     if log.log.has_key("token"):
-      self.log(INFO, self.name + " got the finish token for directory " + log.log["token"])
+      self.log(INFO, self.id + " got the finish token for directory " + log.log["token"])
     else:
       log.append_field("name", self.get_names(log.log))
       log.append_field("category", self.get_categories(log.log))

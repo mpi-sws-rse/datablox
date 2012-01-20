@@ -34,7 +34,6 @@ def start(blox_dir, configuration_file_name, log_dir):
     naming.get_block_class(config["name"], block_version)
   inst = block_class(config["master_port"])
   inst.id = config["id"]
-  inst.name = config["name"]
   inst.log_level = config["log_level"]
 
   # intialize logging

@@ -15,7 +15,6 @@ class zero_src(Block):
       yield
 
   def on_load(self, config):
-    self.name = "0-Src"
     self.config = config
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["value"])
     self.log(INFO, "0-Src block loaded")

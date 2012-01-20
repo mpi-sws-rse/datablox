@@ -49,12 +49,12 @@ class Shard(Block):
       self.master_port.socket.send(json.dumps(True))
       self.should_add_node(node_num)
     else:
-      print self.name + " Warning ** could not understand master"
+      print self.id + " Warning ** could not understand master"
   
   def register_new_node(self, node_num, port_url):
     nt = self.node_type()
     port_type = Port.QUERY if nt["port_type"] == "QUERY" else Port.PUSH
-    print self.name + " adding port " + "output"+str(node_num) + " with url " + port_url
+    print self.id + " adding port " + "output"+str(node_num) + " with url " + port_url
     port = Block.add_port(self, "output"+str(node_num), port_type, Port.UNNAMED, [])
     port.port_urls = [port_url]
     self.output_ports[port] = 1
