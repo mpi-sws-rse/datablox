@@ -1,0 +1,14 @@
+{
+    "blocks": [
+        {"id": "source",
+         "name": "error", 
+         "args": {}},
+        {"id": "sink",
+         "name": "Dump", 
+         "args": {"sleep": 1}}
+    ],
+
+    "connections": [
+        [{"source": "output"}, {"sink": "input"}]
+    ]
+}

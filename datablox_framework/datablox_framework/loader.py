@@ -144,6 +144,12 @@ class Master(object):
     for e in self.blocks.values():
       print "starting " + e["name"]
       self.start_block(e)
+
+    success = self.sync_blocks()
+    if not success:
+      print "Master: Could not start all blocks. Ending the run"
+      self.stop_all()
+    
   
   def start_block(self, block):
     config = {}
@@ -174,7 +180,6 @@ class Master(object):
       print block["name"] + " loaded"
       
   def run(self):
-    self.sync_blocks()
     while True:
       try:
         self.poll_loads()
@@ -192,8 +197,10 @@ class Master(object):
     return "tcp://" + ip_address + ":" + str(port_number)
 
   def sync_blocks(self):
+    res = True
     for (p, e) in self.blocks.items():
-      self.sync_block(p, e)
+      res = res and self.sync_block(p, e)
+    return res
 
   def sync_block(self, p, e):
     url = self.url(e["ipaddress"], p)
@@ -202,8 +209,10 @@ class Master(object):
     print "syncing with block %s at url %s" % (e["name"], url)
     syncclient.send('')
     # wait for synchronization reply
-    syncclient.recv()
+    # TODO: hardcoded wait for 8 seconds
+    res = self.timed_recv(syncclient, 8000)
     syncclient.close()
+    return False if res == None else True
   
   def timed_recv(self, socket, time):
     """time is to be given in milliseconds"""
@@ -254,6 +263,8 @@ class Master(object):
     for ip in self.ipaddress_hash.keys():
       self.stop_one(ip)
     print "done, quitting"
+    self.context.term()
+    sys.exit(0)
     
   def stop_one(self, ipaddress):
     socket = self.context.socket(zmq.REQ)
@@ -311,7 +322,10 @@ class Master(object):
         print "join node did not reply to add join, so not parallelizing"
         return      
     self.start_block(new_node)
-    self.sync_block(new_node["master_port"], new_node)
+    success = self.sync_block(new_node["master_port"], new_node)
+    if not success:
+      print "Master: New block did not synchronize, not parallelizing"
+      return
 
     socket = self.context.socket(zmq.REQ)
     port = block["master_port"]
