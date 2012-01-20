@@ -181,7 +181,7 @@ class Block(threading.Thread):
     return _list[0]
     
   def bind_query_port(self, port):
-    port.socket = self.context.socket(zmq.QUERY)
+    port.socket = self.context.socket(zmq.PULL)
     port.socket.bind(port.port_url)
   
   def bind_rep_port(self, port):
