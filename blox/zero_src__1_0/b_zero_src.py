@@ -9,7 +9,7 @@ class zero_src(Block):
     for i in range(0,numzeros):
       log = Log()
       log.log["value"] = [0]
-      self.log(INFO, "Sending a zero")
+      self.log(INFO, "Sending a zero (%d)" % i)
       self.push("output", log)
       time.sleep(sleeptime)
       yield

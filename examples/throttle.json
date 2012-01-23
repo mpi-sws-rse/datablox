@@ -1,0 +1,19 @@
+{
+    "blocks": [
+        {"id": "source",
+         "name": "Zero-Src", 
+         "args": {"num_zeros": 100}},
+        {"id": "sink",
+         "name": "Dump", 
+         "args": {"sleep": 1}}
+    ],
+
+    "connections": [
+        [{"source": "output"}, {"sink": "input"}]
+    ],
+    
+    "policies": [
+        {"source": {"queue_size": 1}},
+        {"sink": {"queue_size": 1}}
+    ]
+}

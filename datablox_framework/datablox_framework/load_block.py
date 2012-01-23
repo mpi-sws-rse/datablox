@@ -32,14 +32,17 @@ def start(blox_dir, configuration_file_name, log_dir):
                                     else naming.DEFAULT_VERSION
   block_class = \
     naming.get_block_class(config["name"], block_version)
+  
   inst = block_class(config["master_port"])
   inst.id = config["id"]
   inst.log_level = config["log_level"]
-
   # intialize logging
   inst.initialize_logging(log_directory=log_dir)
   inst.log(logging.DEBUG, config)
-    
+  #setup policies
+  if config.has_key("policy"):
+    setup_policy(inst, config["policy"])
+      
   inst.on_load(config["args"])
 
   if is_shard(config["name"]):
@@ -67,6 +70,14 @@ def start(blox_dir, configuration_file_name, log_dir):
   
   inst.start()
 
+def setup_policy(inst, policy):
+  for (k, v) in policy.items():
+    if k == "queue_size":
+      inst.set_queue_size(v)
+    else:
+      print "Unknown policy type " + k
+      raise NameError
+  
 if __name__ == "__main__":
   blox_dir = sys.argv[1]
   configuration_file_name = sys.argv[2]

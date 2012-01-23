@@ -92,7 +92,7 @@ class Block(threading.Thread):
     self.id = None
     self.log_level = logging.INFO
     self.logger = None
-    
+    self.queue_size = 0
     self.connection_type = Port.AGNOSTIC
     master_port = Port("master", Port.MASTER, Port.UNNAMED, [])
     master_port.port_url = master_url
@@ -114,6 +114,10 @@ class Block(threading.Thread):
     self.current_buffer_size = defaultdict(int)
     self.buffered_pushes = defaultdict(list)
 
+  def set_queue_size(self, size):
+    self.queue_size = size
+    self.log(logging.INFO, "setting queue size to %r" % size)
+    
   def run(self):
     try:
       self.context = zmq.Context()
@@ -178,19 +182,27 @@ class Block(threading.Thread):
   def get_one(self, _list):
     assert(len(_list) == 1)
     return _list[0]
-    
+
+  #PUSH ports now have queue size as a parameter
+  #default value is 0 - for infinite queue size
+  #this is set in load_block    
   def bind_query_port(self, port):
     port.socket = self.context.socket(zmq.PULL)
+    port.socket.setsockopt(zmq.HWM, self.queue_size)
     port.socket.bind(port.port_url)
   
   def bind_rep_port(self, port):
     port.socket = self.context.socket(zmq.REP)
     port.socket.bind(port.port_url)
 
+  #PUSH ports now have queue size as a parameter
+  #default value is 0 - for infinite queue size
+  #this is set in load_block
   def listen_push_port(self, port):
     port.sockets = []
     for port_url in port.port_urls:
       socket = self.context.socket(zmq.PUSH)
+      socket.setsockopt(zmq.HWM, self.queue_size)
       socket.connect(port_url)
       port.sockets.append(socket)
   

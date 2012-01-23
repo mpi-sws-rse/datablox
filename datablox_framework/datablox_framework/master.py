@@ -23,7 +23,7 @@ class Master(object):
     self.port_num_gen = PortNumberGenerator()
     self.bloxpath = bloxpath
     self.add_blox_to_path(bloxpath)
-    self.setup_connections(config_file)
+    self.setup_topology(config_file)
     self.start_blocks()
     self.run()
 
@@ -129,7 +129,6 @@ class Master(object):
     if not success:
       print "Master: Could not start all blocks. Ending the run"
       self.stop_all()
-    
   
   def start_block(self, block):
     config = {}
@@ -139,6 +138,8 @@ class Master(object):
     config["log_level"] = self.log_level
     config["master_port"] = self.url(block["ipaddress"], block["master_port"])
     config["ports"] = block["connections"]
+    if block.has_key("policy"):
+      config["policy"] = block["policy"]
     #for the join block
     if block.has_key("subscribers"):
       config["subscribers"] = block["subscribers"]
@@ -356,13 +357,19 @@ class Master(object):
         pin_ipaddress = e["at"]
         self.ipaddress_hash[pin_ipaddress] += 1
     
-  def setup_connections(self, file_name):
+  def setup_topology(self, file_name):
     with open(file_name) as f:
       config = json.load(f)
+    
+    block_hash = self.setup_blocks(config)
+    self.setup_connections(config, block_hash)
+    self.setup_policies(config, block_hash)
+    
+  def setup_blocks(self, config):
     self.setup_initial_node_counts(config)
     block_hash = {}
     for e in config["blocks"]:
-      block_id = e["id"] if e.has_key("id") else None
+      block_id = e["id"]
       block_name = e["name"] 
       block_config = e["args"]
       block_ip = e["at"] if e.has_key("at") else None
@@ -375,15 +382,23 @@ class Master(object):
       block = self.create_block(block_name, block_id, block_config,
                                     pin_ipaddress=block_ip)
       block_hash[block_id] = block
+    return block_hash
     
+  def setup_connections(self, config, block_hash):
     for f, t in config["connections"]:
-      (from_name, from_port) = self.get_single_item(f)
-      (to_name, to_port)  = self.get_single_item(t)
-      from_block = block_hash[from_name]
+      (from_id, from_port) = self.get_single_item(f)
+      (to_id, to_port)  = self.get_single_item(t)
+      from_block = block_hash[from_id]
       #if we have a shard, connect the join node instead
       #TODO: hardcoded join output port name
       if from_block.has_key("join_node"):
         from_block = from_block["join_node"]
         from_port = "output"
-      to_block = block_hash[to_name]
+      to_block = block_hash[to_id]
       self.connect_node(from_block, from_port, to_block, to_port)
+  
+  def setup_policies(self, config, block_hash):
+    for p in config["policies"]:
+      (block_id, policy) = self.get_single_item(p)
+      block = block_hash[block_id]
+      block["policy"] = policy
