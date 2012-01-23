@@ -91,6 +91,7 @@ your mac:
  * OCaml (http://caml.inria.fr)
  * MacPorts (http://www.macports.org)
  * The following Python packages:
+
    * virtualenv (http://pypi.python.org/pypi/virtualenv)
    * setuptools (http://pypi.python.org/pypi/setuptools)
    * pycrypto (http://pypi.python.org/pypi/pycrypto)
@@ -101,16 +102,23 @@ MacPorts and using the MacPorts Python package (`python27 <https://trac.macports
 
 If you use MacPorts, you can get pycrypto and ocaml setup with minimal pain by installing the associated ports: `py27-crypto <https://trac.macports.org/browser/trunk/dports/python/py27-crypto/Portfile>`_ and `ocaml <https://trac.macports.org/browser/trunk/dports/lang/ocaml/Portfile>`_, respectively.
 
+With the prerequisites installed, you can now build as follows::
+  git clone git://github.com/mpi-sws-rse/datablox.git
+  cd ./datablox
+  make all
+
+
 Installing
 -----------
-To install,  you need to pick a target directory, called the
-*deployment home*.  Assuming you start in the directory above your
-Datablox source tree and have already built it, do the following::
+Assuming you start in the directory above your
+Datablox source tree and have already built it, the following will
+install Datablox::
 
   cd ./datablox/engage
   ./install_datablox.py <deployment_home>
 
-During the installation, you will be asked to define a *master
+where ``<deployment_home>`` is the target directory for your
+installation. During the installation, you will be asked to define a *master
 password*. Unless you are running as root, you will also be asked for
 the sudo password. Root access is needed to install some of the
 components (e.g. zeromq). The Datablox master script will be installed
@@ -131,4 +139,4 @@ Documentation
 See docs folder for the description of configuration language.
 blox_meta folder contains documentation and requirements for individual blocks.
 
-Copyright 2011, MPI-SWS and genForma Corporation
+Copyright 2011, 2012 by MPI-SWS and genForma Corporation
