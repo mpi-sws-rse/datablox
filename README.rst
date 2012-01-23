@@ -96,13 +96,14 @@ your mac:
    * setuptools (http://pypi.python.org/pypi/setuptools)
    * pycrypto (http://pypi.python.org/pypi/pycrypto)
 
-If you are running MacOSX 10.5 (Leopard) or earlier, the version of Python included with the OS is too old, and
+If you are running MacOSX 10.5 (Leopard), the version of Python included with the OS is too old, and
 you will have to install a separate local copy of Python 2.6 or Python 2.7. Either way, we recommend installing
 MacPorts and using the MacPorts Python package (`python27 <https://trac.macports.org/browser/trunk/dports/lang/python27/Portfile>`_).
 
 If you use MacPorts, you can get pycrypto and ocaml setup with minimal pain by installing the associated ports: `py27-crypto <https://trac.macports.org/browser/trunk/dports/python/py27-crypto/Portfile>`_ and `ocaml <https://trac.macports.org/browser/trunk/dports/lang/ocaml/Portfile>`_, respectively.
 
 With the prerequisites installed, you can now build as follows::
+
   git clone git://github.com/mpi-sws-rse/datablox.git
   cd ./datablox
   make all
