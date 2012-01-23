@@ -378,6 +378,7 @@ class Master(object):
       if self.using_engage:
         resource_key = naming.get_block_resource_key(block_name,
                                                      block_version)
+        import datablox_engage_adapter.install
         datablox_engage_adapter.install.install_block(resource_key)
       block = self.create_block(block_name, block_id, block_config,
                                     pin_ipaddress=block_ip)
@@ -398,6 +399,8 @@ class Master(object):
       self.connect_node(from_block, from_port, to_block, to_port)
   
   def setup_policies(self, config, block_hash):
+    if not config.has_key("policies"):
+      return # consider policies to be optional
     for p in config["policies"]:
       (block_id, policy) = self.get_single_item(p)
       block = block_hash[block_id]
