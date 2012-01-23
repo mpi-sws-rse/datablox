@@ -32,6 +32,7 @@ engage-ext:
 engage-dist: engage-ext
 	cd $(ENGAGE_EXT_HOME); ./get_engage.sh
 	cd $(ENGAGE_DIST); ./install_extension.py -u ../datablox
+	cp ./install_datablox.py $(ENGAGE_DIST)/install_datablox.py
 
 
 # download any packages that are particularly costly to download so we
@@ -51,8 +52,7 @@ test-deploy: test-packages
 	if [ -f $(TEST_DEPLOY_HOME)/config/installed_resources.json ]; then $(TEST_DEPLOY_HOME)/engage/bin/svcctl stop; fi
 	rm -rf $(TEST_DEPLOY_HOME)
 	if [ -d $(PACKAGE_DIR) ]; then cp $(PACKAGE_DIR)/* $(ENGAGE_DIST)/sw_packages; fi
-	cd $(ENGAGE_DIST); ./bootstrap.py $(TEST_DEPLOY_HOME)
-	cd $(TEST_DEPLOY_HOME)/engage/bin; ./install datablox
+	cd $(ENGAGE_DIST); ./install_datablox.py $(TEST_DEPLOY_HOME)
 
 # Run a configuration involving dir-src, file-mongo, and mongo-map-reduce.
 # At the end, look for file type records (should be 2).
