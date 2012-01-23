@@ -63,7 +63,7 @@ killall python
 
 Note that this will kill other python processes unrelated to datablox.
 
-BUilding and Installing with Engage
+Building and Installing with Engage
 ============================
 If you run "make all" from the top-level directory of datablox, it
 will build an Engage distribution that includes Datablox. This can
@@ -76,10 +76,54 @@ Building on Ubuntu
 -------------------
 Here are the steps to build Datablox with Engage on Ubuntu::
 
-  apt-get install git-core g++ ocaml zlib1g-dev python2.6-dev # engage dependencies
+  sudo apt-get install git-core g++ ocaml zlib1g-dev python2.6-dev # engage dependencies
   git clone git://github.com/mpi-sws-rse/datablox.git
   cd ./datablox
   make all
+
+Building on MacOSX
+-------------------------
+Datablox is currently supported on MacOSX 10.5 and 10.6.  As
+prerequisites, you need to have the following software installed on
+your mac:
+ * Python 2.6 or 2.7
+ * Apple's XCode (to get g++)
+ * OCaml (http://caml.inria.fr)
+ * MacPorts (http://www.macports.org)
+ * The following Python packages:
+   * virtualenv (http://pypi.python.org/pypi/virtualenv)
+   * setuptools (http://pypi.python.org/pypi/setuptools)
+   * pycrypto (http://pypi.python.org/pypi/pycrypto)
+
+If you are running MacOSX 10.5 (Leopard) or earlier, the version of Python included with the OS is too old, and
+you will have to install a separate local copy of Python 2.6 or Python 2.7. Either way, we recommend installing
+MacPorts and using the MacPorts Python package (`python27 <https://trac.macports.org/browser/trunk/dports/lang/python27/Portfile>`_).
+
+If you use MacPorts, you can get pycrypto and ocaml setup with minimal pain by installing the associated ports: `py27-crypto <https://trac.macports.org/browser/trunk/dports/python/py27-crypto/Portfile>`_ and `ocaml <https://trac.macports.org/browser/trunk/dports/lang/ocaml/Portfile>`_, respectively.
+
+Installing
+-----------
+To install,  you need to pick a target directory, called the
+*deployment home*.  Assuming you start in the directory above your
+Datablox source tree and have already built it, do the following::
+
+  cd ./datablox/engage
+  ./install_datablox.py <deployment_home>
+
+During the installation, you will be asked to define a *master
+password*. Unless you are running as root, you will also be asked for
+the sudo password. Root access is needed to install some of the
+components (e.g. zeromq). The Datablox master script will be installed
+to ``<deployment_home>/python/bin/datablox-master``.
+
+The installation will also start the Datablox *caretaker* process. To
+start and stop it, you can use Engage's ``svcctl`` utility. To do
+this, run::
+
+  <deployment_home>/engage/bin/svcctl <command>
+
+where ``<command>`` is one of: ``start``, ``stop``, or ``status``. 
+
 
 Documentation
 ==============
