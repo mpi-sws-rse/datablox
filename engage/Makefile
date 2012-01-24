@@ -62,6 +62,7 @@ test-run:
 	python -c "import sys; sys.stdout.write(open(sys.argv[1], 'rb').read().replace('~/', sys.argv[2]))" $(BLOX_HOME)/examples/file_map_reduce.json $(BLOX_HOME) >$(TEST_DEPLOY_HOME)/file_map_reduce.json
 	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master $(TEST_DEPLOY_HOME)/file_map_reduce.json 127.0.0.1
 	$(TEST_DEPLOY_HOME)/mongodb-2.0/bin/mongo --eval "db.getSisterDB('file_db').file_types.count()"
+	$(TEST_DEPLOY_HOME)/engage/bin/svcctl stop
 	@echo "Test completed successfully"
 
 test: engage-ext engage-dist test-deploy test-run

@@ -76,7 +76,8 @@ Building on Ubuntu
 -------------------
 Here are the steps to build Datablox with Engage on Ubuntu::
 
-  sudo apt-get install git-core g++ ocaml zlib1g-dev python2.6-dev # engage dependencies
+  sudo apt-get update
+  sudo apt-get install git-core g++ ocaml zlib1g-dev python-dev python-crypto python-virtualenv # engage dependencies
   git clone git://github.com/mpi-sws-rse/datablox.git
   cd ./datablox
   make all
@@ -107,6 +108,16 @@ With the prerequisites installed, you can now build as follows::
   git clone git://github.com/mpi-sws-rse/datablox.git
   cd ./datablox
   make all
+
+Testing
+------------
+If you wish to test datablox after building it, you can do so by running the following::
+
+  cd ./datablox
+  make test
+
+This will install Datablox to ``~/apps``, run an example topology (``datablox/examples/file_map_reduce.json``),
+and then shut down the Datablox caretaker.
 
 
 Installing
