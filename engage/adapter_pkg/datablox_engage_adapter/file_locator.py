@@ -20,7 +20,10 @@ class FileLocator(object):
   by Engage.
   """
   def __init__(self):
-    self.dh = np(os.path.os.path.join(os.path.dirname(__file__),
+    # First get the deployment home by searching up the directory tree.
+    # We need to resolve any symlinks first due to the new virtualenv structure
+    # on Ubuntu Linux 11.
+    self.dh = np(os.path.os.path.join(os.path.realpath(os.path.dirname(__file__)),
                                       "../../../../../.."))
     self.config_dir = os.path.join(self.dh, "config")
     check_dir(self.config_dir)
