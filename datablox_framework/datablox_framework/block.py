@@ -7,6 +7,10 @@ import logging
 import sys
 import os
 import os.path
+import urllib
+from urlparse import urlparse
+import socket
+from Crypto.Cipher import DES
 
 class Log(object):
   def __init__(self):
@@ -83,6 +87,46 @@ class PortNumberGenerator(object):
     with self.lock:
       self.port_num += 2
       return self.port_num
+
+class BlockUtils(object):
+  @staticmethod
+  def get_ipaddress():
+    return socket.gethostbyname(socket.gethostname())
+    
+  @staticmethod
+  def generate_url_for_path(path):
+    with open(os.path.expanduser('~/datablox_file_server_key'), 'r') as f:
+      deskey = f.read()
+    obj = DES.new(deskey, DES.MODE_ECB)
+    padding = ''
+    for i in range(0 if len(path)%8 == 0 else 8 - (len(path)%8)):
+      padding += '/'
+    path = padding + path
+    enc_path = obj.encrypt(path)
+    url_path = urllib.quote(enc_path)
+    return "http://" + BlockUtils.get_ipaddress() + ":4990/?key=" + url_path
+  
+  @staticmethod
+  def fetch_local_file(enc_path):
+    with open(os.path.expanduser('~/datablox_file_server_key'), 'r') as f:
+      deskey = f.read()
+    obj = DES.new(deskey, DES.MODE_ECB)
+    path = obj.decrypt(enc_path)
+    print "fetching local file at path", path
+    with open(path, 'r') as f:
+      return f.read()
+    
+  @staticmethod
+  def fetch_file_at_url(url):
+    p = urlparse(url)
+    if p.hostname == BlockUtils.get_ipaddress():
+      url_enc_path = p.query[len("key="):].encode('ascii')
+      enc_path = urllib.unquote(url_enc_path)
+      return BlockUtils.fetch_local_file(enc_path)
+    else:
+      opener = urllib.FancyURLopener({})
+      f = opener.open(url)
+      return f.read()
   
 class Block(threading.Thread):
   def __init__(self, master_url):

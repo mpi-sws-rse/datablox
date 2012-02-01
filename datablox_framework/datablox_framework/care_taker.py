@@ -6,8 +6,10 @@ import sys
 import subprocess
 import signal
 from optparse import OptionParser
+import Crypto.Random
 
 processes = []
+fileserver_process = None
 socket = None
 
 def stop_all():
@@ -18,16 +20,28 @@ def stop_all():
 
 def shutdown():
   stop_all()
+  fileserver_process.terminate()
   socket.close()
   sys.exit(0)
   
 def sigterm_handler(signum, frame):
   print "[caretaker] got SIGTERM"
   shutdown()
+
+def start_fileserver():
+  global fileserver_process
   
+  with open(os.path.expanduser('~/datablox_file_server_key'), 'w') as f:
+    f.write(Crypto.Random.get_random_bytes(8))
+
+  fileserver_script = os.path.join(os.path.dirname(__file__),
+                                   "fileserver.py")
+  command = [sys.executable, fileserver_script]
+  fileserver_process = subprocess.Popen(command)
+    
 def main(argv):
   global processes, socket
-  
+
   usage = "%prog [options]"
   parser = OptionParser(usage=usage)
   parser.add_option("-b", "--bloxpath", dest="bloxpath", default=None,
@@ -63,6 +77,8 @@ def main(argv):
         parser.error("Log directory %s does not exist and attempt at creating it failed" % log_dir)
   else: # log_dir was not specified, use stdout
     log_dir = None
+
+  start_fileserver()
   context = zmq.Context()
   socket = context.socket(zmq.REP)
   socket.bind('tcp://*:5000')

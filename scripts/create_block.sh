@@ -36,7 +36,7 @@ if [ -d $BDIR ]; then
 else
   mkdir $BDIR
   touch $BDIR/__init__.py
-  touch $BDIR/e_$BLOCKMODULE.py
+  touch $BDIR/b_$BLOCKMODULE.py
 fi
 
 DRIVERDIR=$ENGAGE/datablox/drivers/${BLOCKMODULE}__1_0

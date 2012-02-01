@@ -1,0 +1,19 @@
+{
+    "blocks": [
+        {"id": "source", 
+         "name": "File-Crawler", 
+         "args": {"directory": "."}},
+        {"id": "contents",
+         "name": "File-Data_Reader",
+         "args": {}
+        },
+        {"id": "sink", 
+        "name": "Dump", 
+        "args": {"decode_fields": ["data"]}}
+    ],
+
+    "connections": [
+        [{"source": "output"}, {"contents": "input"}],
+        [{"contents": "output"}, {"sink": "input"}]
+    ]
+}

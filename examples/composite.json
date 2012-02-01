@@ -1,0 +1,41 @@
+{
+    "group-name": "file-cat",
+    
+    "blocks": [
+        {"id": "source",
+         "name": "Dir-Src",
+         "args": "group-args"},
+        {"id": "categorizer", 
+         "name": "Categorize", 
+         "args": {}}
+    ],
+
+    "connections": [
+        [{"source": "output"}, {"categorizer": "input"}]
+    ]
+    
+    "group-ports": {
+        "output": {"cateogirzer": "output"}
+    }
+}
+
+{
+    "group-name": "main",
+    
+    "blocks": [
+        {"id": "source",
+         "name": "file-cat",
+         "args": {"directory": ".", "only_metadata": true}},        
+        {"id": "sink",
+         "name": "Dump", 
+         "args": {"sleep": 0}}
+    ],
+
+    "connections": [
+        [{"source": "output"}, {"sink": "input"}]
+    ],
+    
+    "policies": [
+        {"source": {"queue_size": 1}}
+    ]
+}

@@ -37,7 +37,7 @@ class categorize(Block):
     
   def recv_push(self, port, log):
     if log.log.has_key("token"):
-      self.log(INFO, self.id + " got the finish token for directory " + log.log["token"])
+      self.log(INFO, "got the finish token for directory " + log.log["token"])
     else:
       log.append_field("name", self.get_names(log.log))
       log.append_field("category", self.get_categories(log.log))

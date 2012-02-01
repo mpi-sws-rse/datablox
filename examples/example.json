@@ -1,8 +1,8 @@
 {
     "blocks": [
         {"id": "source", 
-         "name": "Dir-Src", 
-         "args": {"directory": ".", "only_metadata": true}},
+         "name": "File-Crawler", 
+         "args": {"directory": "."}},
         {"id": "sink", 
         "name": "Dump", 
         "args": {}}

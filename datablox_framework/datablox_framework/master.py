@@ -5,7 +5,7 @@ import time
 import naming
 from block import *
 from shard import *
-
+    
 class Master(object):
   def __init__(self, bloxpath, config_file, ip_addr_list,
                using_engage, log_level=logging.INFO):
@@ -370,7 +370,7 @@ class Master(object):
     block_hash = {}
     for e in config["blocks"]:
       block_id = e["id"]
-      block_name = e["name"] 
+      block_name = e["name"]
       block_config = e["args"]
       block_ip = e["at"] if e.has_key("at") else None
       block_version = e["version"] if e.has_key("version") \
@@ -399,9 +399,8 @@ class Master(object):
       self.connect_node(from_block, from_port, to_block, to_port)
   
   def setup_policies(self, config, block_hash):
-    if not config.has_key("policies"):
-      return # consider policies to be optional
-    for p in config["policies"]:
-      (block_id, policy) = self.get_single_item(p)
-      block = block_hash[block_id]
-      block["policy"] = policy
+    if config.has_key("policies"):
+      for p in config["policies"]:
+        (block_id, policy) = self.get_single_item(p)
+        block = block_hash[block_id]
+        block["policy"] = policy

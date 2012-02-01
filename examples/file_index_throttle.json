@@ -1,0 +1,37 @@
+{
+    "blocks": [
+        {"id": "crawler1",
+         "name": "Dir-Src", 
+         "args": {"directory": "."}},
+        {"id": "crawler2",
+         "name": "Dir-Src", 
+         "args": {"directory": "."}},
+        {"id": "join",
+         "name": "Join", 
+         "args": {"joins": 2}},
+        {"id": "categorizer",
+         "name": "Categorize", 
+         "args": {}},
+        {"id": "indexer",
+         "name": "Solr-index", 
+         "args": {"crawlers": 2},
+         "at": "127.0.0.1"},
+        {"id": "metaindexer",
+         "name": "File-mongo", 
+         "args": {"crawlers": 2},
+         "at": "127.0.0.1"}
+    ],
+
+    "connections": [
+        [{"crawler1": "output"}, {"join": "input1"}],
+        [{"crawler2": "output"}, {"join": "input2"}],
+        [{"join": "output"}, {"categorizer": "input"}],
+        [{"categorizer": "output"}, {"indexer": "input"}],
+        [{"categorizer": "output"}, {"metaindexer": "input"}]
+    ],
+    
+    "policies": [
+        {"crawler1": {"queue_size": 10}},
+        {"crawler2": {"queue_size": 10}}
+    ]
+}
