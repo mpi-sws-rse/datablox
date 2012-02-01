@@ -4,7 +4,7 @@
          "name": "File-Crawler", 
          "args": {"directory": "."}},
         {"id": "contents",
-         "name": "File-Data_Reader",
+         "name": "File-Data-Reader",
          "args": {}
         },
         {"id": "sink", 

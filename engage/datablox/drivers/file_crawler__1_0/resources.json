@@ -1,5 +1,5 @@
 [
-  { "key": {"name":"file_crawler", "version":"1.0"},
+  { "key": {"name":"file-crawler", "version":"1.0"},
     "display_name": "Resource for datablox block file_crawler",
     "input_ports": {
       "datablox_framework": {

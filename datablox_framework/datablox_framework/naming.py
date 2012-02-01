@@ -22,6 +22,8 @@ def block_class_name(block_name):
     return mangle_string(block_name)
   
 def block_module(block_name, version=DEFAULT_VERSION):
+  if block_name.find("_")!=(-1) or block_name.find(".")!=(-1):
+    raise Exception("Block name '%s' invalid - block names cannot contain underscores or periods" % block_name)
   base_name = mangle_string(block_name)
   return base_name + "__" + mangle_string(version) + ".b_" + \
          base_name

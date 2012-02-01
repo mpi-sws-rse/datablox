@@ -26,6 +26,12 @@ if [[ "$#" != "1" ]]; then
   exit 1
 fi
 
+UNDERSCORES=`echo $1 | tr '[_.]' '[]'`
+if [[ $UNDERSCORES != $1 ]]; then
+  echo "Block name cannot contain underscores or periods"
+  exit 1
+fi
+
 # The block module name name should be all lower case and a valid python package
 BLOCKMODULE=`echo $1 | tr '[:upper:]' '[:lower:]' | tr '[-.]' '[__]'`
 BLOCKNAME=`echo $1 | tr '[:upper:]' '[:lower:]'`

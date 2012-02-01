@@ -1,5 +1,5 @@
 [
-  { "key": {"name":"file_data_reader", "version":"1.0"},
+  { "key": {"name":"file-data-reader", "version":"1.0"},
     "display_name": "Resource for datablox block file_data_reader",
     "input_ports": {
       "datablox_framework": {
