@@ -12,6 +12,8 @@ from urlparse import urlparse
 import socket
 from Crypto.Cipher import DES
 
+from fileserver import file_server_keypath
+
 class Log(object):
   def __init__(self):
     self.log = {}
@@ -95,7 +97,7 @@ class BlockUtils(object):
     
   @staticmethod
   def generate_url_for_path(path):
-    with open(os.path.expanduser('~/datablox_file_server_key'), 'r') as f:
+    with open(file_server_keypath, 'r') as f:
       deskey = f.read()
     obj = DES.new(deskey, DES.MODE_ECB)
     padding = ''
@@ -108,7 +110,7 @@ class BlockUtils(object):
   
   @staticmethod
   def fetch_local_file(enc_path):
-    with open(os.path.expanduser('~/datablox_file_server_key'), 'r') as f:
+    with open(file_server_keypath, 'r') as f:
       deskey = f.read()
     obj = DES.new(deskey, DES.MODE_ECB)
     path = obj.decrypt(enc_path)

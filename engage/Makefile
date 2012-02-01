@@ -56,19 +56,28 @@ test-deploy: test-packages
 
 # Run a configuration involving dir-src, file-mongo, and mongo-map-reduce.
 # At the end, look for file type records (should be 2).
-test-run:
+test-map-reduce:
 	# substitute BLOX_HOME for the ~/ in the file map reduce scenario, so that
 	# we only crawl the datablox source tree
 	python -c "import sys; sys.stdout.write(open(sys.argv[1], 'rb').read().replace('~/', sys.argv[2]))" $(BLOX_HOME)/examples/file_map_reduce.json $(BLOX_HOME) >$(TEST_DEPLOY_HOME)/file_map_reduce.json
+	@echo "Running map-reduce scenario"
 	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master $(TEST_DEPLOY_HOME)/file_map_reduce.json 127.0.0.1
 	$(TEST_DEPLOY_HOME)/mongodb-2.0/bin/mongo --eval "db.getSisterDB('file_db').file_types.count()"
 	$(TEST_DEPLOY_HOME)/engage/bin/svcctl stop
-	@echo "Test completed successfully"
+	@echo "Map-reduce completed successfully"
 
-test: engage-ext engage-dist test-deploy test-run
+test-read-files:
+	@echo "Running read-files scenario"
+	python -c "import sys; sys.stdout.write(open(sys.argv[1], 'rb').read().replace('.', sys.argv[2]))" $(BLOX_HOME)/examples/read_files.json $(BLOX_HOME)/blox >$(TEST_DEPLOY_HOME)/read_files.json
+	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master $(TEST_DEPLOY_HOME)/read_files.json 127.0.0.1
+	$(TEST_DEPLOY_HOME)/engage/bin/svcctl stop
+	@echo "Read-files completed successfully"
+
+test: engage-ext engage-dist test-deploy test-map-reduce test-deploy test-read-files
+	@echo "All tests completed successfully"
 
 help:
-	@echo "Targets are all engage-ext engage-dist test-deploy test-run test download-packages clean clean-all"
+	@echo "Targets are all engage-ext engage-dist test-deploy test-map-reduce test-read-files test download-packages clean clean-all"
 
 clean:
 	rm -rf $(ENGAGE_EXT_HOME)/datablox/sw_packages
@@ -80,4 +89,4 @@ clean:
 clean-all: clean
 	rm -rf $(PACKAGE_DIR)
 
-.PHONY: all clean clean-all engage-dist engage-ext help download-packages test-deploy test-run test test-packages
+.PHONY: all clean clean-all engage-dist engage-ext help download-packages test-deploy test-map-reduce test-read-files test test-packages

@@ -75,3 +75,6 @@ class FileLocator(object):
 
   def get_master_pw_file(self):
     return self.master_pw_file
+
+  def get_file_server_key_file(self):
+    return os.path.join(self.dh, "datablox_file_server_key")

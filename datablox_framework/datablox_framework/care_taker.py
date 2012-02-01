@@ -8,6 +8,8 @@ import signal
 from optparse import OptionParser
 import Crypto.Random
 
+from fileserver import file_server_keypath
+
 processes = []
 fileserver_process = None
 socket = None
@@ -28,10 +30,11 @@ def sigterm_handler(signum, frame):
   print "[caretaker] got SIGTERM"
   shutdown()
 
+
 def start_fileserver():
   global fileserver_process
   
-  with open(os.path.expanduser('~/datablox_file_server_key'), 'w') as f:
+  with open(file_server_keypath, 'w') as f:
     f.write(Crypto.Random.get_random_bytes(8))
 
   fileserver_script = os.path.join(os.path.dirname(__file__),
