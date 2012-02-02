@@ -6,9 +6,9 @@ import sys
 import subprocess
 import signal
 from optparse import OptionParser
-import Crypto.Random
-
 from fileserver import file_server_keypath
+from random import choice, randint
+import string
 
 processes = []
 fileserver_process = None
@@ -30,12 +30,14 @@ def sigterm_handler(signum, frame):
   print "[caretaker] got SIGTERM"
   shutdown()
 
+def gen_random(length, chars=string.letters+string.digits):
+    return ''.join([ choice(chars) for i in range(length) ])
 
 def start_fileserver():
   global fileserver_process
   
   with open(file_server_keypath, 'w') as f:
-    f.write(Crypto.Random.get_random_bytes(8))
+    f.write(gen_random(8))
 
   fileserver_script = os.path.join(os.path.dirname(__file__),
                                    "fileserver.py")
