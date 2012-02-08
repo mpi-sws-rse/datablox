@@ -28,10 +28,8 @@ def block_module(block_name, version=DEFAULT_VERSION):
   return base_name + "__" + mangle_string(version) + ".b_" + \
          base_name
 
-
 def block_submodule(block_name):
   return "b_" + mangle_string(block_name)
-
 
 def get_block_class(block_name, version):
   module_name = block_module(block_name, version)

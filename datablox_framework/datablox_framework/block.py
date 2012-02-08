@@ -399,6 +399,7 @@ class Block(threading.Thread):
     self.alive = False
     self.report_shutdown()
     self.log(logging.INFO, " Has shutdown")
+    sys.exit(0)
 
   def report_shutdown(self):
     self.log(logging.INFO, " waiting for master to poll to report shutdown")
@@ -440,6 +441,7 @@ class Block(threading.Thread):
         port = p
     
     if port == None:
+      print [p.name for p in self.ports]
       self.log(logging.ERROR,
                "could not find port with name: " + port_name)
       raise NameError

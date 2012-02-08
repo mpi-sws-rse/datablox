@@ -61,7 +61,7 @@ def main(argv):
   if options.log_level not in log_levels.keys():
     parser.error("--log-level must be one of %s" % log_levels.keys())
     
-  Master(bloxpath, args[0], args[1:], using_engage, log_level=log_levels[options.log_level])
+  Master(bloxpath, args[0], args[1:], using_engage, _log_level=log_levels[options.log_level])
 
 def call_from_console_script():
     sys.exit(main(sys.argv[1:]))

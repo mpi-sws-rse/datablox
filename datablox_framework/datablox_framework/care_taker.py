@@ -89,6 +89,7 @@ def main(argv):
   socket.bind('tcp://*:5000')
   os.system("rm %s/*.json" % config_dir)
   file_num = 0
+  print 'Care taker loaded'
   while True:
     try:
       message = socket.recv()

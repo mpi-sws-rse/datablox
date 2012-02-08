@@ -1,345 +1,158 @@
 import zmq
 import json
 import time
+import copy
 
 import naming
 from block import *
 from shard import *
-    
-class Master(object):
-  def __init__(self, bloxpath, config_file, ip_addr_list,
-               using_engage, log_level=logging.INFO):
-    self.master_port = 6500
-    self.block_classes = []
-    self.blocks = {}
-    self.loads = {}
-    self.shard_nodes = {}
-    self.num_parallel = 0
-    self.ip_pick = 0
-    self.log_level = log_level
-    self.using_engage = using_engage
-    self.ipaddress_hash = self.get_ipaddress_hash(ip_addr_list)
-    self.context = zmq.Context()
-    self.port_num_gen = PortNumberGenerator()
-    self.bloxpath = bloxpath
-    self.add_blox_to_path(bloxpath)
-    self.setup_topology(config_file)
-    self.start_blocks()
-    self.run()
 
-  def get_ipaddress_hash(self, ipaddresses):
-    d = {}
-    for ip in ipaddresses:
-      d[ip] = 0
-    return d
+def get_url(ip_address, port_number):
+  return "tcp://" + ip_address + ":" + str(port_number)
+
+def timed_recv(socket, time):
+  """time is to be given in milliseconds"""
+  poller = zmq.Poller()
+  poller.register(socket)
+  socks = dict(poller.poll(time))
+  if socks == {} or socks[socket] != zmq.POLLIN:
+    return None
+  else:
+    return socket.recv()
+
+def get_or_default(d, key, default):
+  if d.has_key(key):
+    return d[key]
+  else:
+    d[key] = default
+    return default
+
+def get_single_item(d):
+  items = d.items()
+  assert(len(items) == 1)
+  return items[0]
+
+using_engage = False
+log_level = logging.INFO
+bloxpath = None
+global_config = None
+
+def get_group(name):
+  for group in global_config:
+    if group["group-name"] == name:
+      return group
+  return None
+
+#TODO: Put all these utility functions in their own module
+def add_blox_to_path(blox_dir):
+  try:
+    sys.path.index(blox_dir)
+  except ValueError:
+    sys.path.append(blox_dir)
+
+def get_block_class(block_name, version=naming.DEFAULT_VERSION):
+  return naming.get_block_class(block_name, version)
+
+def is_shard(block_name):
+  return naming.block_class_name(block_name).endswith('_shard')
   
-  def select_ipaddress(self):
-    #select the node which has the least number of running blocks
-    min_ip = (None, 100000)
-    for k, v in self.ipaddress_hash.items():
-      if min_ip[1] > v:
-        min_ip = (k, v)
-    #increment the blocks on this one
-    self.ipaddress_hash[min_ip[0]] = min_ip[1] + 1
-    return min_ip[0]
+def create_handler(block_record, address_manager, context, policy=None):
+  group = get_group(block_record["name"])
+  if group == None:
+    if is_shard(block_record["name"]):
+      return ShardHandler(block_record, address_manager, context, policy)
+    else:
+      return BlockHandler(block_record, address_manager, context, policy)
+  else:
+    return GroupHandler(block_record, group, address_manager, context)
   
-  #TODO: Put all these utility functions in their own module
-  def add_blox_to_path(self, blox_dir):
-    try:
-      sys.path.index(blox_dir)
-    except ValueError:
-      sys.path.append(blox_dir)
-  
-  def is_shard(self, block_name):
-    return naming.block_class_name(block_name).endswith('_shard')
-  
-  def block_class(self, block_name, version=naming.DEFAULT_VERSION):
-    return naming.get_block_class(block_name, version)
-    
-  def create_block(self, name, e_id, config, version=naming.DEFAULT_VERSION,
-                     pin_ipaddress=None):
-    path = naming.block_path(self.bloxpath, name, version)
+class BlockHandler(object):
+  def __init__(self, block_record, address_manager, context, policy=None):
+    self.id = block_record["id"]
+    self.name = block_record["name"]
+    self.args = block_record["args"]
+    self.context = context
+    self.address_manager = address_manager
+    self.ipaddress = address_manager.get_ipaddress(block_record["at"] if block_record.has_key("at") else None)
+    self.master_port = address_manager.get_master_port()
+    self.policy = policy
+    self.version = block_record["version"] if block_record.has_key("version") \
+                                   else naming.DEFAULT_VERSION
+    if using_engage:
+      resource_key = naming.get_block_resource_key(block_name,
+                                                   block_version)
+      datablox_engage_adapter.install.install_block(resource_key)
+
+    self.connections = {}
+    self.ports = {}
+    self.last_load = 0
+    self.timeouts = 0
+    path = naming.block_path(bloxpath, self.name, self.version)
     if not os.path.isfile(path):
       print "Could not find the block " + path
       raise NameError
-    
-    if pin_ipaddress == None:
-      ipaddress = self.select_ipaddress()
-    else:
-      print "got an ipaddress for %s, using %s" % (name, pin_ipaddress)
-      ipaddress = pin_ipaddress
-
-    self.master_port += 2
-    connections = {}
-    inst = {"name": name, "id": e_id, "args": config, 
-          "connections": connections, "master_port": self.master_port,
-          "ipaddress": ipaddress, "timeouts": 0}
-    self.blocks[self.master_port] = inst
-    #random initial value
-    self.loads[self.master_port] = 0
-    
-    if self.is_shard(name):
-      ec = self.block_class(name)
-      inst["initial_configs"] = ec.initial_configs(config)
-      inst["node_type"] = ec.node_type()
-      self.populate_shard(inst)
-
-    return inst
-
-  def shard_block_id(self, shard, block_num):
-    return shard["id"] + "-element-" + str(block_num)
   
-  def shard_join_id(self, shard):
-    return shard["id"] + "-join"
-    
-  def populate_shard(self, shard):
-    block_configs = shard["initial_configs"]
-    assert(len(block_configs) > 0)
-    block_type = shard["node_type"]
-    block_name = block_type["name"]
-    input_port = block_type["input_port"]
-    print "num blocks in shard %d" % (len(block_configs))
-    if block_type.has_key("output_port"):
-      #optimization: creating the join block on the same node as the shard
-      # TODO: create a unique id for each shard
-      join = self.create_block("dynamic-join", self.shard_join_id(shard), {},
-                                 pin_ipaddress=shard["ipaddress"])
-      join_port_num = self.port_num_gen.new_port()
-      join_url = self.url(join["ipaddress"], join_port_num)
-      join["join_port_num"] = join_port_num
-      join["subscribers"] = 0
-      shard["join_node"] = join
-
-    for i in range(len(block_configs)):
-      output_port = "output"+str(i)
-      block_config = block_configs[i]
-      e = self.create_block(block_name, self.shard_block_id(shard, i), block_config)
-      self.connect_node(shard, output_port, e, input_port)
-      if block_type.has_key("output_port"):
-        #TODO: remove hardcoded join input port name
-        self.connect_node(e, block_type["output_port"], join, "input", join_url)
-        join["subscribers"] += 1
-        
-  def start_blocks(self):
-    for e in self.blocks.values():
-      print "starting " + e["name"]
-      self.start_block(e)
-
-    success = self.sync_blocks()
-    if not success:
-      print "Master: Could not start all blocks. Ending the run"
-      self.stop_all()
+  #creates an output port if it does not exist
+  def get_output_port_connections(self, from_port):
+    return get_or_default(self.connections, from_port, ["output"])
   
-  def start_block(self, block):
+  #creates an output port if it does not exist
+  def get_input_port_connections(self, to_port):
+    return get_or_default(self.connections, to_port, ["input"])
+    
+  def create_basic_config(self):
     config = {}
-    config["name"] = block["name"]
-    config["id"] = block["id"]
-    config["args"] = block["args"]
-    config["log_level"] = self.log_level
-    config["master_port"] = self.url(block["ipaddress"], block["master_port"])
-    config["ports"] = block["connections"]
-    if block.has_key("policy"):
-      config["policy"] = block["policy"]
-    #for the join block
-    if block.has_key("subscribers"):
-      config["subscribers"] = block["subscribers"]
-    #for the shard block
-    if self.is_shard(block["name"]):
-      config["num_blocks"] = len(block["initial_configs"])
+    config["name"] = self.name
+    config["id"] = self.id
+    config["args"] = self.args
+    config["log_level"] = log_level
+    config["master_port"] = get_url(self.ipaddress, self.master_port)
+    config["ports"] = self.connections
+    if self.policy != None:
+      config["policy"] = self.policy
+    return config
+  
+  def add_additional_config(self, config):
+    #used by join and shard blocks
+    pass
 
+  def start(self):
+    print "starting", self.name
+    config = self.create_basic_config()
+    self.add_additional_config(config)
     socket = self.context.socket(zmq.REQ)
     message = json.dumps(("ADD NODE", config))
-    socket.connect(self.url(block["ipaddress"], 5000))
+    socket.connect(get_url(self.ipaddress, 5000))
     socket.send(message)
-    print "waiting for caretake to load " + block["name"]
+    print "waiting for caretake to load " + self.name
     res = json.loads(socket.recv())
     socket.close()
     if not res:
-      print "Could not start block " + block["name"]
+      print "Could not start block " + self.name
       raise NameError
     else:
-      print block["name"] + " loaded"
-      
-  def run(self):
-    while True:
-      try:
-        self.poll_loads()
-        if len(self.loads.keys()) == 0:
-          print "Master: no more running nodes, quitting"
-          return
-        self.parallelize()
-        #todo: hard coded 10
-        time.sleep(10)
-      except KeyboardInterrupt:
-        self.stop_all()
-        break
-  
-  def url(self, ip_address, port_number):
-    return "tcp://" + ip_address + ":" + str(port_number)
+      print self.name + " loaded"
+    return self.sync()
 
-  def sync_blocks(self):
-    res = True
-    for (p, e) in self.blocks.items():
-      res = res and self.sync_block(p, e)
-    return res
-
-  def sync_block(self, p, e):
-    url = self.url(e["ipaddress"], p)
+  def sync(self):
+    url = get_url(self.ipaddress, self.master_port)
     syncclient = self.context.socket(zmq.REQ)
     syncclient.connect(url)
-    print "syncing with block %s at url %s" % (e["name"], url)
+    print "syncing with block %s at url %s" % (self.name, url)
     syncclient.send('')
     # wait for synchronization reply
     # TODO: hardcoded wait for 8 seconds
-    res = self.timed_recv(syncclient, 8000)
+    res = timed_recv(syncclient, 8000)
     syncclient.close()
     return False if res == None else True
   
-  def timed_recv(self, socket, time):
-    """time is to be given in milliseconds"""
-    poller = zmq.Poller()
-    poller.register(socket)
-    socks = dict(poller.poll(time))
-    if socks == {} or socks[socket] != zmq.POLLIN:
-      return None
-    else:
-      return socket.recv()
-    
-  def poll_loads(self):
-    ports = self.loads.keys()
-    self.old_loads = self.loads
-    self.loads = {}
-    for p in ports:
-      load = self.poll_load(self.blocks[p])
-      if load != None and load != -1:
-        self.loads[p] = load
-        self.blocks[p]["timeouts"] = 0
-      elif load == None:
-        #give it 3 tries to recover before giving up on it
-        #TODO: 3 is hardcoded
-        if self.blocks[p]["timeouts"] < 3:
-          self.blocks[p]["timeouts"] += 1
-          self.loads[p] = -1
-  
-  def poll_load(self, block):
-    port = block["master_port"]
-    message = json.dumps(("POLL", {}))
-    socket = self.context.socket(zmq.REQ)
-    socket.connect(self.url(block["ipaddress"], port))
-    socket.send(message)
-    #wait for 4 sec
-    load = self.timed_recv(socket, 4000)
-    socket.close()
-    if load != None:
-      load = json.loads(load)
-      print "Master: %s has served %r (%r)" % (block["name"], load, (load - self.old_loads[block["master_port"]]))
-      return load
-    #block timed out
-    else:
-      print "** Master: %s timed out" % block["name"]
-      return None
-
-  def stop_all(self):
-    print "Master: trying to stop all blocks"
-    for ip in self.ipaddress_hash.keys():
-      self.stop_one(ip)
-    print "done, quitting"
-    self.context.term()
-    sys.exit(0)
-    
-  def stop_one(self, ipaddress):
-    socket = self.context.socket(zmq.REQ)
-    message = json.dumps(("STOP ALL", {}))
-    socket.connect(self.url(ipaddress, 5000))
-    socket.send(message)
-    print "waiting for caretaker at %s to stop all blocks " % ipaddress
-    res = json.loads(socket.recv())
-    socket.close()
-    
-  def parallelize(self):
-    for p in self.loads.keys():
-      e = self.blocks[p]
-      if self.is_shard(e["name"]):
-        can, config = self.can_parallelize(e)
-        if can and self.num_parallel < 4:
-          self.do_parallelize(e, config)
-  
-  def can_parallelize(self, block):
-    socket = self.context.socket(zmq.REQ)
-    port = block["master_port"]
-    socket.connect(self.url(block["ipaddress"], port))
-    message = json.dumps(("CAN ADD", {}))
-    socket.send(message)
-    message = self.timed_recv(socket, 8000)
-    socket.close()
-    if message != None:
-      return json.loads(message)
-    else:
-      print "Master did not get any result for parallelize from %s" % block["name"]
-      return (False, None)
-  
-  def do_parallelize(self, shard, config):
-    node_type = shard["node_type"]
-    new_node = self.create_block(node_type["name"], self.shard_block_id(shard, len(shard["initial_configs"])), config)
-    port_number = self.port_num_gen.new_port()
-    connection_url = self.url(new_node["ipaddress"], port_number)
-    print "Master: trying to parallelize %s with url %s" % (shard["name"], connection_url)
-    #TODO: rename initial_configs 
-    shard["initial_configs"].append(config)
-    self.connect_node(shard, "output"+str(len(shard["initial_configs"])), new_node, node_type["input_port"], connection_url)
-    if shard.has_key("join_node"):
-      join = shard["join_node"]
-      join_url = self.url(join["ipaddress"], join["join_port_num"])
-      #TODO: hardcoded join input port
-      self.connect_node(new_node, node_type["output_port"], join, "input", join_url)
-      # new_node.add_output_connection(node_type["output_port"], join.join_input_port.port_number)
-      socket = self.context.socket(zmq.REQ)
-      socket.connect(self.url(join["ipaddress"], join["master_port"]))
-      message = json.dumps(("ADD JOIN", {}))
-      socket.send(message)
-      res = self.timed_recv(socket, 8000)
-      socket.close()
-      if message == None:
-        print "join node did not reply to add join, so not parallelizing"
-        return      
-    self.start_block(new_node)
-    success = self.sync_block(new_node["master_port"], new_node)
-    if not success:
-      print "Master: New block did not synchronize, not parallelizing"
-      return
-
-    socket = self.context.socket(zmq.REQ)
-    port = shard["master_port"]
-    socket.connect(self.url(shard["ipaddress"], port))
-    message = json.dumps(("SHOULD ADD", {"port_url": connection_url}))
-    socket.send(message)
-    message = self.timed_recv(socket, 8000)
-    socket.close()
-    if message != None:
-      print "Master: done parallelizing " + shard["name"]
-      self.num_parallel += 1
-    else:
-      print "Master didn't get a reply for should_add"
-    
-  def get_single_item(self, d):
-    items = d.items()
-    assert(len(items) == 1)
-    return items[0]
-  
-  def get_or_default(self, d, key, default):
-    if d.has_key(key):
-      return d[key]
-    else:
-      d[key] = default
-      return default
-
-  def connect_node(self, from_block, from_port, to_block, to_port, connection_url=None):
+  def connect_to(self, from_port, to_block, to_port, connection_url=None):
     if connection_url == None:
-      connection_port_num = self.port_num_gen.new_port()
-      connection_url = self.url(to_block["ipaddress"], connection_port_num)
-    from_connections = self.get_or_default(from_block["connections"], from_port, ["output"])
+      connection_port_num = self.address_manager.new_port()
+      connection_url = get_url(to_block.ipaddress, connection_port_num)
+    from_connections = self.get_output_port_connections(from_port)
     from_connections.append(connection_url)
-    to_connections = self.get_or_default(to_block["connections"], to_port, ["input"])
+    to_connections = to_block.get_input_port_connections(to_port)
     if len(to_connections) > 1:
       try:
         #it's ok for join url to have multiple inputs
@@ -350,57 +163,302 @@ class Master(object):
         raise NameError
     else:
       to_connections.append(connection_url)
+
+  def poll_load(self):
+    port = self.master_port
+    message = json.dumps(("POLL", {}))
+    socket = self.context.socket(zmq.REQ)
+    socket.connect(get_url(self.ipaddress, port))
+    socket.send(message)
+    #wait for 4 sec
+    load = timed_recv(socket, 4000)
+    socket.close()
+    if load != None:
+      self.timeouts = 0
+      load = json.loads(load)
+      print "%s has served %r (%r)" % (self.id, load, (load - self.last_load))
+      self.last_load = load
+      #shut down
+      if load == -1:
+        print "%s has shutdown" % (self.id)
+        return []
+      #block timed out
+      else:
+        return [load]
+    else:
+      print "** Master: %s timed out" % self.id
+      self.timeouts += 1
+      if self.timeouts > 3:
+        return None
+      else:
+        return [0]
+
+class DynamicJoinHandler(BlockHandler):
+  def __init__(self, block_record, address_manager, context, policy=None):
+    BlockHandler.__init__(self, block_record, address_manager, context, policy)
+    self.subscribers = 0
+    self.join_port = address_manager.new_port()
   
-  def setup_initial_node_counts(self, config):
-    for e in config["blocks"]:
-      if e.has_key("at"):
-        pin_ipaddress = e["at"]
-        self.ipaddress_hash[pin_ipaddress] += 1
+  def join_url(self):
+    return get_url(self.ipaddress, self.join_port)
     
-  def setup_topology(self, file_name):
-    with open(file_name) as f:
-      config = json.load(f)
-    
-    block_hash = self.setup_blocks(config)
-    self.setup_connections(config, block_hash)
-    self.setup_policies(config, block_hash)
-    
-  def setup_blocks(self, config):
-    self.setup_initial_node_counts(config)
-    block_hash = {}
-    for e in config["blocks"]:
-      block_id = e["id"]
-      block_name = e["name"]
-      block_config = e["args"]
-      block_ip = e["at"] if e.has_key("at") else None
-      block_version = e["version"] if e.has_key("version") \
-                                     else naming.DEFAULT_VERSION
-      if self.using_engage:
-        resource_key = naming.get_block_resource_key(block_name,
-                                                     block_version)
-        import datablox_engage_adapter.install
-        datablox_engage_adapter.install.install_block(resource_key)
-      block = self.create_block(block_name, block_id, block_config,
-                                    pin_ipaddress=block_ip)
-      block_hash[block_id] = block
-    return block_hash
-    
-  def setup_connections(self, config, block_hash):
-    for f, t in config["connections"]:
-      (from_id, from_port) = self.get_single_item(f)
-      (to_id, to_port)  = self.get_single_item(t)
-      from_block = block_hash[from_id]
-      #if we have a shard, connect the join node instead
-      #TODO: hardcoded join output port name
-      if from_block.has_key("join_node"):
-        from_block = from_block["join_node"]
-        from_port = "output"
-      to_block = block_hash[to_id]
-      self.connect_node(from_block, from_port, to_block, to_port)
+  def add_subscriber(self):
+    self.subscribers += 1
   
-  def setup_policies(self, config, block_hash):
-    if config.has_key("policies"):
-      for p in config["policies"]:
-        (block_id, policy) = self.get_single_item(p)
-        block = block_hash[block_id]
-        block["policy"] = policy
+  #called before start by superclass BlockHandler
+  def add_additional_config(self, config):
+    config["subscribers"] = self.subscribers  
+  
+class ShardHandler(BlockHandler):
+  def __init__(self, block_record, address_manager, context, policy=None):
+    BlockHandler.__init__(self, block_record, address_manager, context, policy)
+    block_class = get_block_class(self.name)
+    self.initial_configs = block_class.initial_configs(self.args)
+    self.node_type = block_class.node_type()
+    self.block_handlers = []
+    self.join_handler = None
+    self.populate()
+    #sometimes the shard could shutdown before its blocks do
+    self.shard_shutdown = False
+
+  def block_id(self, block_num):
+    return self.id + "-element-" + str(block_num)
+
+  def join_id(self):
+    return self.id + "-join"
+    
+  def populate(self):
+    block_configs = self.initial_configs
+    assert(len(block_configs) > 0)
+    block_type = self.node_type
+    block_name = block_type["name"]
+    input_port = block_type["input_port"]
+    print "num blocks in shard %d" % (len(block_configs))
+    if block_type.has_key("output_port"):
+      #optimization: creating the join block on the same node as the shard - TODO: verify this
+      join_record = {}
+      join_record["id"] = self.join_id()
+      join_record["name"] = "dynamic-join"
+      join_record["args"] = {}
+      join_record["at"] = self.ipaddress
+      self.join_handler = DynamicJoinHandler(join_record, self.address_manager, self.context, self.policy)
+
+    for i, block_config in enumerate(block_configs):
+      output_port = "output"+str(i)
+      rec = {"id": self.block_id(i), "name": block_name, "args": block_config}
+      block_handler = create_handler(rec, self.address_manager, self.context, self.policy)
+      self.block_handlers.append(block_handler)
+      #hack, this will get substituted to the right port in get_output_port_connections
+      self.connect_to("<<" + output_port, block_handler, input_port)
+      if block_type.has_key("output_port"):
+        #TODO: remove hardcoded join input port name
+        block_handler.connect_to(block_type["output_port"], self.join_handler, "input", self.join_handler.join_url())
+        self.join_handler.add_subscriber()
+
+  # give join node's output port
+  def get_output_port_connections(self, from_port):
+    #hack to deal with connecting the shard to join node
+    if from_port.find("<<") != -1:
+      return BlockHandler.get_output_port_connections(self, from_port[2:])
+    else:
+      return self.join_handler.get_output_port_connections("output")
+    
+  #called before start by superclass BlockHandler
+  def add_additional_config(self, config):
+    config["num_blocks"] = len(self.initial_configs)
+
+  def start(self):
+    res = True
+    for bh in self.block_handlers:
+      res = res and bh.start()
+    if self.join_handler:
+      res = res and self.join_handler.start()
+    res = res and BlockHandler.start(self)
+    return res
+  
+  def poll_load(self):
+    loads = []
+    running_blocks = []
+    for bh in self.block_handlers:
+      load = bh.poll_load()
+      if load != None and load != []:
+        running_blocks.append(bh)
+        loads.extend(load)
+    if self.join_handler:
+      load = self.join_handler.poll_load()
+      if load != None and load != []:
+        loads.extend(load)
+    if not self.shard_shutdown:
+      load = BlockHandler.poll_load(self)
+      if load != None:
+        if load == []:
+          self.shard_shutdown = True
+        loads.extend(load)
+    self.block_handlers = running_blocks
+    return loads
+    
+class GroupHandler(BlockHandler):
+  #group_record is the specification of the group (like a "class")
+  #block_record is the instance of the group (like an "object")
+  def __init__(self, block_record, group_record, address_manager, context):
+    self.id = block_record["id"]
+    self.name = group_record["group-name"]
+    self.address_manager = address_manager
+    self.context = context
+    self.group_ports = group_record["group-ports"] if group_record.has_key("group-ports") else {}
+    self.policies = group_record["policies"] if group_record.has_key("policies") else {}
+    self.group_args = block_record["args"]
+    #substitute group-args to hold proper arguments
+    block_records = copy.deepcopy(group_record["blocks"])
+    for b in block_records:
+      if b["args"] == "group-args":
+        b["args"] = self.group_args
+    self.block_handlers = [create_handler(b, self.address_manager, self.context, self.policies.get(b["id"])) 
+                            for b in block_records]
+    self.block_hash = {}
+    for bh in self.block_handlers:
+      self.block_hash[bh.id] = bh
+    self.set_initial_connections(group_record["connections"])
+  
+  def get_output_port_connections(self, from_port):
+    try:
+      block_name, port = self.group_ports[from_port]
+      handler = self.block_hash[block_name]
+      return handler.get_output_port_connections(from_port)
+    except KeyError:
+      print "Block-group %s does not have a mapping for port %s" % (self.name, from_port)
+      raise NameError
+    
+  def set_initial_connections(self, connections):
+    for f, t in connections:
+      (from_id, from_port) = get_single_item(f)
+      (to_id, to_port)  = get_single_item(t)
+      from_block = self.block_hash[from_id]
+      # #if we have a shard, connect the join node instead
+      # #TODO: hardcoded join output port name
+      # if from_block.has_key("join_node"):
+      #   from_block = from_block["join_node"]
+      #   from_port = "output"
+      to_block = self.block_hash[to_id]
+      from_block.connect_to(from_port, to_block, to_port)
+  
+  def start(self):
+    res = True
+    for bh in self.block_hash.values():
+      res = res and bh.start()
+    return res
+  
+  def poll_load(self):
+    return self.poll_all_loads()
+  
+  def poll_all_loads(self):
+    #it's initially None so that it will stay None if all the blocks in the group timeout
+    #and we will return None in that case
+    all_loads = None
+    for bh in self.block_hash.values():
+      loads = bh.poll_load()
+      if loads != None:
+        #shutdown
+        if loads == []:
+          self.block_hash.pop(bh.id)
+        if all_loads == None:
+          all_loads = []
+        all_loads.extend(loads)
+    return all_loads
+    
+class AddressManager(object):
+  def __init__(self, ipaddress_list):
+    self.master_port = 6500
+    self.ipaddress_hash = {}
+    self.port_num_gen = PortNumberGenerator()
+    for ip in ipaddress_list:
+      self.ipaddress_hash[ip] = 0
+  
+  def get_master_port(self):
+    self.master_port += 2
+    return self.master_port
+  
+  #if selected_ipaddress is None, return a new ipaddress
+  #otherwise if selected_ipaddress exists in the list, return that otherwise raise error
+  def get_ipaddress(self, selected_ipaddress):
+    if selected_ipaddress == None:
+      return self.select_ipaddress()
+    elif self.ipaddress_hash.has_key(selected_ipaddress):
+      return selected_ipaddress
+    else:
+      print "No ipaddress ", selected_ipaddress
+      raise NameError
+  
+  def select_ipaddress(self):
+    #select the node which has the least number of running blocks
+    ips = self.ipaddress_hash.items()
+    min_ip = (ips[0][0], ips[0][1])
+    for k, v in ips:
+      if min_ip[1] > v:
+        min_ip = (k, v)
+    #increment the blocks on this one
+    self.ipaddress_hash[min_ip[0]] = min_ip[1] + 1
+    return min_ip[0]
+  
+  def new_port(self):
+    return self.port_num_gen.new_port()
+
+class Master(object):
+  def __init__(self, _bloxpath, config_file, ip_addr_list,
+               _using_engage, _log_level=logging.INFO):
+    global global_config, bloxpath, using_engage, log_level
+    bloxpath = _bloxpath
+    using_engage = _using_engage
+    log_level = _log_level
+    
+    add_blox_to_path(_bloxpath)
+    self.address_manager = AddressManager(ip_addr_list)
+    self.context = zmq.Context()
+    global_config = self.get_config(config_file)
+    #old style, flat config
+    #convert it into a one group list.
+    if not (type(global_config) == list):
+      global_config["group-name"] = "main"
+      global_config = [global_config]
+    #can fill this with command line args
+    main_block_rec = {"id": "main_inst", "args": {}}
+    self.main_block_handler = GroupHandler(main_block_rec, get_group("main"), self.address_manager, self.context)
+    if not self.main_block_handler.start():
+      print "Master: Could not start all blocks. Ending the run"
+      self.stop_all()
+      
+    self.run()
+  
+  def get_config(self, config_file):
+    with open(config_file) as f:
+      return json.load(f)
+
+  def stop_all(self):
+    print "Master: trying to stop all blocks"
+    for ip in self.address_manager.ipaddress_hash.keys():
+      self.stop_one(ip)
+    print "done, quitting"
+    self.context.term()
+    sys.exit(0)
+
+  def stop_one(self, ipaddress):
+    socket = self.context.socket(zmq.REQ)
+    message = json.dumps(("STOP ALL", {}))
+    socket.connect(get_url(ipaddress, 5000))
+    socket.send(message)
+    print "waiting for caretaker at %s to stop all blocks " % ipaddress
+    res = json.loads(socket.recv())
+    socket.close()
+
+  def run(self):
+    while True:
+      try:
+        res = self.main_block_handler.poll_load()
+        if len(res) == 0:
+          print "Master: no more running nodes, quitting"
+          return
+        #todo: hard coded 10
+        time.sleep(10)
+      except KeyboardInterrupt:
+        self.stop_all()
+        break

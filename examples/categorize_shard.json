@@ -5,7 +5,7 @@
          "args": {"directory": ".", "sleep": 1}},
         {"id": "categorizer", 
          "name": "Categorize-Shard", 
-         "args": {"nodes": 1, "sleep": 2}},
+         "args": {"nodes": 2, "sleep": 2}},
         {"id": "sink", 
          "name": "Dump", 
          "args": {"sleep": 0}}
