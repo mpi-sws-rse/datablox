@@ -1,0 +1,14 @@
+{
+    "blocks": [
+        {"id": "web-service",
+         "name": "RPC",
+         "args": {}},
+        {"id": "sink",
+         "name": "Dump", 
+         "args": {"sleep": 1}}
+    ],
+
+    "connections": [
+        [{"web-service": "dump"}, {"sink": "rpc"}]
+    ]
+}

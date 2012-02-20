@@ -1,0 +1,67 @@
+[
+    {
+        "group-name": "manager",
+    
+        "blocks": [
+            {"id": "bm",
+             "name": "Bookmark-Manager",
+             "args": {}},
+            {"id": "dedup-index",
+             "name": "File-Dedup",
+             "args": {}},
+            {"id": "store",
+             "name": "Store",
+             "args": {"store_directory": "/Users/saideep/Downloads/junk"}},
+            {"id": "metadata",
+             "name": "Meta-Store",
+             "args": {}},
+            {"id": "query",
+             "name": "Bookmark-Query",
+             "args": {}}
+        ],
+        
+        "connections" : [
+            [{"dedup-index": "store"}, {"store": "input"}],
+            [{"dedup-index": "store_control"}, {"store": "control"}],
+            [{"bm": "store"}, {"dedup-index": "input"}],
+            [{"bm": "meta_store"}, {"metadata": "input"}],
+            [{"query": "store_control"}, {"dedup-index": "control"}],
+            [{"query": "meta_control"}, {"metadata": "control"}]
+        ],
+        
+        "group-ports": {
+            "input": ["bm", "input"],
+            "list": ["query", "list"],
+            "restore": ["query", "restore"],
+            "delete": ["query", "delete"]
+        }
+    },
+
+    {
+        "group-name": "main",
+        
+        "blocks": [
+            {"id": "web-service", 
+             "name": "RPC", 
+             "args": {}},
+            {"id": "crawler",
+             "name": "Web-Crawler",
+             "args": {}},
+            {"id": "hash",
+             "name": "Secure-Hash",
+             "args": {}},
+            {"id": "manager",
+             "name": "manager",
+             "args": {}}
+        ],
+
+        "connections": [
+            [{"web-service": "bookmark"}, {"crawler": "rpc"}],
+            [{"crawler": "output"}, {"hash": "input"}], 
+            [{"hash": "output"}, {"manager": "input"}],
+            [{"web-service": "list"}, {"manager": "list"}],
+            [{"web-service": "restore"}, {"manager": "restore"}],
+            [{"web-service": "delete"}, {"manager": "delete"}]
+        ]
+    }
+]

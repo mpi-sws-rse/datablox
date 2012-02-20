@@ -1,14 +1,14 @@
 {
     "blocks": [
         {"id": "source",
-         "name": "Dir-Src",
-         "args": {"directory": ".", "only_index": [""]}},
+         "name": "File-Crawler",
+         "args": {"directory": "."}},
         {"id": "hash", 
-         "name": "Secure-Hash", 
+         "name": "Secure-Hash",
          "args": {}},
         {"id": "sink",
          "name": "Dump", 
-         "args": {"sleep": 0}}
+         "args": {}}
     ],
 
     "connections": [

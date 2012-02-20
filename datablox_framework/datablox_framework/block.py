@@ -21,6 +21,9 @@ class Log(object):
   def set_log(self, log):
     self.log = log
   
+  def __str__(self):
+    return self.log.__str__()
+    
   def append_field(self, key, values):
     self.log[key] = values
   

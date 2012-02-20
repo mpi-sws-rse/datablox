@@ -2,6 +2,7 @@ import zmq
 import json
 import time
 import copy
+import subprocess
 
 import naming
 from block import *
@@ -55,11 +56,16 @@ def get_block_class(block_name, version=naming.DEFAULT_VERSION):
 
 def is_shard(block_name):
   return naming.block_class_name(block_name).endswith('_shard')
+
+def is_rpc(block_name):
+  return block_name == "RPC"
   
 def create_handler(block_record, address_manager, context, policy=None):
   group = get_group(block_record["name"])
   if group == None:
-    if is_shard(block_record["name"]):
+    if is_rpc(block_record["name"]):
+      return RPCHandler(block_record, address_manager, context, policy)
+    elif is_shard(block_record["name"]):
       return ShardHandler(block_record, address_manager, context, policy)
     else:
       return BlockHandler(block_record, address_manager, context, policy)
@@ -99,6 +105,11 @@ class BlockHandler(object):
   #creates an output port if it does not exist
   def get_input_port_connections(self, to_port):
     return get_or_default(self.connections, to_port, ["input"])
+  
+  #a basic block has the same ipaddress for every port
+  #but a block-group may have different ipaddresses for individual ports
+  def get_ipaddress(self, to_port):
+    return self.ipaddress
     
   def create_basic_config(self):
     config = {}
@@ -134,6 +145,9 @@ class BlockHandler(object):
       print self.name + " loaded"
     return self.sync()
 
+  def stop(self):
+    pass
+    
   def sync(self):
     url = get_url(self.ipaddress, self.master_port)
     syncclient = self.context.socket(zmq.REQ)
@@ -149,7 +163,7 @@ class BlockHandler(object):
   def connect_to(self, from_port, to_block, to_port, connection_url=None):
     if connection_url == None:
       connection_port_num = self.address_manager.new_port()
-      connection_url = get_url(to_block.ipaddress, connection_port_num)
+      connection_url = get_url(to_block.get_ipaddress(to_port), connection_port_num)
     from_connections = self.get_output_port_connections(from_port)
     from_connections.append(connection_url)
     to_connections = to_block.get_input_port_connections(to_port)
@@ -193,6 +207,49 @@ class BlockHandler(object):
       else:
         return [0]
 
+class RPCHandler(BlockHandler):
+  def __init__(self, block_record, address_manager, context, policy=None):
+    self.id = block_record["id"]
+    self.name = block_record["name"]
+    self.args = block_record["args"]
+    self.context = context
+    self.address_manager = address_manager
+    #TODO: we don't really need it, but put master node's ip in it
+    self.ipaddress = "127.0.0.1"
+    self.master_port = address_manager.get_master_port()
+    self.policy = policy
+    self.version = block_record["version"] if block_record.has_key("version") \
+                                   else naming.DEFAULT_VERSION
+    self.connections = {}
+    self.ports = {}
+    self.last_load = 0
+    self.timeouts = 0
+    self.webserver_process = None
+  
+  def start(self):
+    connections_file_name = "connections"
+    with open(connections_file_name, 'w') as f:
+      f.write(json.dumps(self.connections))
+      
+    connections_file_path = os.path.join(os.getcwd(), connections_file_name)
+    webserver_script = os.path.join(os.path.dirname(__file__),
+                                     "webservice.py")
+    command = [sys.executable, webserver_script, connections_file_path]
+    self.webserver_process = subprocess.Popen(command)
+    return True
+    
+  def stop(self):
+    if self.webserver_process:
+      self.webserver_process.terminate()
+
+  def poll_load(self):
+    if self.webserver_process.poll() == None:
+      print "RPC block is working"
+      return [0]
+    else:
+      print "RPC block has shutdown"
+      return []
+  
 class DynamicJoinHandler(BlockHandler):
   def __init__(self, block_record, address_manager, context, policy=None):
     BlockHandler.__init__(self, block_record, address_manager, context, policy)
@@ -276,6 +333,11 @@ class ShardHandler(BlockHandler):
     res = res and BlockHandler.start(self)
     return res
   
+  def stop(self):
+    for bh in self.block_handlers:
+      bh.stop()
+    BlockHandler.stop(self)
+  
   def poll_load(self):
     loads = []
     running_blocks = []
@@ -328,6 +390,24 @@ class GroupHandler(BlockHandler):
     except KeyError:
       print "Block-group %s does not have a mapping for port %s" % (self.name, from_port)
       raise NameError
+
+  def get_input_port_connections(self, to_port):
+    try:
+      block_name, port = self.group_ports[to_port]
+      handler = self.block_hash[block_name]
+      return handler.get_input_port_connections(to_port)
+    except KeyError:
+      print "Block-group %s does not have a mapping for port %s" % (self.name, from_port)
+      raise NameError
+  
+  def get_ipaddress(self, port):
+    try:
+      block_name, port = self.group_ports[port]
+      handler = self.block_hash[block_name]
+      return handler.get_ipaddress(port)
+    except KeyError:
+      print "Block-group %s does not have a mapping for port %s" % (self.name, from_port)
+      raise NameError
     
   def set_initial_connections(self, connections):
     for f, t in connections:
@@ -348,6 +428,10 @@ class GroupHandler(BlockHandler):
       res = res and bh.start()
     return res
   
+  def stop(self):
+    for bh in self.block_hash.values():
+      bh.stop()
+
   def poll_load(self):
     return self.poll_all_loads()
   
@@ -434,14 +518,15 @@ class Master(object):
       return json.load(f)
 
   def stop_all(self):
+    self.main_block_handler.stop()
     print "Master: trying to stop all blocks"
     for ip in self.address_manager.ipaddress_hash.keys():
-      self.stop_one(ip)
+      self.stop_all_node(ip)
     print "done, quitting"
     self.context.term()
     sys.exit(0)
 
-  def stop_one(self, ipaddress):
+  def stop_all_node(self, ipaddress):
     socket = self.context.socket(zmq.REQ)
     message = json.dumps(("STOP ALL", {}))
     socket.connect(get_url(ipaddress, 5000))

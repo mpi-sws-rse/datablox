@@ -1,0 +1,407 @@
+<html>
+ <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="GENERATOR" content="Mozilla/4.02 [en] (WinNT; U) [Netscape]" />
+  <meta name="Author" content="Rupak Majumdar" />
+  <title>
+   Home Page of Rupak Majumdar
+  </title>
+ </head>
+ <body bgcolor="#ffffff">
+  <font size="+3">
+   <font color="#000000">
+    Rupak Majumdar&nbsp;
+   </font>
+   <font color="#8B4513">
+    &nbsp;
+    <img src="http://172.16.240.1:4990/?key=%17x%5B%A3%AE%0B%27r%BC%96%21%B7%F1%9D%AEH%FA%E7hI%9FCJ%95%28%80%07%BE%90%7E%1C%AB%9E%E2%12%C4%CET0f%7E%BE%9ED%25%BE%D7%F3" alt="me" height="262" width="350" align="RIGHT" />
+   </font>
+  </font>
+  <p>
+   Ph.D., University of California at Berkeley, 2003.
+  </p>
+  <p>
+   <font color="#8B4513">
+    Scientific Director,
+    <a href="http://www.mpi-sws.org/">
+     Max Planck Institute for Software Systems
+    </a>
+   </font>
+   ,
+  </p>
+  <p>
+   <font color="#8B4513">
+    Professor,
+    <a href="http://www.cs.ucla.edu">
+     Computer 
+Science
+    </a>
+   </font>
+   ,
+  </p>
+  <p>
+   <font color="#8B4513">
+    at the
+   </font>
+   <font color="#0000FF">
+    <a href="http://www.ucla.edu">
+     University
+of California, Los Angeles
+    </a>
+   </font>
+   .
+   <b>
+   </b>
+  </p>
+  <p>
+   <a href="http://www.cs.ucla.edu/~rupak/biosketch.html">
+    Biographical Sketch
+   </a>
+   <br />
+   <a href="http://www.cs.ucla.edu/~rupak/ResearchSummary.pdf">
+    Research Contributions
+   </a>
+   <br />
+   <a href="http://www.cs.ucla.edu/~rupak/cv.pdf">
+    Curriculum Vitae (pdf)
+   </a>
+   <br />
+   <a href="http://rupakm.wordpress.com">
+    Blog
+   </a>
+  </p>
+  <p>
+   <font color="#191970">
+    <font size="+3">
+     Contact:
+    </font>
+   </font>
+  </p>
+  <p>
+   <font color="#800000">
+    <font size="+1">
+     Office:
+    </font>
+   </font>
+   <br />
+   4531E Boelter Hall
+   <br />
+   Department of Computer Science
+   <br />
+   University of California, Los Angeles, CA 90095
+   <br />
+   Phone (310) 825-8127 Fax (310) 794 5057
+  </p>
+  <p>
+   <font color="#000080">
+    Email:&nbsp;
+   </font>
+   rupak at c s . uc la . edu
+  </p>
+  <p>
+   <font color="#800000">
+    <font size="+1">
+     Academics
+    </font>
+   </font>
+   My research interests are computer-aided verification and control
+of reactive, real-time, hybrid, and probabilistic systems, software verification and
+programming languages,
+logic, and automata theory.
+  </p>
+  <p>
+   <font color="#800000">
+    <font size="+1">
+     Instruction
+    </font>
+   </font>
+  </p>
+  <p>
+   <ul>
+    <li>
+     <a href="Courses/spring10/">
+      Spring 2010: CS130 Software Engineering
+     </a>
+    </li>
+    <li>
+     <a href="Courses/fall09/">
+      Fall 2009: CS239 Cyber Physical Systems
+     </a>
+    </li>
+   </ul>
+  </p>
+  <p>
+   <font color="#800000">
+    <font size="+1">
+     Research
+    </font>
+   </font>
+   <ul>
+    <li>
+     <a href="http://bugassist.mpi-sws.org">
+      BugAssist
+     </a>
+     : 
+An Eclipse plugin to localize program errors
+    </li>
+    <li>
+     <!--<a href="http://www.cs.ucla.edu/~rupak/splat/"> -->
+     Splat
+     <!-- </a> -->
+     : A test generator for C programs.
+    </li>
+    <li>
+     <a href="http://www.cs.ucla.edu/~rupak/b2/">
+      B2
+     </a>
+     : The successor to Blast (pre-alpha).
+    </li>
+    <li>
+     <a href="http://www.eecs.berkeley.edu/~blast/">
+      BLAST
+     </a>
+     <img src="./blast/new.gif" />
+     Blast 2.0 has been released.
+     <a href="http://www.cs.ucla.edu/~rupak/Powerpoint/BlastTutorial/SPIN2005.ppt">
+      Here
+     </a>
+     are the SPIN 2005 tutorial slides on Blast.
+    </li>
+    <li>
+     <a href="http://www.eecs.berkeley.edu/~tah/HyTech">
+      HyTech
+     </a>
+    </li>
+    <li>
+     <a href="http://www.cs.ucla.edu/~rupak/Vampyre">
+      Vampyre: A Proof Generating Theorem Prover
+     </a>
+    </li>
+    <li>
+     <a href="http://www.eecs.berkeley.edu/~mocha/">
+      Mocha
+     </a>
+    </li>
+    <li>
+     <a href="http://www.cs.ucla.edu/~rupak/publications.shtml">
+      Publications
+     </a>
+     <a href="http://www.cs.ucla.edu/~rupak/bycategory.html">
+      (by category)
+     </a>
+     <a href="http://www.informatik.uni-trier.de/~ley/db/indices/a-tree/m/Majumdar:Rupak.html">
+      DBLP
+     </a>
+    </li>
+    <li>
+     <a href="http://www.cs.ucla.edu/~rupak/Courses/ReadingGroup/">
+      PL Reading Group
+     </a>
+    </li>
+   </ul>
+  </p>
+  <p>
+   <font color="#800000">
+    <font size="+1">
+     Conferences
+    </font>
+   </font>
+   <ul>
+    <li>
+     Program Co-Chair,
+     <a href="http://tacas10.in.tum.de">
+      TACAS 2010
+     </a>
+     (part of
+     <a href="http://www.etaps.org">
+      ETAPS 2010
+     </a>
+     ).
+    </li>
+    <li>
+     [Done] Program Co-Chair,
+     <a href="http://www.ee.ucla.edu/hscc09/">
+      HSCC 2009
+     </a>
+     (part of
+     <a href="http://www.cpsweek.org">
+      CPSWeek
+     </a>
+     ).
+    </li>
+    <li>
+     [Done] Program Co-Chair,
+     <a href="http://compilers.cs.ucla.edu/spin08/">
+      SPIN 2008
+     </a>
+     .
+    </li>
+   </ul>
+  </p>
+  <p>
+   <font color="#800000">
+    <font size="+1">
+     Post-Docs
+    </font>
+   </font>
+   <ul>
+    <li>
+     Elaine Render
+    </li>
+    <li>
+     Pritam Roy
+    </li>
+    <li>
+     K.C. Shashidhar
+    </li>
+   </ul>
+  </p>
+  <p>
+   <font color="#800000">
+    <font size="+1">
+     Students
+    </font>
+   </font>
+   <ul>
+    <li>
+     <a href="http://www.cs.ucla.edu/~mjose">
+      Manu Jose
+     </a>
+    </li>
+    <li>
+     <a href="http://www.cs.ucla.edu/~indranil">
+      Indranil Saha
+     </a>
+    </li>
+    <li>
+     <a href="http://www.cs.ucla.edu/~saideep">
+      Sai Deep Tetali
+     </a>
+    </li>
+    <li>
+     <a href="http://www.ee.ucla.edu/~zamani">
+      Majid Zamani
+     </a>
+    </li>
+    <li>
+     Zilong Wang
+    </li>
+   </ul>
+  </p>
+  <p>
+   <font color="#800000">
+    <font size="+1">
+     Graduated Students and Postdocs
+    </font>
+   </font>
+   <ul>
+    <li>
+     <a href="http://www.jmfischer.org">
+      Jeff Fischer
+     </a>
+     :
+     <i>
+      <a href="Papers/FischerThesis.pdf">
+       Robust service composition
+      </a>
+     </i>
+    </li>
+    <li>
+     RuGang Xu:
+     <i>
+      <a href="Papers/RuGangXuThesis.pdf">
+       Symbolic execution algorithms for
+test generation
+      </a>
+     </i>
+    </li>
+    <li>
+     <a href="http://www.cs.ucla.edu/~mje">
+      Mike Emmi
+     </a>
+    </li>
+    <li>
+     <a href="http://www.cs.ucla.edu/~rafiti/">
+      Rafit Izhak-Ratzin
+     </a>
+    </li>
+    <!--<LI><a href="http://www.cs.ucla.edu/~mrm">Manav Mital</a></LI> -->
+    <li>
+     <a href="http://www.ulb.ac.be/di/ssd/pganty/">
+      Pierre Ganty
+     </a>
+     (PhD, ULB, Belgium): Now at IMDEA
+    </li>
+    <li>
+     <!--<a href="http://www.ulb.ac.be/di/ssd/pganty/">-->
+     Roman Manevich
+     <!--</a>-->
+     (PhD, Tel-Aviv, Israel)
+    </li>
+   </ul>
+  </p>
+  <p>
+   <font color="#800000">
+    <font size="+1">
+     Personal
+    </font>
+   </font>
+   <ul>
+    <li>
+     <a href="genealogy.html">
+      Academic Genealogy
+     </a>
+     (compiled by Nachum Dershowitz).
+See also
+     <a href="http://www.cs.tau.ac.il/~nachumd/Ztree.html">
+      Zohar Manna's descendants
+     </a>
+     .
+    </li>
+    <li>
+     <a href="http://www.sowi.uni-kl.de/wcms/fileadmin/wpsy/public/ghose.htm">
+      Tandra's page
+     </a>
+    </li>
+    <li>
+     <a href="http://www.sowi.uni-kl.de/wcms/fileadmin/wpsy/public/ritwik.htm">
+      Ritwik's page
+     </a>
+    </li>
+    <li>
+     <a href="http://www.sowi.uni-kl.de/wcms/fileadmin/wpsy/public/rajit.htm">
+      Rajit's page
+     </a>
+    </li>
+    <li>
+     <font color="#000000">
+      <a href="http://www.cs.indiana.edu/HTMLit/how.2b/how.2b.html">
+       How
+to be a good graduate student
+      </a>
+     </font>
+    </li>
+    <li>
+     <font color="#000000">
+      As a professor, you are expected to publish
+papers once in a while. 
+Here is
+      <a href="http://www.cs.ucla.edu/~rupak/rejectedabstract.htm">
+       how
+to get your paper rejected.
+      </a>
+     </font>
+    </li>
+   </ul>
+   <hr width="100%" />
+  </p>
+  <p>
+   <i>
+    <font size="-1">
+     Rupak Majumdar,
+     <!--#echo var="LAST_MODIFIED" -->
+    </font>
+   </i>
+  </p>
+ </body>
+</html>
