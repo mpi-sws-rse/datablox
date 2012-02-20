@@ -1,0 +1,16 @@
+#!/usr/bin/env python
+import xmlrpclib
+import json
+import urllib
+
+proxy = xmlrpclib.ServerProxy("http://localhost:8000/")
+res = proxy.shutdown()
+
+print 'Content-type: text/html\n\n'
+
+print '<html><head>'
+print '<title>Shutdown</title>'
+print '</head><body>'
+print '<h1>Sent shutdown to toplogy</h1>'
+print res
+print '</body></html>'

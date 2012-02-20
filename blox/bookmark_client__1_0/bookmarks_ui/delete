@@ -1,0 +1,22 @@
+#!/usr/bin/env python
+import xmlrpclib
+import json
+import cgi
+
+proxy = xmlrpclib.ServerProxy("http://localhost:8000/")
+
+form = cgi.FieldStorage()
+log = {"url": [form["url"].value], "time": [form["time"].value]}
+res = json.loads(proxy.delete(json.dumps(log)))["result"][0]
+
+print 'Content-type: text/html\n\n'
+print '<html><head>'
+print '<title>Delete</title>'
+print '</head><body>'
+print '<h1>'
+if res:
+  print 'Deleted'
+else:
+  print 'Could not delete, res:', res
+print '</h1>'
+print '</body></html>'

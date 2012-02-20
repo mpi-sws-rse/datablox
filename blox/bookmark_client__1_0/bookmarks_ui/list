@@ -1,0 +1,35 @@
+#!/usr/bin/env python
+import xmlrpclib
+import json
+import urllib
+
+def generate_bookmark_link(url, time):
+  d = {"url": url, "time": time}
+  link_url = '/restore?' + urllib.urlencode(d)
+  link = '<a href="' + link_url + '">' + url + '</a>'
+  return link
+
+def generate_delete_link(url, time):
+  d = {"url": url, "time": time}
+  link_url = '/delete?' + urllib.urlencode(d)
+  link = '<a href="' + link_url + '">' + "delete" + '</a>'
+  return link
+  
+proxy = xmlrpclib.ServerProxy("http://localhost:8000/")
+
+bookmarks = json.loads(proxy.list(json.dumps({})))
+
+print 'Content-type: text/html\n\n'
+
+print '<html><head>'
+print '<title>Bookmarks</title>'
+print '</head><body>'
+print '<h1>Bookmarks</h1>\n<ol>'
+for i in range(0, len(bookmarks["url"])):
+  link = bookmarks["url"][i]
+  time = bookmarks["time"][i]
+  print '<li>' + generate_bookmark_link(link, time) + '&nbsp; <small>(at: ' + time + ')</small>'
+  print generate_delete_link(link, time) + '</li>'
+print '</ol>'
+print '<a href="shutdown">Shut down topology</a>'
+print '</body></html>'

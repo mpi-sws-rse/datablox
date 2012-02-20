@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+
+import xmlrpclib
+import json
+import cgi
+
+proxy = xmlrpclib.ServerProxy("http://localhost:8000/")
+
+form = cgi.FieldStorage()
+log = {"internet_url": [form["url"].value]}
+res = json.loads(proxy.bookmark(json.dumps(log)))["result"]
+
+print 'Content-type: text/html\n\n'
+print '<html><head>'
+print '<title>Add</title>'
+print '</head><body>'
+if res == True:
+  print 'Success!'
+else:
+  print 'Could not add bookmark'
+print '</body></html>'

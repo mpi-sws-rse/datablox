@@ -1,0 +1,20 @@
+#!/usr/bin/env python
+import xmlrpclib
+import json
+import cgi
+
+proxy = xmlrpclib.ServerProxy("http://localhost:8000/")
+
+form = cgi.FieldStorage()
+log = {"url": [form["url"].value], "time": [form["time"].value]}
+link = json.loads(proxy.restore(json.dumps(log)))["url"][0]
+
+print 'Content-type: text/html\n\n'
+print '<html><head>'
+print '<title>Restore</title>'
+print '<meta http-equiv="REFRESH" content="0;url=' + link + '">'
+print '</head><body>'
+print '<a href="' + link + '">' + 'Click here to see it</a>'
+# print form["url"].value
+# print dir(form["url"])
+print '</body></html>'
