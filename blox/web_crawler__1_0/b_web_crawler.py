@@ -4,6 +4,7 @@ import urllib2
 import urlparse
 import os
 import collections
+import time
 
 from BeautifulSoup import BeautifulSoup
 from collections import defaultdict
@@ -39,16 +40,18 @@ class web_crawler(Block):
     return "crawl_" + self.file_num.__str__()
     
   def download_url(self, url):
+    start = time.time()
     req = urllib2.Request(url)
     response = urllib2.urlopen(req)
     new_name = self.get_new_file_name()
     with open(new_name, 'w') as f:
       f.write(response.read())
     path = os.path.join(os.getcwd(), new_name)
+    duration = time.time() - start
+    self.log(INFO, "Time take for url: %r is %r" % (url, duration))
     return path
   
   def get_related_urls(self, url, path):
-    #return []
     with open(path, 'r') as f:
       soup = BeautifulSoup(f.read())
     img_links = [l.get('src') for l in soup.findAll('img')]
