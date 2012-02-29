@@ -11,10 +11,11 @@ In order to run datablox,  ZeroMQ must be installed in the system.
 datablox depends on the following python modules:
 
  *  zmq python bindings
+ *  Engage
 
 Individual blox depend on several others:
 
- * pymongo 2.0.1 for Mongodb (also requires Mongodb to be running)
+ * pymongo 2.0.1 for Mongodb
  * sunburnt 0.5 for Solr (sunburnt in turn requires httplib2 and lxml)
 
 See the .meta file in the block's subdirectory (under blox/) for details on a given block.
