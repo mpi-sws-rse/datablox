@@ -88,7 +88,7 @@ class web_crawler(Block):
     return internet_urls, local_urls
     
   def process_crawl(self, log):
-    related_to = []
+    asset_of = []
     internet_urls, local_urls = [], []
     for url in log.log["internet_url"]:
       i, l = self.download_all_urls(url)
@@ -97,18 +97,18 @@ class web_crawler(Block):
       related_this = [url for u in i]
       internet_urls.extend(i)
       local_urls.extend(l)
-      related_to.extend(related_this)
+      asset_of.extend(related_this)
     log = Log()
     log.append_field("internet_url", internet_urls)
     log.append_field("url", local_urls)
-    log.append_field("related_to", related_to)
+    log.append_field("asset_of", asset_of)
     self.push("output", log)
     return True
     
   def delete_url(self, url):
     paths = self.downloaded_files[url]
     for path in paths:
-      # self.log(INFO, "deleting file: %r" % path)
+      self.log(INFO, "deleting file: %r" % path)
       os.remove(path)
     self.downloaded_files.pop(url)
   
