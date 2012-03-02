@@ -93,10 +93,23 @@ class PortNumberGenerator(object):
       self.port_num += 2
       return self.port_num
 
+node_ipaddress = None
+
 class BlockUtils(object):
   @staticmethod
   def get_ipaddress():
-    return socket.gethostbyname(socket.gethostname())
+    global node_ipaddress
+    if node_ipaddress == None:
+      ip = socket.gethostbyname(socket.gethostname())
+      #that hasn't worked, using a method described here: http://zeth.net/post/355/
+      if ip == "127.0.0.1":
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('google.com', 0))
+        ip = s.getsockname()[0]
+      node_ipaddress = ip
+      return ip
+    else:
+      return node_ipaddress
     
   @staticmethod
   def generate_url_for_path(path):
