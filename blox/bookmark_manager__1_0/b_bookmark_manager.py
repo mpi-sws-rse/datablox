@@ -2,6 +2,7 @@ from block import *
 import collections
 from collections import defaultdict
 import time
+from logging import ERROR, WARN, INFO, DEBUG
 
 class bookmark_manager(Block):
   def on_load(self, config):
@@ -32,3 +33,4 @@ class bookmark_manager(Block):
   def recv_push(self, port, log):
     self.add_chunks(log)
     self.add_meta(log)
+    self.log(INFO, "perf: done adding URL at %r" % time.localtime())

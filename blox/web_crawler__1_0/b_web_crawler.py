@@ -48,7 +48,7 @@ class web_crawler(Block):
       f.write(response.read())
     path = os.path.join(os.getcwd(), new_name)
     duration = time.time() - start
-    self.log(INFO, "Time take for url: %r is %r" % (url, duration))
+    self.log(INFO, "perf: time for url: %r is %r" % (url, duration))
     return path
   
   def get_related_urls(self, url, path):
@@ -56,7 +56,8 @@ class web_crawler(Block):
       soup = BeautifulSoup(f.read())
     img_links = [l.get('src') for l in soup.findAll('img')]
     css_links = [l.get('href') for l in soup.findAll('link') if l.has_key('rel') and l['rel'].lower() == 'stylesheet']
-    links = img_links + css_links
+    #extract links with valid sources
+    links = [l for l in (img_links + css_links) if l != None]
     #convert relative links into absolute
     #TODO: does not work in all cases
     absolute_links = [urlparse.urljoin(url, l) if l[:4] != 'http' else l for l in links]
@@ -111,7 +112,7 @@ class web_crawler(Block):
   def delete_url(self, url):
     paths = self.downloaded_files[url]
     for path in paths:
-      # self.log(INFO, "deleting file: %r" % path)
+      self.log(INFO, "deleting file: %r" % path)
       os.remove(path)
     self.downloaded_files.pop(url)
   
