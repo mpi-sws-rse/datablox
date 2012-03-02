@@ -60,7 +60,6 @@
             [{"web-service": "bookmark"}, {"crawler": "rpc"}],
             [{"crawler": "output"}, {"hash": "input"}],
             [{"hash": "output"}, {"manager": "input"}],
-            [{"manager": "delete_crawler_files"}, {"crawler": "can_delete"}],
             [{"web-service": "list"}, {"manager": "list"}],
             [{"web-service": "restore"}, {"manager": "restore"}],
             [{"web-service": "delete"}, {"manager": "delete"}]

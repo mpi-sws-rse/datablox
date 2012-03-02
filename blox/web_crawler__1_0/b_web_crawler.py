@@ -19,6 +19,7 @@ class web_crawler(Block):
     #mapping of urls downloaded to the local paths
     self.downloaded_files = defaultdict(list)
     self.file_num = 0
+    self.total_download_time = 0
 
   def recv_push(self, port, log):
     if port == "input":
@@ -48,7 +49,9 @@ class web_crawler(Block):
       f.write(response.read())
     path = os.path.join(os.getcwd(), new_name)
     duration = time.time() - start
+    self.total_download_time += duration
     self.log(INFO, "perf: time for url: %r is %r" % (url, duration))
+    self.log(INFO, "perf: total download time so far is %r" % (self.total_download_time))
     return path
   
   def get_related_urls(self, url, path):

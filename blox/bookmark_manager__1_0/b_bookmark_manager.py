@@ -40,6 +40,5 @@ class bookmark_manager(Block):
   def recv_push(self, port, log):
     self.add_chunks(log)
     self.add_meta(log)
-    self.delete_temp(log)
+    #self.delete_temp(log)
     self.log(INFO, "perf: done adding URL at %r" % time.localtime())
-    self.delete_temp(log)
