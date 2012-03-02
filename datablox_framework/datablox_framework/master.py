@@ -8,6 +8,20 @@ import naming
 from block import *
 from shard import *
 
+try:
+  import datablox_engage_adapter.file_locator
+  using_engage = True
+except ImportError:
+  using_engage = False
+
+if using_engage:
+  engage_file_locator = datablox_engage_adapter.file_locator.FileLocator()
+  print "Running with Engage deployment home at %s" % \
+    engage_file_locator.get_dh()
+  import datablox_engage_adapter.install
+else:
+  engage_file_locator = None
+
 def get_url(ip_address, port_number):
   return "tcp://" + ip_address + ":" + str(port_number)
 
@@ -33,7 +47,6 @@ def get_single_item(d):
   assert(len(items) == 1)
   return items[0]
 
-using_engage = False
 log_level = logging.INFO
 bloxpath = None
 global_config = None
@@ -85,8 +98,8 @@ class BlockHandler(object):
     self.version = block_record["version"] if block_record.has_key("version") \
                                    else naming.DEFAULT_VERSION
     if using_engage:
-      resource_key = naming.get_block_resource_key(block_name,
-                                                   block_version)
+      resource_key = naming.get_block_resource_key(self.name,
+                                                   self.version)
       datablox_engage_adapter.install.install_block(resource_key)
 
     self.connections = {}
