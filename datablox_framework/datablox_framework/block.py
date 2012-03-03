@@ -550,7 +550,7 @@ class Block(threading.Thread):
       sys.stdout.write("[%s] logging %s\n" % (self.id, logfile))
       sys.stdout.flush()
     else:
-      handler = logging.StreamHandler()
+      handler = logging.StreamHandler(sys.__stdout__)
       handler.setLevel(self.log_level)
     handler.setFormatter(logging.Formatter("[%(asctime)s][" + self.id +
                                            "] %(message)s",
