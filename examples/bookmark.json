@@ -11,7 +11,7 @@
              "args": {}},
             {"id": "store",
              "name": "Store",
-             "args": {"store_directory": "/home/saideep/store"}},
+             "args": {"store_directory": "/Users/saideep/Downloads/junk"}},
             {"id": "metadata",
              "name": "Meta-Store",
              "args": {}},
@@ -34,7 +34,6 @@
             "list": ["query", "list"],
             "restore": ["query", "restore"],
             "delete": ["query", "delete"],
-            "delete_crawler_files": ["bm", "delete_crawler_files"]
         }
     },
 
