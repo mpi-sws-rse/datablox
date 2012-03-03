@@ -56,7 +56,8 @@ class bookmark_query(Block):
     soup = BeautifulSoup(html)
     img_links = [l.get('src') for l in soup.findAll('img')]
     css_links = [l.get('href') for l in soup.findAll('link') if l.has_key('rel') and l['rel'].lower() == 'stylesheet']
-    links = img_links + css_links
+    #extract links with valid sources
+    links = [l for l in (img_links + css_links) if l != None]
     local_links = {}
     for l in links:
       #convert relative links into absolute

@@ -34,7 +34,6 @@
             "list": ["query", "list"],
             "restore": ["query", "restore"],
             "delete": ["query", "delete"],
-            "delete_crawler_files": ["bm", "delete_crawler_files"]
         }
     },
 
