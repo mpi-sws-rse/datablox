@@ -1,8 +1,10 @@
+#!/usr/bin/env python
+
 import CGIHTTPServer
 import BaseHTTPServer
 
 class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
-    cgi_directories = ["/"]
+    cgi_directories = ["/www"]
 
 PORT = 9000
 

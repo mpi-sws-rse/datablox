@@ -66,3 +66,19 @@ Pending implementation tasks:
 - Ability to install software dependencies of blocks through Engage
 - Better heuristics to parallelize shards
 - Port type checker
+
+Transferring large files
+==============
+
+Large files are not transferred through ZeroMQ. They are managed out-of-band through HTTP servers.
+
+The care-taker program on every node hosts a HTTP server just for serving files. So if a block A on node N1 is sending a file (F) to block B on node N2, it encrypts the path of F with N1's key to get enc(path). We use symmetric key encryption for it. It sends enc(path) over to B. When B wants to process the contents of F, it requests the HTTP file server on N1 to return the contents on enc(path). File server get enc(path), decrypts it with N1's key to get path and returns the contents through HTTP.
+
+This process has several advantages:
+
+If B does not need to process the file contents but is only looking at other fields, Datablox will not transfer the file contents to B. If some block K eventually in the topology ends up reading the file, the file is only sent to K and does not need to pass through B, C etc.
+A node can revoke privileges for file access to blocks by changing its key. That way the HTTP file server will no longer be able to decrypt the paths anymore.
+A block in another node cannot request arbitrary files from the file server because it will not know the private key for encrypting the paths.
+The additional complications introduced by this approach are:
+
+Block A must somehow make sure the file F is present on the disk at that path until the block which is supposed to use the file has accessed it. The file server currently does not communicate with blocks about which files have been accessed. So A must have a mechanism to get tokens from other blocks when file access is complete. We should probably find a more general solution for it.

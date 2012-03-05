@@ -5,13 +5,13 @@ import urllib
 
 def generate_bookmark_link(url, time):
   d = {"url": url, "time": time}
-  link_url = '/restore?' + urllib.urlencode(d)
+  link_url = 'restore?' + urllib.urlencode(d)
   link = '<a href="' + link_url + '">' + url + '</a>'
   return link
 
 def generate_delete_link(url, time):
   d = {"url": url, "time": time}
-  link_url = '/delete?' + urllib.urlencode(d)
+  link_url = 'delete?' + urllib.urlencode(d)
   link = '<a href="' + link_url + '">' + "delete" + '</a>'
   return link
   
