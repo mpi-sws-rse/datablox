@@ -78,3 +78,7 @@ class FileLocator(object):
 
   def get_file_server_key_file(self):
     return os.path.join(self.dh, "datablox_file_server_key")
+
+  def get_djm_server_dir(self):
+    return os.path.join(self.dh, "djm")
+

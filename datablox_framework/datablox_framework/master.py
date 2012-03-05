@@ -19,6 +19,7 @@ if using_engage:
   print "Running with Engage deployment home at %s" % \
     engage_file_locator.get_dh()
   import datablox_engage_adapter.install
+  import datablox_engage_adapter.djm_server as djm_server
 else:
   engage_file_locator = None
 
@@ -507,7 +508,10 @@ class Master(object):
     bloxpath = _bloxpath
     using_engage = _using_engage
     log_level = _log_level
-    
+    if using_engage:
+      self.djm_job = djm_server.start_job_and_get_nodes(ip_addr_list,
+                                                        os.path.basename(config_file))
+
     add_blox_to_path(_bloxpath)
     self.address_manager = AddressManager(ip_addr_list)
     self.context = zmq.Context()
@@ -521,21 +525,34 @@ class Master(object):
     main_block_rec = {"id": "main_inst", "args": {}}
     self.main_block_handler = GroupHandler(main_block_rec, get_group("main"), self.address_manager, self.context)
     if not self.main_block_handler.start():
-      print "Master: Could not start all blocks. Ending the run"
-      self.stop_all()
-      
-    self.run()
+      self.stop_all("Master: Could not start all blocks. Ending the run")
+
+    try:
+      self.run()
+    except Exception, e:
+      logger.exception("Master run aborted due to exception %s" % e)
+      if using_engage:
+        self.djm_job.stop_job(successful=False,
+                              msg="Master run stopped due to exception %s" % e)
+      raise
+    if using_engage:
+      self.djm_job.stop_job(successful=True)
+    return
   
   def get_config(self, config_file):
     with open(config_file) as f:
       return json.load(f)
 
-  def stop_all(self):
+  def stop_all(self, msg):
+    print msg
     self.main_block_handler.stop()
     print "Master: trying to stop all blocks"
     for ip in self.address_manager.ipaddress_hash.keys():
       self.stop_all_node(ip)
     print "done, quitting"
+    if using_engage:
+      self.djm_job.stop_job(successful=False,
+                            msg=reason)
     self.context.term()
     sys.exit(0)
 
@@ -549,14 +566,14 @@ class Master(object):
     socket.close()
 
   def run(self):
-    while True:
-      try:
+    try:
+      while True:
         res = self.main_block_handler.poll_load()
         if len(res) == 0:
           print "Master: no more running nodes, quitting"
           return
         #todo: hard coded 10
         time.sleep(10)
-      except KeyboardInterrupt:
-        self.stop_all()
-        break
+    except KeyboardInterrupt:
+      self.stop_all("Got a keyboard interrupt") # does not return
+      

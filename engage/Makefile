@@ -8,6 +8,7 @@ TEST_DEPLOY_HOME=$(shell cd ~; pwd)/apps
 PACKAGE_DIR=$(ENGAGE_EXT_HOME)/packages
 ADAPTER_DIR=$(ENGAGE_EXT_HOME)/adapter_pkg
 PLATFORM=$(shell ./get_platform.sh)
+DJM_SRC=$(shell cd ../..; pwd)/djm
 
 # The following two are only valid if you are running an internal build
 # at genForma.
@@ -24,6 +25,8 @@ engage-ext:
 	@echo "Created package datablox_engage_adapter.tgz"
 	@cd $(BLOXPATH); for dir in `ls`; do if [ -d "$$dir" ]; then tar czf $(ENGAGE_EXT_HOME)/datablox/sw_packages/$$dir.tgz $$dir; echo "Created package $$dir.tgz"; fi; done
 	cp $(BLOXPATH)/solr_index__1_0/schema.xml $(ENGAGE_EXT_HOME)/datablox/sw_packages/solr_schema.xml
+	@echo "Add DJM if present"
+	if [ -d $(DJM_SRC) ]; then cd $(DJM_SRC); make sdist; cp dist/dist_job_mgr-0.1.0.tar.gz $(PACKAGE_DIR); fi
 	@echo "Built Engage extension"
 
 

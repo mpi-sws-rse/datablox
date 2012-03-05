@@ -29,7 +29,10 @@ log_levels = {
 }
 
 def main(argv):
-  usage = "%prog [options] config_file ip_address1 ip_address2 ..."
+  if using_engage:
+    usage = "%prog [options] config_file node_name_1 node_name_2 ..."
+  else:
+    usage = "%prog [options] config_file ip_address1 ip_address2 ..."
   parser = OptionParser(usage=usage)
   parser.add_option("-b", "--bloxpath", dest="bloxpath", default=None,
                     help="use this path instead of the environment variable BLOXPATH")
@@ -38,8 +41,10 @@ def main(argv):
                     
   (options, args) = parser.parse_args(argv)
 
-  if len(args)<2:
-    parser.error("Need to specify config_file and at least one ip address")
+  if len(args)<1:
+    parser.error("Need to specify config file and nodes.")
+  elif len(args)<2 and options.pool==None:
+    parser.error("Need to specify list of nodes/ip_addreses or a DJM pool name")
 
   bloxpath = options.bloxpath
 
@@ -61,7 +66,8 @@ def main(argv):
   if options.log_level not in log_levels.keys():
     parser.error("--log-level must be one of %s" % log_levels.keys())
     
-  Master(bloxpath, args[0], args[1:], using_engage, _log_level=log_levels[options.log_level])
+  Master(bloxpath, args[0], args[1:], using_engage,
+         _log_level=log_levels[options.log_level])
 
 def call_from_console_script():
     sys.exit(main(sys.argv[1:]))

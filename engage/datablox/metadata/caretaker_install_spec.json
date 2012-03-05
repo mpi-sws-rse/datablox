@@ -10,14 +10,5 @@
       "key": {"name":"dynamic-host", "version":"*"},
       "port_mapping": {"host": "host"}
     }
-  },
-  {
-    "id": "djm-server",
-    "key": {"name":"djm-server-config", "version":"0.1"},
-    "inside": {
-      "id": "master-host",
-      "key": {"name":"dynamic-host", "version":"*"},
-      "port_mapping": {"host": "host"}
-    }
   }
 ]
