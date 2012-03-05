@@ -125,6 +125,9 @@ class Manager(resource_manager.Manager):
                "--server-config-dir=%s" % p.output_ports.djm_server.server_config_dir]
         cmd.extend(djm_package_arg)
         r(run_program, cmd, cwd=p.output_ports.djm_server.server_config_dir)
+        cmd = [p.djmctl, "set-server-directory",
+               p.output_ports.djm_server.server_config_dir]
+        r(run_program, cmd, cwd=p.output_ports.djm_server.server_config_dir)
 
     def validate_post_install(self):
         self.ctx.r(check_file_exists,  self.ctx.props.djm_config_file)

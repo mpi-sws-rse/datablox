@@ -56,6 +56,7 @@ test-deploy: test-packages
 	rm -rf $(TEST_DEPLOY_HOME)
 	if [ -d $(PACKAGE_DIR) ]; then cp $(PACKAGE_DIR)/* $(ENGAGE_DIST)/sw_packages; fi
 	cd $(ENGAGE_DIST); ./install_datablox.py $(TEST_DEPLOY_HOME)
+	cd $(TEST_DEPLOY_HOME)/python/bin; ./djmctl add-node --port=20001 --private-ip=127.0.0.1 127.0.0.1
 
 # Run a configuration involving dir-src, file-mongo, and mongo-map-reduce.
 # At the end, look for file type records (should be 2).
