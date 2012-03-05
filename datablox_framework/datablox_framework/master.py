@@ -501,6 +501,15 @@ class AddressManager(object):
   def new_port(self):
     return self.port_num_gen.new_port()
 
+class DjmAddressManager(AddressManager):
+  """When running with Engage and the Distributed Job Manager,
+  we delegate the management of nodes to the DJM.
+  """
+  def __init__(self, djm_job):
+    AddressManager.__init__(self,
+                            [node["contact_address"] for node in djm_job.nodes])
+    self.djm_job = djm_job
+    
 class Master(object):
   def __init__(self, _bloxpath, config_file, ip_addr_list,
                _using_engage, _log_level=logging.INFO):
@@ -509,11 +518,13 @@ class Master(object):
     using_engage = _using_engage
     log_level = _log_level
     if using_engage:
-      self.djm_job = djm_server.start_job_and_get_nodes(ip_addr_list,
-                                                        os.path.basename(config_file))
+      djm_job = djm_server.start_job_and_get_nodes(ip_addr_list,
+                                                   os.path.basename(config_file))
+      self.address_manager = DjmAddressManager(djm_job)
+    else:
+      self.address_manager = AddressManager(ip_addr_list)
 
     add_blox_to_path(_bloxpath)
-    self.address_manager = AddressManager(ip_addr_list)
     self.context = zmq.Context()
     global_config = self.get_config(config_file)
     #old style, flat config
@@ -532,11 +543,11 @@ class Master(object):
     except Exception, e:
       logger.exception("Master run aborted due to exception %s" % e)
       if using_engage:
-        self.djm_job.stop_job(successful=False,
-                              msg="Master run stopped due to exception %s" % e)
+        self.address_manager.djm_job.stop_job(successful=False,
+                                              msg="Master run stopped due to exception %s" % e)
       raise
     if using_engage:
-      self.djm_job.stop_job(successful=True)
+      self.address_manager.djm_job.stop_job(successful=True)
     return
   
   def get_config(self, config_file):
@@ -551,8 +562,8 @@ class Master(object):
       self.stop_all_node(ip)
     print "done, quitting"
     if using_engage:
-      self.djm_job.stop_job(successful=False,
-                            msg=reason)
+      self.address_manager.djm_job.stop_job(successful=False,
+                                            msg=reason)
     self.context.term()
     sys.exit(0)
 
