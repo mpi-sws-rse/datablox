@@ -23,7 +23,7 @@ def main(argv):
     print "  Running Engage bootstrap"
     bt_log = os.path.join(dh, "log/bootstrap.log")
     try:
-        rc = bootstrap.main([dh])
+        rc = bootstrap.main(["-c", dh])
     except:
         traceback.print_exc()
         print "Error running Engage bootstrap, check logfile %s for details" % \

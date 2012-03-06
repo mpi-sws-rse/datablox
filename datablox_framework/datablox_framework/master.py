@@ -3,6 +3,7 @@ import json
 import time
 import copy
 import subprocess
+import logging
 
 import naming
 from block import *
@@ -16,12 +17,12 @@ except ImportError:
 
 if using_engage:
   engage_file_locator = datablox_engage_adapter.file_locator.FileLocator()
-  print "Running with Engage deployment home at %s" % \
-    engage_file_locator.get_dh()
   import datablox_engage_adapter.install
   import datablox_engage_adapter.djm_server as djm_server
 else:
   engage_file_locator = None
+
+logger = logging.getLogger(__name__)
 
 def get_url(ip_address, port_number):
   return "tcp://" + ip_address + ":" + str(port_number)
@@ -109,7 +110,7 @@ class BlockHandler(object):
     self.timeouts = 0
     path = naming.block_path(bloxpath, self.name, self.version)
     if not os.path.isfile(path):
-      print "Could not find the block " + path
+      logger.error("Could not find the block " + path)
       raise NameError
   
   #creates an output port if it does not exist
@@ -142,21 +143,21 @@ class BlockHandler(object):
     pass
 
   def start(self):
-    print "starting", self.name
+    logger.info("starting %s" % self.name)
     config = self.create_basic_config()
     self.add_additional_config(config)
     socket = self.context.socket(zmq.REQ)
     message = json.dumps(("ADD NODE", config))
     socket.connect(get_url(self.ipaddress, 5000))
     socket.send(message)
-    print "waiting for caretake to load " + self.name
+    logger.info("waiting for caretaker to load " + self.name)
     res = json.loads(socket.recv())
     socket.close()
     if not res:
-      print "Could not start block " + self.name
+      logger.error("Could not start block " + self.name)
       raise NameError
     else:
-      print self.name + " loaded"
+      logger.info(self.name + " loaded")
     return self.sync()
 
   def stop(self):
@@ -166,7 +167,7 @@ class BlockHandler(object):
     url = get_url(self.ipaddress, self.master_port)
     syncclient = self.context.socket(zmq.REQ)
     syncclient.connect(url)
-    print "syncing with block %s at url %s" % (self.name, url)
+    logger.info("syncing with block %s at url %s" % (self.name, url))
     syncclient.send('')
     # wait for synchronization reply
     # TODO: hardcoded wait for 8 seconds
@@ -187,7 +188,7 @@ class BlockHandler(object):
         to_connections.index(connection_url)
         pass
       except ValueError:
-        print "Cannot add multiple input connections"
+        logger.error("Cannot add multiple input connections")
         raise NameError
     else:
       to_connections.append(connection_url)
@@ -204,17 +205,17 @@ class BlockHandler(object):
     if load != None:
       self.timeouts = 0
       load = json.loads(load)
-      print "%s has served %r (%r)" % (self.id, load, (load - self.last_load))
+      logger.info("%s has served %r (%r)" % (self.id, load, (load - self.last_load)))
       self.last_load = load
       #shut down
       if load == -1:
-        print "%s has shutdown" % (self.id)
+        logger.info("%s has shutdown" % (self.id))
         return []
       #block timed out
       else:
         return [load]
     else:
-      print "** Master: %s timed out" % self.id
+      logger.info("** Master: %s timed out" % self.id)
       self.timeouts += 1
       if self.timeouts > 3:
         return None
@@ -258,10 +259,10 @@ class RPCHandler(BlockHandler):
 
   def poll_load(self):
     if self.webserver_process.poll() == None:
-      print "RPC block is working"
+      logger.info("RPC block is working")
       return [0]
     else:
-      print "RPC block has shutdown"
+      logger.info("RPC block has shutdown")
       return []
   
 class DynamicJoinHandler(BlockHandler):
@@ -304,7 +305,7 @@ class ShardHandler(BlockHandler):
     block_type = self.node_type
     block_name = block_type["name"]
     input_port = block_type["input_port"]
-    print "num blocks in shard %d" % (len(block_configs))
+    logger.info("num blocks in shard %d" % (len(block_configs)))
     if block_type.has_key("output_port"):
       #optimization: creating the join block on the same node as the shard - TODO: verify this
       join_record = {}
@@ -402,7 +403,7 @@ class GroupHandler(BlockHandler):
       handler = self.block_hash[block_name]
       return handler.get_output_port_connections(from_port)
     except KeyError:
-      print "Block-group %s does not have a mapping for port %s" % (self.name, from_port)
+      logger.error("Block-group %s does not have a mapping for port %s" % (self.name, from_port))
       raise NameError
 
   def get_input_port_connections(self, to_port):
@@ -411,7 +412,7 @@ class GroupHandler(BlockHandler):
       handler = self.block_hash[block_name]
       return handler.get_input_port_connections(to_port)
     except KeyError:
-      print "Block-group %s does not have a mapping for port %s" % (self.name, from_port)
+      logger.error("Block-group %s does not have a mapping for port %s" % (self.name, from_port))
       raise NameError
   
   def get_ipaddress(self, port):
@@ -420,7 +421,7 @@ class GroupHandler(BlockHandler):
       handler = self.block_hash[block_name]
       return handler.get_ipaddress(port)
     except KeyError:
-      print "Block-group %s does not have a mapping for port %s" % (self.name, from_port)
+      logger.error("Block-group %s does not have a mapping for port %s" % (self.name, from_port))
       raise NameError
     
   def set_initial_connections(self, connections):
@@ -475,6 +476,9 @@ class AddressManager(object):
   def get_master_port(self):
     self.master_port += 2
     return self.master_port
+
+  def get_all_ip_addresses(self):
+    return self.ip_address_hash.keys()
   
   #if selected_ipaddress is None, return a new ipaddress
   #otherwise if selected_ipaddress exists in the list, return that otherwise raise error
@@ -484,7 +488,7 @@ class AddressManager(object):
     elif self.ipaddress_hash.has_key(selected_ipaddress):
       return selected_ipaddress
     else:
-      print "No ipaddress ", selected_ipaddress
+      logger.error("No ipaddress ", selected_ipaddress)
       raise NameError
   
   def select_ipaddress(self):
@@ -507,8 +511,27 @@ class DjmAddressManager(AddressManager):
   """
   def __init__(self, djm_job):
     AddressManager.__init__(self,
-                            [node["contact_address"] for node in djm_job.nodes])
+                            [node["name"] for node in djm_job.nodes])
     self.djm_job = djm_job
+
+  def select_ipaddress(self):
+    node_name = AddressManager.select_ipaddress(self)
+    return (self.djm_job.get_node(node_name))["datablox_ip_address"]
+  
+  def get_ipaddress(self, selected_ipaddress):
+    """When running under engage, the selected_ipaddress is actually
+    the name of the node. We map that to the ip address of the node.
+    """
+    if selected_ipaddress == None:
+      return self.select_ipaddress()
+    elif self.djm_job.has_node(selected_ipaddress):
+      return (self.djm_job.get_node(selected_ipaddress))["datablox_ip_address"]
+    else:
+      logger.error("No node with name %s" % selected_ipaddress)
+      raise NameError
+
+  def get_all_ip_addresses(self):
+    return [node["datablox_ip_address"] for node in self.djm_job.nodes]
     
 class Master(object):
   def __init__(self, _bloxpath, config_file, ip_addr_list,
@@ -518,6 +541,8 @@ class Master(object):
     using_engage = _using_engage
     log_level = _log_level
     if using_engage:
+      logger.info("Running with Engage deployment home at %s" % \
+                  engage_file_locator.get_dh())
       djm_job = djm_server.start_job_and_get_nodes(ip_addr_list,
                                                    os.path.basename(config_file))
       self.address_manager = DjmAddressManager(djm_job)
@@ -555,24 +580,26 @@ class Master(object):
       return json.load(f)
 
   def stop_all(self, msg):
-    print msg
-    self.main_block_handler.stop()
-    print "Master: trying to stop all blocks"
-    for ip in self.address_manager.ipaddress_hash.keys():
-      self.stop_all_node(ip)
-    print "done, quitting"
-    if using_engage:
-      self.address_manager.djm_job.stop_job(successful=False,
-                                            msg=reason)
-    self.context.term()
-    sys.exit(0)
+    logger.error(msg)
+    try:
+      self.main_block_handler.stop()
+      logger.info("Master: trying to stop all blocks")
+      for ip in self.address_manager.get_all_ip_addresses():
+        self.stop_all_node(ip)
+      logger.info("done, quitting")
+      self.context.term()
+    finally:
+      if using_engage:
+        self.address_manager.djm_job.stop_job(successful=False,
+                                              msg=msg)
+    sys.exit(1)
 
   def stop_all_node(self, ipaddress):
     socket = self.context.socket(zmq.REQ)
     message = json.dumps(("STOP ALL", {}))
     socket.connect(get_url(ipaddress, 5000))
     socket.send(message)
-    print "waiting for caretaker at %s to stop all blocks " % ipaddress
+    logger.info("waiting for caretaker at %s to stop all blocks " % ipaddress)
     res = json.loads(socket.recv())
     socket.close()
 
@@ -581,7 +608,7 @@ class Master(object):
       while True:
         res = self.main_block_handler.poll_load()
         if len(res) == 0:
-          print "Master: no more running nodes, quitting"
+          logger.info("Master: no more running nodes, quitting")
           return
         #todo: hard coded 10
         time.sleep(10)

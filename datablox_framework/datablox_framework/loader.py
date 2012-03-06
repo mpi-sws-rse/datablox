@@ -1,4 +1,5 @@
 import os
+import os.path
 import sys
 from optparse import OptionParser
 import logging
@@ -65,6 +66,24 @@ def main(argv):
 
   if options.log_level not in log_levels.keys():
     parser.error("--log-level must be one of %s" % log_levels.keys())
+
+  # setup logging
+  root_logger = logging.getLogger()
+  if len(root_logger.handlers)==0:
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(log_levels[options.log_level])
+    root_logger.addHandler(console_handler)
+  if using_engage:
+    root_logger.setLevel(min(root_logger.level, logging.DEBUG))
+    log_dir = engage_file_locator.get_log_directory()
+    if not os.path.exists(log_dir):
+      os.makedirs(log_dir)
+    log_file = os.path.join(log_dir, "master.log")
+    handler = logging.FileHandler(log_file)
+    handler.setLevel(logging.DEBUG)
+    root_logger.addHandler(handler)
+  else:
+    root_logger.setLevel(min(root_logger.level, log_levels[options.log_level]))
     
   Master(bloxpath, args[0], args[1:], using_engage,
          _log_level=log_levels[options.log_level])

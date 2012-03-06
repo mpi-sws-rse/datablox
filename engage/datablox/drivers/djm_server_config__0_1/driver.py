@@ -19,6 +19,7 @@ import engage.drivers.resource_manager as resource_manager
 import engage.drivers.utils
 # Drivers compose *actions* to implement their methods.
 from engage.drivers.action import *
+import engage.utils.system_info as system_info
 
 MODEL_ADAPTER_CLASS="dist_job_mgr.mem_model.ModelAdapter"
 
@@ -128,6 +129,18 @@ class Manager(resource_manager.Manager):
         cmd = [p.djmctl, "set-server-directory",
                p.output_ports.djm_server.server_config_dir]
         r(run_program, cmd, cwd=p.output_ports.djm_server.server_config_dir)
+        # add the current node as "master"
+        machine_info = system_info.get_machine_info()
+        cmd = [p.djmctl, "add-node"]
+        cmd.append("--hostname=%s" % machine_info["hostname"])
+        cmd.append("--os-user=%s" % machine_info["username"])
+        if machine_info["private_ip"]!=None:
+            cmd.append("--private-ip=%s" % machine_info["private_ip"])
+        if machine_info["public_ip"]!=None:
+            cmd.append("--public-ip=%s" % machine_info["public_ip"])
+        cmd.append("master")
+        r(run_program, cmd, cwd=p.output_ports.djm_server.server_config_dir)
+                   
 
     def validate_post_install(self):
         self.ctx.r(check_file_exists,  self.ctx.props.djm_config_file)

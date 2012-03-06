@@ -25,6 +25,22 @@ class DjmJob(object):
         self.c = c
         self.job_id = job_id
         self.nodes = nodes
+        self.nodes_by_name = {}
+        for node in nodes:
+            if node["private_ip"]!=None:
+                ip_address = node["private_ip"]
+            else:
+                ip_address = node["public_ip"]
+            if not ip_address:
+                raise Exception("Neither public ip address nor private ip address specified for node %s, need to specify at least one" % node["name"])
+            node["datablox_ip_address"] = ip_address
+            self.nodes_by_name[node["name"]] = node
+
+    def has_node(self, node_name):
+        return self.nodes_by_name.has_key(node_name)
+
+    def get_node(self, node_name):
+        return self.nodes_by_name[node_name]
 
     def stop_job(self, successful=True, msg=None):
         if successful:
@@ -60,6 +76,7 @@ def start_job_and_get_nodes(node_list, config_file_name, total_nodes=None):
     j = c.start_job(config_file_name, common.JobType.ONE_TIME_JOB,
                     total_nodes, "Datablox job started %s" % start_time,
                     node_pool_name=pool, requested_nodes=node_list)
+    logger.info("Started DJM job %s" % j)
     try:
         allocated_nodes = c.query_nodes(job_id=j)
         return DjmJob(c, j, allocated_nodes)

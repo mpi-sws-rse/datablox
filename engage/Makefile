@@ -56,7 +56,6 @@ test-deploy: test-packages
 	rm -rf $(TEST_DEPLOY_HOME)
 	if [ -d $(PACKAGE_DIR) ]; then cp $(PACKAGE_DIR)/* $(ENGAGE_DIST)/sw_packages; fi
 	cd $(ENGAGE_DIST); ./install_datablox.py $(TEST_DEPLOY_HOME)
-	cd $(TEST_DEPLOY_HOME)/python/bin; ./djmctl add-node --port=20001 --private-ip=127.0.0.1 127.0.0.1
 
 # Run a configuration involving dir-src, file-mongo, and mongo-map-reduce.
 # At the end, look for file type records (should be 2).
@@ -65,7 +64,7 @@ test-map-reduce:
 	# we only crawl the datablox source tree
 	python -c "import sys; sys.stdout.write(open(sys.argv[1], 'rb').read().replace('~/', sys.argv[2]))" $(BLOX_HOME)/examples/file_map_reduce.json $(BLOX_HOME) >$(TEST_DEPLOY_HOME)/file_map_reduce.json
 	@echo "Running map-reduce scenario"
-	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master $(TEST_DEPLOY_HOME)/file_map_reduce.json 127.0.0.1
+	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master $(TEST_DEPLOY_HOME)/file_map_reduce.json master
 	$(TEST_DEPLOY_HOME)/mongodb-2.0/bin/mongo --eval "db.getSisterDB('file_db').file_types.count()"
 	$(TEST_DEPLOY_HOME)/engage/bin/svcctl stop
 	@echo "Map-reduce completed successfully"
@@ -73,7 +72,7 @@ test-map-reduce:
 test-read-files:
 	@echo "Running read-files scenario"
 	python -c "import sys; sys.stdout.write(open(sys.argv[1], 'rb').read().replace('.', sys.argv[2]))" $(BLOX_HOME)/examples/read_files.json $(BLOX_HOME)/blox >$(TEST_DEPLOY_HOME)/read_files.json
-	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master $(TEST_DEPLOY_HOME)/read_files.json 127.0.0.1
+	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master $(TEST_DEPLOY_HOME)/read_files.json master
 	$(TEST_DEPLOY_HOME)/engage/bin/svcctl stop
 	@echo "Read-files completed successfully"
 
