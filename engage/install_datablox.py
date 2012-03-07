@@ -6,6 +6,9 @@ import sys
 from optparse import OptionParser
 import traceback
 import subprocess
+import tempfile
+import random
+import string
 
 import bootstrap
 
@@ -39,13 +42,18 @@ def main(argv):
         raise Exception("Could not find Engage installer script at %s" %
                         install_exe)
     di_log = os.path.join(dh, "log/install.log")
+    with tempfile.NamedTemporaryFile(delete=False) as f:
+        f.write(''.join([random.choice(string.letters+string.digits) for i in range(10)]))
+        fname = f.name
     try:
-        rc = subprocess.call([install_exe, "datablox"])
+        rc = subprocess.call([install_exe, "-p", fname, "datablox"])
     except:
         traceback.print_exc()
         print "Error running datablox install, check logfile %s for details" % \
               di_log
         return 1
+    finally:
+        os.remove(fname)
     if rc != 0:
         print "Engage install of Datablox caretaker failed, return code was %d. Check logfile %s for details." % \
               (rc, di_log)
