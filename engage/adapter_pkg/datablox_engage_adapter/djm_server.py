@@ -52,6 +52,13 @@ class DjmJob(object):
                             common.JobStatus.JOB_FAILED,
                             comment=msg)
 
+def _check_task_status(s, r, msg):
+    if s!=common.TaskStatus.TASK_SUCCESSFUL:
+        bad_nodes = filter(lambda res:
+                           res.status!=common.TaskStatus.TASK_SUCCESSFUL,
+                           r)
+        raise Exception("%s for nodes: %s" %
+                        (msg, [r.node_name for r in bad_nodes]))
         
 def start_job_and_get_nodes(node_list, config_file_name, total_nodes=None):
     """Given a node list and optional number of nodes, try to get the
@@ -78,8 +85,36 @@ def start_job_and_get_nodes(node_list, config_file_name, total_nodes=None):
                     node_pool_name=pool, requested_nodes=node_list)
     logger.info("Started DJM job %s" % j)
     try:
+        fl = FileLocator()
         allocated_nodes = c.query_nodes(job_id=j)
-        return DjmJob(c, j, allocated_nodes)
+        djm_job = DjmJob(c, j, allocated_nodes)
+        logger.info("Setting up nodes")
+        # for all the non-master nodes, we setup the caretaker
+        nodes_except_master = filter(lambda name: name!="master",
+                                     [node["name"] for node in allocated_nodes])
+        if len(nodes_except_master)>0:
+            (s, r) = c.run_task_on_node_list(j, "StartWorker", "start worker",
+                                             nodes_except_master)
+            _check_task_status(s, r, "DJM worker start failed")
+            dist_path = fl.get_engage_distribution_file()
+            logger.info("Copying engage distribution")
+            (s, r) = c.run_task_on_node_list(j, "CopyFiles",
+                                             "Copy engage distribution",
+                                             nodes_except_master,
+                                             dist_path,
+                                             "~/" + os.path.basename(dist_path))
+            _check_task_status(s, r, "Copying of engage distribution failed")
+            (s, r) = c.run_task_on_node_list(j, "Command",
+                                             "Setup remote caretaker",
+                                             nodes_except_master,
+                                             ["~/apps/engage/sw_packages/setup_caretaker.sh"])
+            _check_task_status(s, r, "Caretaker setup script failed")
+        return djm_job
+    except KeyboardInterrupt:
+        logger.exception("Got keyboard interrupt in node initialization")
+        c.stop_job(j, common.JobStatus.JOB_FAILED,
+                   comment="Got keyboard interrupt in node initialization")
+        raise
     except Exception, e:
         logger.exception("DJM problem in node initialization: %s" % e)
         c.stop_job(j, common.JobStatus.JOB_FAILED,

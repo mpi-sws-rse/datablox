@@ -38,7 +38,7 @@ def main(argv):
     if not os.path.exists(install_exe):
         raise Exception("Could not find Engage installer script at %s" %
                         install_exe)
-    di_log = os.path.join(dh, "log/install_datablox.log")
+    di_log = os.path.join(dh, "log/install.log")
     try:
         rc = subprocess.call([install_exe, "datablox"])
     except:

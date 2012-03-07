@@ -25,6 +25,7 @@ engage-ext:
 	@echo "Created package datablox_engage_adapter.tgz"
 	@cd $(BLOXPATH); for dir in `ls`; do if [ -d "$$dir" ]; then tar czf $(ENGAGE_EXT_HOME)/datablox/sw_packages/$$dir.tgz $$dir; echo "Created package $$dir.tgz"; fi; done
 	cp $(BLOXPATH)/solr_index__1_0/schema.xml $(ENGAGE_EXT_HOME)/datablox/sw_packages/solr_schema.xml
+	cp $(ENGAGE_EXT_HOME)/setup_caretaker.sh $(ENGAGE_EXT_HOME)/datablox/sw_packages
 	@echo "Add DJM if present"
 	if [ -d $(DJM_SRC) ]; then cd $(DJM_SRC); make sdist; cp dist/dist_job_mgr-0.1.0.tar.gz $(PACKAGE_DIR); fi
 	@echo "Built Engage extension"

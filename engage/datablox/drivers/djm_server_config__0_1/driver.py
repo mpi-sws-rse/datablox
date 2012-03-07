@@ -131,14 +131,15 @@ class Manager(resource_manager.Manager):
         r(run_program, cmd, cwd=p.output_ports.djm_server.server_config_dir)
         # add the current node as "master"
         machine_info = system_info.get_machine_info()
-        cmd = [p.djmctl, "add-node"]
-        cmd.append("--hostname=%s" % machine_info["hostname"])
-        cmd.append("--os-user=%s" % machine_info["username"])
-        if machine_info["private_ip"]!=None:
-            cmd.append("--private-ip=%s" % machine_info["private_ip"])
-        if machine_info["public_ip"]!=None:
-            cmd.append("--public-ip=%s" % machine_info["public_ip"])
-        cmd.append("master")
+        ## cmd = [p.djmctl, "add-node"]
+        ## cmd.append("--hostname=%s" % machine_info["hostname"])
+        ## cmd.append("--os-user=%s" % machine_info["username"])
+        ## if machine_info["private_ip"]!=None:
+        ##     cmd.append("--private-ip=%s" % machine_info["private_ip"])
+        ## if machine_info["public_ip"]!=None:
+        ##     cmd.append("--public-ip=%s" % machine_info["public_ip"])
+        ## cmd.append("master")
+        cmd = [p.djmctl, "add-master-node", "--bootstrap"]
         r(run_program, cmd, cwd=p.output_ports.djm_server.server_config_dir)
                    
 
