@@ -13,7 +13,7 @@ fi
 
 echo "Bootstrapping engage deployment home"
 cd ~
-rm -rf ./engagexs
+rm -rf ./engage
 tar xzf engage-dist.tar.gz
 cd engage
 ./bootstrap.py ~/apps

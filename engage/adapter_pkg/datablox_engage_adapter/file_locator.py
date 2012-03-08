@@ -49,6 +49,8 @@ class FileLocator(object):
            log_dir_ref_file
     self.engage_dist_file = os.path.join(self.engage_dir, "engage-dist.tar.gz")
     check_file(self.engage_dist_file)
+    self.sw_packages_dir = os.path.join(self.engage_dir, "sw_packages")
+    check_dir(self.sw_packages_dir)
 
   def get_dh(self):
     return self.dh
@@ -95,3 +97,6 @@ class FileLocator(object):
 
   def get_engage_distribution_file(self):
     return self.engage_dist_file
+
+  def get_sw_packages_dir(self):
+    return self.sw_packages_dir

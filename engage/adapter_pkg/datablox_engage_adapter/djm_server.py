@@ -35,6 +35,9 @@ class DjmJob(object):
                 raise Exception("Neither public ip address nor private ip address specified for node %s, need to specify at least one" % node["name"])
             node["datablox_ip_address"] = ip_address
             self.nodes_by_name[node["name"]] = node
+        self.nodes_except_master = filter(lambda name: name!="master",
+                                          [node["name"] for node in self.nodes])
+
 
     def has_node(self, node_name):
         return self.nodes_by_name.has_key(node_name)
@@ -43,6 +46,11 @@ class DjmJob(object):
         return self.nodes_by_name[node_name]
 
     def stop_job(self, successful=True, msg=None):
+        if len(self.nodes_except_master)>0:
+            (s, r) = c.run_task_on_node_list(j, "StopWorker", "stop worker",
+                                             self.nodes_except_master)
+            if s!=common.TaskStatus.TASK_SUCCESSFUL:
+                logger.warn("Not able to stop DJM worker on all nodes")
         if successful:
             self.c.stop_job(self.job_id,
                             common.JobStatus.JOB_SUCCESSFUL,
@@ -58,7 +66,7 @@ def _check_task_status(s, r, msg):
                            res.status!=common.TaskStatus.TASK_SUCCESSFUL,
                            r)
         raise Exception("%s for nodes: %s" %
-                        (msg, [r.node_name for r in bad_nodes]))
+                        (msg, ', '.join([r.node_name for r in bad_nodes])))
         
 def start_job_and_get_nodes(node_list, config_file_name, total_nodes=None):
     """Given a node list and optional number of nodes, try to get the
@@ -90,8 +98,7 @@ def start_job_and_get_nodes(node_list, config_file_name, total_nodes=None):
         djm_job = DjmJob(c, j, allocated_nodes)
         logger.info("Setting up nodes")
         # for all the non-master nodes, we setup the caretaker
-        nodes_except_master = filter(lambda name: name!="master",
-                                     [node["name"] for node in allocated_nodes])
+        nodes_except_master = djm_job.nodes_except_master
         if len(nodes_except_master)>0:
             (s, r) = c.run_task_on_node_list(j, "StartWorker", "start worker",
                                              nodes_except_master)
@@ -104,10 +111,23 @@ def start_job_and_get_nodes(node_list, config_file_name, total_nodes=None):
                                              dist_path,
                                              "~/" + os.path.basename(dist_path))
             _check_task_status(s, r, "Copying of engage distribution failed")
+            (s, r) = c.run_task_on_node_list(j, "CopyFiles",
+                                             "Copy setup script",
+                                             nodes_except_master,
+                                             os.path.join(fl.get_sw_packages_dir(),
+                                                          "setup_caretaker.sh"),
+                                             "~/setup_caretaker.sh")
+            _check_task_status(s, r, "Copy of caretaker setup script failed")
+            (s, r) = c.run_task_on_node_list(j, "Command",
+                                             "Make setup script executable",
+                                             nodes_except_master,
+                                             ["/bin/chmod", "755",
+                                              "~/setup_caretaker.sh"])
+            _check_task_status(s, r, "chmod of caretaker setup script failed")
             (s, r) = c.run_task_on_node_list(j, "Command",
                                              "Setup remote caretaker",
                                              nodes_except_master,
-                                             ["~/apps/engage/sw_packages/setup_caretaker.sh"])
+                                             ["~/setup_caretaker.sh"])
             _check_task_status(s, r, "Caretaker setup script failed")
         return djm_job
     except KeyboardInterrupt:
