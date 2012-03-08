@@ -27,7 +27,7 @@ engage-ext:
 	cp $(BLOXPATH)/solr_index__1_0/schema.xml $(ENGAGE_EXT_HOME)/datablox/sw_packages/solr_schema.xml
 	cp $(ENGAGE_EXT_HOME)/setup_caretaker.sh $(ENGAGE_EXT_HOME)/datablox/sw_packages
 	@echo "Add DJM if present"
-	if [ -d $(DJM_SRC) ]; then cd $(DJM_SRC); make sdist; cp dist/dist_job_mgr-0.1.0.tar.gz $(PACKAGE_DIR); fi
+	if [ -d $(DJM_SRC) ]; then cd $(DJM_SRC); make sdist; cp dist/dist_job_mgr-0.1.0.tar.gz $(ENGAGE_EXT_HOME)/datablox/sw_packages; fi
 	@echo "Built Engage extension"
 
 
