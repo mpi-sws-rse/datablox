@@ -127,7 +127,8 @@ def start_job_and_get_nodes(node_list, config_file_name, total_nodes=None):
             (s, r) = c.run_task_on_node_list(j, "Command",
                                              "Setup remote caretaker",
                                              nodes_except_master,
-                                             ["~/setup_caretaker.sh"])
+                                             ["~/setup_caretaker.sh"],
+                                             shell=True)
             _check_task_status(s, r, "Caretaker setup script failed")
         return djm_job
     except KeyboardInterrupt:
