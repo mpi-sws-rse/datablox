@@ -47,8 +47,6 @@ class FileLocator(object):
       self.log_directory = f.read().rstrip()
     assert self.log_directory, "%s does not seem to contain a valid directory" %\
            log_dir_ref_file
-    self.engage_dist_file = os.path.join(self.engage_dir, "engage-dist.tar.gz")
-    check_file(self.engage_dist_file)
     self.sw_packages_dir = os.path.join(self.engage_dir, "sw_packages")
     check_dir(self.sw_packages_dir)
 
@@ -96,7 +94,11 @@ class FileLocator(object):
     return self.log_directory
 
   def get_engage_distribution_file(self):
-    return self.engage_dist_file
+    engage_dist_file = os.path.join(self.engage_dir, "engage-dist.tar.gz")
+    if not os.path.exists(engage_dist_file):
+      raise Exception("Engage distribution file not found at %s" %
+                      engage_dist_file)
+    return engage_dist_file
 
   def get_sw_packages_dir(self):
     return self.sw_packages_dir
