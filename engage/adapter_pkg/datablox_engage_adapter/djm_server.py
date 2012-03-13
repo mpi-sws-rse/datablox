@@ -47,7 +47,7 @@ class DjmJob(object):
 
     def stop_job(self, successful=True, msg=None):
         if len(self.nodes_except_master)>0:
-            (s, r) = self.c.run_task_on_node_list(j, "StopWorker", "stop worker",
+            (s, r) = self.c.run_task_on_node_list(self.job_id, "StopWorker", "stop worker",
                                                   self.nodes_except_master)
             if s!=common.TaskStatus.TASK_SUCCESSFUL:
                 logger.warn("Not able to stop DJM worker on all nodes")
@@ -81,7 +81,7 @@ def start_job_and_get_nodes(node_list, config_file_name, total_nodes=None):
     for node_name in node_list:
         n = c.find_node_by_name(node_name)
         if not n:
-            raise DjmAdapterError("Node '%s' not defined" % n)
+            raise DjmAdapterError("Node '%s' not defined" % node_name)
         if n["pool"]:
             if pool and pool!=n["pool"]:
                 raise DjmAdapterError("Cannot take nodes from both pool %s and pool %s"%
