@@ -8,6 +8,17 @@ from block import *
 from shard import *
 
 
+try:
+  import datablox_engage_adapter.file_locator
+  using_engage = True
+  print "[load_block] Found datablox_engage_adapter, using Engage"
+  sys.stdout.flush()
+except ImportError:
+  using_engage = False
+  print "[load_block] Did not find datablox_engage_adapter, not using Engage"
+  sys.stdout.flush()
+  
+
 def read_configuration(configuration_file_name):
   with open(configuration_file_name) as f:
     return json.load(f)
@@ -21,6 +32,7 @@ def is_shard(block_name):
 
 
 def start(blox_dir, configuration_file_name, log_dir):
+  global using_engage
   try:
     sys.path.index(blox_dir)
   except ValueError:
@@ -30,14 +42,29 @@ def start(blox_dir, configuration_file_name, log_dir):
 
   block_version = config["version"] if config.has_key("version") \
                                     else naming.DEFAULT_VERSION
+  ## if using_engage:
+  ##   resource_key = naming.get_block_resource_key(config["name"],
+  ##                                                block_version)
+  ##   print "[load_block] Using engage to install resource %s" % resource_key
+  ##   sys.stdout.flush()
+  ##   datablox_engage_adapter.install.install_block(resource_key)
+  ##   print "[load_block] Install of %s and its dependencies successful" % \
+  ##         resource_key
+  ##   sys.stdout.flush()
+
   block_class = \
     naming.get_block_class(config["name"], block_version)
+  print "[load_block] Preparing to start block %s" % config["name"]
+  sys.stdout.flush()
   
   inst = block_class(config["master_port"])
   inst.id = config["id"]
   inst.log_level = config["log_level"]
   # intialize logging
   inst.initialize_logging(log_directory=log_dir)
+  if using_engage:
+    sys.stdout.close() # don't use parent process anymore
+    sys.stderr.close()
   inst.log(logging.DEBUG, config)
   #setup policies
   if config.has_key("policy"):

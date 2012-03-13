@@ -99,19 +99,21 @@ class BlockHandler(object):
     self.policy = policy
     self.version = block_record["version"] if block_record.has_key("version") \
                                    else naming.DEFAULT_VERSION
-    if using_engage:
-      resource_key = naming.get_block_resource_key(self.name,
-                                                   self.version)
-      datablox_engage_adapter.install.install_block(resource_key)
+    ## if using_engage:
+    ##   resource_key = naming.get_block_resource_key(self.name,
+    ##                                                self.version)
+    ##   datablox_engage_adapter.install.install_block(resource_key)
 
     self.connections = {}
     self.ports = {}
     self.last_load = 0
     self.timeouts = 0
-    path = naming.block_path(bloxpath, self.name, self.version)
-    if not os.path.isfile(path):
-      logger.error("Could not find the block " + path)
-      raise NameError
+    # XXX JF: this check needs to be changed - in engage multi-node
+    # the individual blocks aren't necessarily on the master
+    ## path = naming.block_path(bloxpath, self.name, self.version)
+    ## if not os.path.isfile(path):
+    ##   logger.error("Could not find the block " + path)
+    ##   raise NameError
   
   #creates an output port if it does not exist
   def get_output_port_connections(self, from_port):
@@ -587,7 +589,9 @@ class Master(object):
       for ip in self.address_manager.get_all_ip_addresses():
         self.stop_all_node(ip)
       logger.info("done, quitting")
-      self.context.term()
+      # since we are stopping due to an error, don't wait around
+      # for other ports - set linger to false.
+      self.context.destroy(linger=0)
     finally:
       if using_engage:
         self.address_manager.djm_job.stop_job(successful=False,

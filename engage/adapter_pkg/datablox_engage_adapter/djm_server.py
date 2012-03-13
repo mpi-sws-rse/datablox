@@ -47,8 +47,8 @@ class DjmJob(object):
 
     def stop_job(self, successful=True, msg=None):
         if len(self.nodes_except_master)>0:
-            (s, r) = c.run_task_on_node_list(j, "StopWorker", "stop worker",
-                                             self.nodes_except_master)
+            (s, r) = self.c.run_task_on_node_list(j, "StopWorker", "stop worker",
+                                                  self.nodes_except_master)
             if s!=common.TaskStatus.TASK_SUCCESSFUL:
                 logger.warn("Not able to stop DJM worker on all nodes")
         if successful:
