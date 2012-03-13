@@ -593,3 +593,27 @@ class Block(threading.Thread):
                                                           control,
                                                           len(serialized_msg)))
     
+
+from functools import wraps
+
+def benchmark(func):
+  """
+  This is meant to be called from individual blocks
+  """
+  import time
+  from logging import ERROR, WARN, INFO, DEBUG
+  @wraps(func)
+  def wrapper(*args, **kwargs):
+    start = time.time()
+    res = func(*args, **kwargs)
+    duration = time.time() - start
+    d = wrapper.func_dict
+    if d.has_key("total_duration"):
+      d["total_duration"] += duration
+    else:
+      d["total_duration"] = duration
+    funcself = args[0]
+    funcself.log(INFO, "perf: %r: duration: %r, total duration: %r" 
+                      % (func.__name__, duration, d["total_duration"]))
+    return res
+  return wrapper

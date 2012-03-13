@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+import xmlrpclib
+import json
+import cgi
+
+proxy = xmlrpclib.ServerProxy("http://localhost:8000/")
+bookmarks = json.loads(proxy.list(json.dumps({})))
+
+undeleted_urls = []
+
+for i in range(0, len(bookmarks["url"])):
+  link = bookmarks["url"][i]
+  time = bookmarks["time"][i]
+  log = {"url": [link], "time": [time]}
+  res = json.loads(proxy.delete(json.dumps(log)))["result"][0]
+  if not res:
+    undeleted_urls.push(link)
+
+print 'Content-type: text/html\n\n'
+print '<html><head>'
+print '<title>Delete All</title>'
+print '</head><body>'
+print '<h1>'
+if undeleted_urls == []:
+  print 'Everything Deleted'
+else:
+  print 'Could not delete: ', undeleted_urls
+print '</h1>'
+print '</body></html>'
