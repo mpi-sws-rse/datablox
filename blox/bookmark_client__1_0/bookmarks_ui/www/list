@@ -31,5 +31,8 @@ for i in range(0, len(bookmarks["url"])):
   print '<li>' + generate_bookmark_link(link, time) + '&nbsp; <small>(at: ' + time + ')</small>'
   print generate_delete_link(link, time) + '</li>'
 print '</ol>'
+if len(bookmarks["url"]) > 0:
+  print '<a href="delete_all">Delete all</a>'
+  print '<br />'
 print '<a href="shutdown">Shut down topology</a>'
 print '</body></html>'

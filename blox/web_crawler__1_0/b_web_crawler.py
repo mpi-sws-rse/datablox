@@ -39,19 +39,15 @@ class web_crawler(Block):
   def get_new_file_name(self):
     self.file_num += 1
     return self.id + "_" + self.file_num.__str__()
-    
+
+  @benchmark
   def download_url(self, url):
-    start = time.time()
     req = urllib2.Request(url)
     response = urllib2.urlopen(req)
     new_name = self.get_new_file_name()
     with open(new_name, 'w') as f:
       f.write(response.read())
     path = os.path.join(os.getcwd(), new_name)
-    duration = time.time() - start
-    self.total_download_time += duration
-    self.log(INFO, "perf: time for url: %r is %r" % (url, duration))
-    self.log(INFO, "perf: total download time so far is %r" % (self.total_download_time))
     return path
   
   def get_related_urls(self, url, path):
