@@ -7,7 +7,6 @@ import subprocess
 import signal
 from optparse import OptionParser
 from fileserver import file_server_keypath
-from random import choice, randint
 import string
 import logging
 
@@ -40,7 +39,8 @@ def stop_all():
 
 def shutdown():
   stop_all()
-  fileserver_process.terminate()
+  if fileserver_process:
+    fileserver_process.terminate()
   socket.close()
   sys.exit(0)
   
@@ -48,14 +48,11 @@ def sigterm_handler(signum, frame):
   logger.info("[caretaker] got SIGTERM")
   shutdown()
 
-def gen_random(length, chars=string.letters+string.digits):
-    return ''.join([ choice(chars) for i in range(length) ])
-
 def start_fileserver():
   global fileserver_process
   
-  with open(file_server_keypath, 'w') as f:
-    f.write(gen_random(8))
+  #with open(file_server_keypath, 'w') as f:
+  #  f.write(gen_random(8))
 
   fileserver_script = os.path.join(os.path.dirname(__file__),
                                    "fileserver.py")
@@ -115,7 +112,8 @@ def main(argv):
 
   logger.info("Caretaker starting, BLOXPATH=%s, using_engage=%s" %
               (bloxpath, using_engage))
-  start_fileserver()
+  if not using_engage:
+    start_fileserver()
   context = zmq.Context()
   socket = context.socket(zmq.REP)
   socket.bind('tcp://*:5000')

@@ -5,10 +5,12 @@ ENGAGE_EXT_HOME=$(shell pwd)
 BLOXPATH=$(shell cd ../blox; pwd)
 ENGAGE_DIST=$(ENGAGE_EXT_HOME)/engage-dist
 TEST_DEPLOY_HOME=$(shell cd ~; pwd)/apps
-PACKAGE_DIR=$(ENGAGE_EXT_HOME)/sw_packages
+PACKAGE_DIR=$(ENGAGE_EXT_HOME)/packages
 ADAPTER_DIR=$(ENGAGE_EXT_HOME)/adapter_pkg
 PLATFORM=$(shell ./get_platform.sh)
 DJM_SRC=$(shell cd ../..; pwd)/djm
+
+TEST_LOG_LEVEL=DEBUG
 
 # The following two are only valid if you are running an internal build
 # at genForma.
@@ -53,6 +55,7 @@ test-packages: $(PACKAGE_DIR)
 	cd $(PACKAGE_DIR); make -f ../makefile.packages.$(PLATFORM) test 
 
 test-deploy: test-packages
+	@echo "Running test deploy"
 	if [ -f $(TEST_DEPLOY_HOME)/config/installed_resources.json ]; then $(TEST_DEPLOY_HOME)/engage/bin/svcctl stop; fi
 	rm -rf $(TEST_DEPLOY_HOME)
 	if [ -d $(PACKAGE_DIR) ]; then cp $(PACKAGE_DIR)/* $(ENGAGE_DIST)/sw_packages; fi
@@ -65,7 +68,8 @@ test-map-reduce:
 	# we only crawl the datablox source tree
 	python -c "import sys; sys.stdout.write(open(sys.argv[1], 'rb').read().replace('~/', sys.argv[2]))" $(BLOX_HOME)/examples/file_map_reduce.json $(BLOX_HOME) >$(TEST_DEPLOY_HOME)/file_map_reduce.json
 	@echo "Running map-reduce scenario"
-	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master $(TEST_DEPLOY_HOME)/file_map_reduce.json master
+	$(TEST_DEPLOY_HOME)/engage/bin/svcctl start
+	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master --log-level=$(TEST_LOG_LEVEL) $(TEST_DEPLOY_HOME)/file_map_reduce.json master
 	$(TEST_DEPLOY_HOME)/mongodb-2.0/bin/mongo --eval "db.getSisterDB('file_db').file_types.count()"
 	$(TEST_DEPLOY_HOME)/engage/bin/svcctl stop
 	@echo "Map-reduce completed successfully"
@@ -73,7 +77,8 @@ test-map-reduce:
 test-read-files:
 	@echo "Running read-files scenario"
 	python -c "import sys; sys.stdout.write(open(sys.argv[1], 'rb').read().replace('.', sys.argv[2]))" $(BLOX_HOME)/examples/read_files.json $(BLOX_HOME)/blox >$(TEST_DEPLOY_HOME)/read_files.json
-	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master $(TEST_DEPLOY_HOME)/read_files.json master
+	$(TEST_DEPLOY_HOME)/engage/bin/svcctl start
+	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master --log-level=$(TEST_LOG_LEVEL) $(TEST_DEPLOY_HOME)/read_files.json master
 	$(TEST_DEPLOY_HOME)/engage/bin/svcctl stop
 	@echo "Read-files completed successfully"
 

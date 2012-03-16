@@ -92,6 +92,9 @@
           "caretaker_exe": {
             "type":"path", "fixed-value":"${input_ports.python.python_bin_dir}/datablox-caretaker"
           },
+          "fileserver_exe": {
+            "type":"path", "fixed-value":"${input_ports.python.python_bin_dir}/datablox-fileserver"
+          },
           "loader_exe": {
             "type":"path", "fixed-value":"${input_ports.python.python_bin_dir}/datablox-loader"
           }
@@ -148,6 +151,52 @@
         "datablox_framework": {
           "BLOXPATH": "path",
           "caretaker_exe": "path"
+        }
+      },
+     "inside": {
+        "one-of": [
+          { "key": {"name": "ubuntu-linux", "version":"11.10"},
+            "port_mapping": {"host":"host"}},
+          { "key": {"name": "ubuntu-linux", "version":"10.04"},
+            "port_mapping": {"host":"host"}},
+          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
+                                                 "less-than":"10.7"}},
+            "port_mapping": {"host":"host"}}
+        ]
+     },
+     "environment": {
+        "all-of": [
+          { "key": {"name":"datablox-framework", "version":"1.0"},
+                    "version":{"greater-than-or-equal":""},
+            "port_mapping": {"datablox_framework":"datablox_framework"}},
+          {"key":{"name":"datablox-engage-adapter", "version":"1.0"}}
+        ]
+    }
+  },
+   { "key": {"name":"datablox-fileserver", "version":"1.0"},
+     "display_name": "Datablox Fileserver process",
+     "config_port": {
+       "config_dir": {
+         "type":"path",
+         "default":"${input_ports.host.genforma_home}/datablox_fileserver"
+       },
+       "pid_file": {
+         "type":"path",
+         "default":"${input_ports.host.genforma_home}/datablox_fileserver/fileserver.pid"
+       },
+       "log_file": {
+         "type":"path",
+         "default":"${input_ports.host.log_directory}/datablox_fileserver.log"
+       }
+     },
+     "input_ports": {
+        "host": {
+          "genforma_home": "path",
+          "log_directory": "path"
+        },
+        "datablox_framework": {
+          "BLOXPATH": "path",
+          "fileserver_exe": "path"
         }
       },
      "inside": {

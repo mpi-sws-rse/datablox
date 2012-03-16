@@ -31,6 +31,15 @@ def is_shard(block_name):
   return naming.block_class_name(block_name).endswith('_shard')
 
 
+def setup_policy(inst, policy):
+  for (k, v) in policy.items():
+    if k == "queue_size":
+      inst.set_queue_size(v)
+    else:
+      print "Unknown policy type " + k
+      raise NameError
+
+
 def start(blox_dir, configuration_file_name, log_dir):
   global using_engage
   try:
@@ -42,15 +51,6 @@ def start(blox_dir, configuration_file_name, log_dir):
 
   block_version = config["version"] if config.has_key("version") \
                                     else naming.DEFAULT_VERSION
-  ## if using_engage:
-  ##   resource_key = naming.get_block_resource_key(config["name"],
-  ##                                                block_version)
-  ##   print "[load_block] Using engage to install resource %s" % resource_key
-  ##   sys.stdout.flush()
-  ##   datablox_engage_adapter.install.install_block(resource_key)
-  ##   print "[load_block] Install of %s and its dependencies successful" % \
-  ##         resource_key
-  ##   sys.stdout.flush()
 
   block_class = \
     naming.get_block_class(config["name"], block_version)
@@ -62,48 +62,43 @@ def start(blox_dir, configuration_file_name, log_dir):
   inst.log_level = config["log_level"]
   # intialize logging
   inst.initialize_logging(log_directory=log_dir)
-  if using_engage:
-    sys.stdout.close() # don't use parent process anymore
-    sys.stderr.close()
   inst.log(logging.DEBUG, config)
-  #setup policies
-  if config.has_key("policy"):
-    setup_policy(inst, config["policy"])
-      
-  inst.on_load(config["args"])
+  try:
+    #setup policies
+    if config.has_key("policy"):
+      setup_policy(inst, config["policy"])
 
-  if is_shard(config["name"]):
-    num_blocks = config["num_blocks"]
-    inst.num_nodes = num_blocks
-    for i in range(num_blocks):
-      output_port = "output"+str(i)
-      inst.add_port(output_port, Port.PUSH, Port.UNNAMED, [])
+    inst.on_load(config["args"])
 
-  for (port_name, port_config) in config["ports"].items():
-    port_type, port_nums = port_config[0], port_config[1:]
-    #TODO: loop does extra work, rewrite this
-    for port_num in port_nums:
-      if port_type == "output":
-        inst.add_output_connection(port_name, port_num)
-      elif port_type == "input":
-        inst.add_input_connection(port_name, port_num)
-      else:
-        print "Unknown port type " + port_type
-        raise NameError
+    if is_shard(config["name"]):
+      num_blocks = config["num_blocks"]
+      inst.num_nodes = num_blocks
+      for i in range(num_blocks):
+        output_port = "output"+str(i)
+        inst.add_port(output_port, Port.PUSH, Port.UNNAMED, [])
 
-  #for dynamic join
-  if config.has_key("subscribers"):
-    inst.set_subscribers(config["subscribers"])
-  
-  inst.start()
+    for (port_name, port_config) in config["ports"].items():
+      port_type, port_nums = port_config[0], port_config[1:]
+      #TODO: loop does extra work, rewrite this
+      for port_num in port_nums:
+        if port_type == "output":
+          inst.add_output_connection(port_name, port_num)
+        elif port_type == "input":
+          inst.add_input_connection(port_name, port_num)
+        else:
+          print "Unknown port type " + port_type
+          raise NameError
 
-def setup_policy(inst, policy):
-  for (k, v) in policy.items():
-    if k == "queue_size":
-      inst.set_queue_size(v)
-    else:
-      print "Unknown policy type " + k
-      raise NameError
+    #for dynamic join
+    if config.has_key("subscribers"):
+      inst.set_subscribers(config["subscribers"])
+
+    inst.start()
+  except Exception, e:
+    inst.logger.exception("Uncaught exception in block %s: %s" %
+                          (config["name"], e))
+    raise
+
   
 if __name__ == "__main__":
   blox_dir = sys.argv[1]
