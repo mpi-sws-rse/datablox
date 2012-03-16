@@ -46,7 +46,7 @@ def main(argv):
         f.write(''.join([random.choice(string.letters+string.digits) for i in range(10)]))
         fname = f.name
     try:
-        rc = subprocess.call([install_exe, "-p", fname, "datablox"])
+        rc = subprocess.call([install_exe, "-p", fname, "-g", "datablox"])
     except:
         traceback.print_exc()
         print "Error running datablox install, check logfile %s for details" % \

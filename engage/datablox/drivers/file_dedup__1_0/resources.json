@@ -23,8 +23,11 @@
         ]
      },
     "environment": {
-      "key": {"name":"datablox-framework", "version":"1.0"},
-      "port_mapping": {"datablox_framework":"datablox_framework"}
-    }
+      "all-of": [
+        {"key": {"name":"datablox-framework", "version":"1.0"},
+         "port_mapping": {"datablox_framework":"datablox_framework"}},
+        {"key": {"name":"redis", "version":"2.2"}},
+        {"key": {"name":"redis-py", "version":""}}
+    ]}
   }
 ]

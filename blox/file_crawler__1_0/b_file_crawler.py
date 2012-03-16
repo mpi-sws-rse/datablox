@@ -6,6 +6,9 @@ import socket
 import base64
 from logging import ERROR, WARN, INFO, DEBUG
 
+# file logging will only show up if we set the log level to ALL
+FILE_LOGGING=DEBUG-1
+
 class file_crawler(Block):
   def send_file(self, host, volume, path, stat):
     listing = {}
@@ -37,18 +40,20 @@ class file_crawler(Block):
     except:
       host = "local"
     volume_name = host + ":" + path
+    self.log(DEBUG, "Starting walk at %s" % path)
     for root, dirnames, filenames in os.walk(path):
       for filename in filenames:
-        path = os.path.join(root, filename)
+        fpath = os.path.join(root, filename)
         try:
-          stat = os.stat(path)
-          self.send_file(host, volume_name, path, stat)
+          stat = os.stat(fpath)
+          self.log(FILE_LOGGING, "Sending fie %s" % fpath)
+          self.send_file(host, volume_name, fpath, stat)
           files_sent += 1
           if files_sent > self.single_session_limit:
             files_sent = 0
             yield
         except OSError:
-          self.log(WARN, "not dealing with file " + path)
+          self.log(WARN, "not dealing with file " + fpath)
           continue
     yield
     #this will clear all outstanding files in the buffer

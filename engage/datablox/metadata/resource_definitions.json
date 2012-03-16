@@ -148,9 +148,6 @@
         "datablox_framework": {
           "BLOXPATH": "path",
           "caretaker_exe": "path"
-        },
-        "master_password_file": {
-          "password_file": "path"
         }
       },
      "inside": {
@@ -169,9 +166,7 @@
           { "key": {"name":"datablox-framework", "version":"1.0"},
                     "version":{"greater-than-or-equal":""},
             "port_mapping": {"datablox_framework":"datablox_framework"}},
-          {"key":{"name":"datablox-engage-adapter", "version":"1.0"}},
-          {"key":{"name":"master-password-file", "version":"1.0"},
-           "port_mapping": {"master_password_file":"master_password_file"}}
+          {"key":{"name":"datablox-engage-adapter", "version":"1.0"}}
         ]
     }
   },
@@ -357,6 +352,40 @@
         "provides_pkg": {"type":"string", "fixed-value":"filetypes"},
         "test_module": {"type":"string",
                         "fixed-value":"filetypes"}
+      }
+    },
+    "inside": {
+       "one-of": [
+          { "key": {"name": "ubuntu-linux", "version":"11.10"}},
+          { "key": {"name": "ubuntu-linux", "version":"10.04"}},
+          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
+                                                 "less-than":"10.7"}}}
+        ]
+     },
+     "environment": {
+        "all-of": [
+          { "key": {"name":"python",
+                    "version":{"greater-than-or-equal":"2.5"}},
+            "port_mapping": {"python":"python"}
+          },
+          { "key": {"name":"pip", "version":"any"},
+            "port_mapping": {"pip":"pip"}
+          }
+      ]}
+  },
+  { "key": {"name":"BeautifulSoup", "version":"3"},
+    "display_name": "Beautiful Soup: HTML parser",
+     "input_ports": {
+        "python": {
+          "home" : "path"
+        },
+	"pip": { "pipbin": "path" }
+     },
+    "output_ports" : {
+      "pkg_info": {
+        "provides_pkg": {"type":"string", "fixed-value":"BeautifulSoup"},
+        "test_module": {"type":"string",
+                        "fixed-value":"BeautifulSoup"}
       }
     },
     "inside": {
