@@ -87,6 +87,9 @@ def np(path):
 # PasswordRepoMixin to the inheritance list.
 #
 class Manager(service_manager.Manager):
+    # need to ensure that a password file is generated, as there might
+    # be blocks that require a password.
+    REQUIRES_PASSWORD_FILE = True
     def __init__(self, metadata, dry_run=False):
         package_name = "%s %s" % (metadata.key["name"],
                                   metadata.key["version"])
