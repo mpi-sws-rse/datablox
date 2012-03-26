@@ -124,7 +124,7 @@ class Manager(resource_manager.Manager):
         r(ensure_dir_exists, p.output_ports.djm_server.server_config_dir)
         cmd = [p.djmctl, "setup-server",
                "--server-config-dir=%s" % p.output_ports.djm_server.server_config_dir]
-        cmd.extend(djm_package_arg)
+        cmd.extend(djm_package_args)
         r(run_program, cmd, cwd=p.output_ports.djm_server.server_config_dir)
         cmd = [p.djmctl, "set-server-directory",
                p.output_ports.djm_server.server_config_dir]
