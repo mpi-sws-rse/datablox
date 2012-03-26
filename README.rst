@@ -80,7 +80,7 @@ Here are the steps to build Datablox with Engage on Ubuntu::
 
   sudo apt-get update
   # engage dependencies
-  sudo apt-get install git-core g++ ocaml zlib1g-dev python-dev python-crypto python-virtualenv
+  sudo apt-get install git-core g++ ocaml zlib1g-dev python-dev python-crypto python-virtualenv make
   git clone git://github.com/mpi-sws-rse/datablox.git
   cd ./datablox
   make all
