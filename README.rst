@@ -129,7 +129,7 @@ Assuming you start in the directory above your
 Datablox source tree and have already built it, the following will
 install Datablox::
 
-  cd ./datablox/engage
+  cd ./datablox/engage/engage-dist
   ./install_datablox.py <deployment_home>
 
 where ``<deployment_home>`` is the target directory for your
