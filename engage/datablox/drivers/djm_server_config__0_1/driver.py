@@ -114,7 +114,7 @@ class Manager(resource_manager.Manager):
         p = self.ctx.props
         r = self.ctx.r
         if os.path.exists(p.djm_package_file):
-            djm_package_arg = ["--djm-package=%s" % p.djm_package_file,]
+            djm_package_args = ["--djm-package=%s" % p.djm_package_file,]
             logger.debug("djm_package is %s" % p.djm_package_file)
         else:
             djm_package_args = []
