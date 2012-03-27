@@ -81,8 +81,8 @@ Here are the steps to build Datablox with Engage on Ubuntu::
   sudo apt-get update
   # engage dependencies
   sudo apt-get install git-core g++ ocaml zlib1g-dev python-dev
-  python-crypto python-virtualenv make libzmq-dev libzmq1
-  pip install pyzmq
+  sudo apt-get install python-crypto python-virtualenv make libzmq-dev libzmq1
+  sudo pip install pyzmq
   git clone git://github.com/mpi-sws-rse/datablox.git
   cd ./datablox
   make all
@@ -96,17 +96,23 @@ your mac:
  * Apple's XCode (to get g++)
  * OCaml (http://caml.inria.fr)
  * MacPorts (http://www.macports.org)
+ * ZeroMQ (http://www.zeromq.org)
  * The following Python packages:
 
    * virtualenv (http://pypi.python.org/pypi/virtualenv)
    * setuptools (http://pypi.python.org/pypi/setuptools)
    * pycrypto (http://pypi.python.org/pypi/pycrypto)
+   * pyzmq (http://pypi.python.org/pypi/pyzmq)
 
 If you are running MacOSX 10.5 (Leopard), the version of Python included with the OS is too old, and
 you will have to install a separate local copy of Python 2.6 or Python 2.7. Either way, we recommend installing
 MacPorts and using the MacPorts Python package (`python27 <https://trac.macports.org/browser/trunk/dports/lang/python27/Portfile>`_).
 
-If you use MacPorts, you can get pycrypto and ocaml setup with minimal pain by installing the associated ports: `py27-crypto <https://trac.macports.org/browser/trunk/dports/python/py27-crypto/Portfile>`_ and `ocaml <https://trac.macports.org/browser/trunk/dports/lang/ocaml/Portfile>`_, respectively.
+If you use MacPorts, you can get most of the dependencies set up with minimal pain by installing the associated ports: `py27-crypto <https://trac.macports.org/browser/trunk/dports/python/py27-crypto/Portfile>`_,
+`zmq <https://trac.macports.org/browser/trunk/dports/sysutils/zmq/Portfile>`_,
+`py27-zmq <https://trac.macports.org/browser/trunk/dports/python/py-zmq/Portfile>`_,
+`py27-virtualenv <https://trac.macports.org/browser/trunk/dports/python/py-virtualenv/Portfile>`_,
+ and `ocaml <https://trac.macports.org/browser/trunk/dports/lang/ocaml/Portfile>`_.
 
 With the prerequisites installed, you can now build as follows::
 
