@@ -111,8 +111,7 @@ MacPorts and using the MacPorts Python package (`python27 <https://trac.macports
 If you use MacPorts, you can get most of the dependencies set up with minimal pain by installing the associated ports: `py27-crypto <https://trac.macports.org/browser/trunk/dports/python/py27-crypto/Portfile>`_,
 `zmq <https://trac.macports.org/browser/trunk/dports/sysutils/zmq/Portfile>`_,
 `py27-zmq <https://trac.macports.org/browser/trunk/dports/python/py-zmq/Portfile>`_,
-`py27-virtualenv <https://trac.macports.org/browser/trunk/dports/python/py-virtualenv/Portfile>`_,
- and `ocaml <https://trac.macports.org/browser/trunk/dports/lang/ocaml/Portfile>`_.
+`py27-virtualenv <https://trac.macports.org/browser/trunk/dports/python/py-virtualenv/Portfile>`_,  and `ocaml <https://trac.macports.org/browser/trunk/dports/lang/ocaml/Portfile>`_.
 
 With the prerequisites installed, you can now build as follows::
 
