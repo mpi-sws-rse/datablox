@@ -113,6 +113,7 @@ class BlockUtils(object):
     
   @staticmethod
   def generate_url_for_path(path):
+    path = path.encode('utf-8')
     with open(file_server_keypath, 'r') as f:
       deskey = f.read()
     obj = DES.new(deskey, DES.MODE_ECB)
@@ -130,6 +131,7 @@ class BlockUtils(object):
       deskey = f.read()
     obj = DES.new(deskey, DES.MODE_ECB)
     path = obj.decrypt(enc_path)
+    path = path.decode('utf-8')
     print "fetching local file at path", path
     with open(path, 'r') as f:
       return f.read()

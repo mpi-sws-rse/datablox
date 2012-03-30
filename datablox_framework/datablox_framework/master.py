@@ -479,8 +479,8 @@ class AddressManager(object):
     self.master_port += 2
     return self.master_port
 
-  def get_all_ip_addresses(self):
-    return self.ip_address_hash.keys()
+  def get_all_ipaddresses(self):
+    return self.ipaddress_hash.keys()
   
   #if selected_ipaddress is None, return a new ipaddress
   #otherwise if selected_ipaddress exists in the list, return that otherwise raise error
@@ -532,7 +532,7 @@ class DjmAddressManager(AddressManager):
       logger.error("No node with name %s" % selected_ipaddress)
       raise NameError
 
-  def get_all_ip_addresses(self):
+  def get_all_ipaddresses(self):
     return [node["datablox_ip_address"] for node in self.djm_job.nodes]
     
 class Master(object):
@@ -586,7 +586,7 @@ class Master(object):
     try:
       self.main_block_handler.stop()
       logger.info("Master: trying to stop all blocks")
-      for ip in self.address_manager.get_all_ip_addresses():
+      for ip in self.address_manager.get_all_ipaddresses():
         self.stop_all_node(ip)
       logger.info("done, quitting")
       # since we are stopping due to an error, don't wait around

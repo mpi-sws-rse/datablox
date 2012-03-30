@@ -42,6 +42,7 @@ class MyServer(BaseHTTPRequestHandler):
       enc_path = urllib.unquote(self.path[loc + len(key_message):])
       obj = DES.new(deskey, DES.MODE_ECB)
       path = obj.decrypt(enc_path)
+      path = path.decode('utf-8')
       logger.info("Decrypted path " + path)
       with open(path, 'r') as f:
         self.send_response(200, 'OK')
