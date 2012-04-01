@@ -48,6 +48,7 @@ class web_crawler(Block):
     with open(new_name, 'w') as f:
       f.write(response.read())
     path = os.path.join(os.getcwd(), new_name)
+    response.close()
     return path
   
   def get_related_urls(self, url, path):
