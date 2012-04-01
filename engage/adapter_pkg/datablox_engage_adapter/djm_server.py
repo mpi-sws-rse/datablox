@@ -77,6 +77,8 @@ def start_job_and_get_nodes(node_list, config_file_name, total_nodes=None):
     if total_nodes<1:
         raise DjmAdapterError("Must have at least one node")
     c = get_djm_connection()
+    # make sure there aren't any dead jobs laying around
+    c.cleanup_dead_coordinators()
     pool = None
     for node_name in node_list:
         n = c.find_node_by_name(node_name)
