@@ -138,7 +138,8 @@ def start_job_and_get_nodes(node_list, config_file_name, total_nodes=None,
                                              shell=True)
             _check_task_status(s, r, "Caretaker setup script failed")
         # make sure the master node has the caretaker running
-        utils.run_svcctl(fl, ["start", "all"])
+        if djm_job.has_node("master"):
+            utils.run_svcctl(fl, ["start", "all"])
         return djm_job
     except KeyboardInterrupt:
         logger.exception("Got keyboard interrupt in node initialization")
