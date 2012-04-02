@@ -39,8 +39,21 @@ def main(argv):
                     help="use this path instead of the environment variable BLOXPATH")
   parser.add_option("-l", "--log-level", dest="log_level", default="INFO",
                     help="Log level: ERROR|WARN|INFO|DEBUG|ALL")
-                    
+  if using_engage:
+    parser.add_option("--reuse-existing-installs", default=None,
+                      action="store_true",
+                      help="Reuse existing Datablox installs on worker nodes, if present (This is the default behavior).")
+    parser.add_option("--always-reinstall-workers", default=False,
+                      action="store_true",
+                      help="Always reinstall Datablox on worker nodes")
   (options, args) = parser.parse_args(argv)
+  if using_engage and options.reuse_existing_installs and \
+         options.always_reinstall_workers:
+    parser.error("--reuse-existing-installs and --always-reinstall-workers are mutually exclusive")
+  elif using_engage and options.always_reinstall_workers==False:
+    reuse_existing_installs = True
+  else:
+    reuse_existing_installs = False
 
   if len(args)<1:
     parser.error("Need to specify config file and nodes.")
@@ -86,7 +99,8 @@ def main(argv):
     root_logger.setLevel(min(root_logger.level, log_levels[options.log_level]))
     
   Master(bloxpath, args[0], args[1:], using_engage,
-         _log_level=log_levels[options.log_level])
+         _log_level=log_levels[options.log_level],
+         reuse_existing_installs=True)
 
 def call_from_console_script():
     sys.exit(main(sys.argv[1:]))

@@ -537,7 +537,8 @@ class DjmAddressManager(AddressManager):
     
 class Master(object):
   def __init__(self, _bloxpath, config_file, ip_addr_list,
-               _using_engage, _log_level=logging.INFO):
+               _using_engage, _log_level=logging.INFO,
+               reuse_existing_installs=True):
     global global_config, bloxpath, using_engage, log_level
     bloxpath = _bloxpath
     using_engage = _using_engage
@@ -546,7 +547,8 @@ class Master(object):
       logger.info("Running with Engage deployment home at %s" % \
                   engage_file_locator.get_dh())
       djm_job = djm_server.start_job_and_get_nodes(ip_addr_list,
-                                                   os.path.basename(config_file))
+                                                   os.path.basename(config_file),
+                                                   reuse_existing_installs=reuse_existing_installs)
       self.address_manager = DjmAddressManager(djm_job)
     else:
       self.address_manager = AddressManager(ip_addr_list)

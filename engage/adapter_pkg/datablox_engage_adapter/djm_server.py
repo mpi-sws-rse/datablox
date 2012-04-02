@@ -69,7 +69,8 @@ def _check_task_status(s, r, msg):
         raise Exception("%s for nodes: %s" %
                         (msg, ', '.join([r.node_name for r in bad_nodes])))
         
-def start_job_and_get_nodes(node_list, config_file_name, total_nodes=None):
+def start_job_and_get_nodes(node_list, config_file_name, total_nodes=None,
+                            reuse_existing_installs=True):
     """Given a node list and optional number of nodes, try to get the
     requested nodes and start a job.
     """
@@ -127,10 +128,13 @@ def start_job_and_get_nodes(node_list, config_file_name, total_nodes=None):
                                              ["/bin/chmod 755 ~/setup_caretaker.sh"],
                                              shell=True)
             _check_task_status(s, r, "chmod of caretaker setup script failed")
+            caretaker_cmd = ["~/setup_caretaker.sh",]
+            if reuse_existing_installs:
+                caretaker_cmd.append("--reuse-existing-install")
             (s, r) = c.run_task_on_node_list(j, "Command",
                                              "Setup remote caretaker",
                                              nodes_except_master,
-                                             ["~/setup_caretaker.sh"],
+                                             caretaker_cmd,
                                              shell=True)
             _check_task_status(s, r, "Caretaker setup script failed")
         # make sure the master node has the caretaker running
