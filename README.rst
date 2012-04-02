@@ -188,7 +188,7 @@ where the relevant options are::
                           Private ip address of the server
     --os-user=OS_USER     OS user for node (defaults to the current user)
     --bootstrap           If specified, setup the DJM worker on the node (default behavior)
-    --no-bootstrap              If specified, do not setup the DJM worker on the node.
+    --no-bootstrap    If specified, do not setup the DJM worker on the node.
     --no-check-for-private-ip
                           If specified, do not try to look for a private ip
                           address for this node
@@ -207,7 +207,7 @@ Here is an example, where we are adding the node ``test.genforma.com``, to be re
 
 Note that, when Datablox itself is installed on the master node (via
 the ``install_datablox.py`` script), a node database entry named
-``master`` corresponding to the master node is automatically created.
+``master``, corresponding to the master node, is automatically created.
 
 The ``djmctl`` utility is part of the *Distributed Job Manager*, which
 is installed as a part of Datablox. More details may be found at https://github.com/genforma/dist_job_mgr.
