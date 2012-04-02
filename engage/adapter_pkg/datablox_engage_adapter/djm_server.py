@@ -6,6 +6,7 @@ import logging
 import datetime
 
 from file_locator import FileLocator
+import utils
 from dist_job_mgr.client import get_local_connection
 from dist_job_mgr.version import VERSION
 import dist_job_mgr.common as common
@@ -132,6 +133,8 @@ def start_job_and_get_nodes(node_list, config_file_name, total_nodes=None):
                                              ["~/setup_caretaker.sh"],
                                              shell=True)
             _check_task_status(s, r, "Caretaker setup script failed")
+        # make sure the master node has the caretaker running
+        utils.run_svcctl(fl, ["start", "all"])
         return djm_job
     except KeyboardInterrupt:
         logger.exception("Got keyboard interrupt in node initialization")
