@@ -4,7 +4,7 @@
     
         "blocks": [
             {"id": "source",
-             "name": "Dir-Src",
+             "name": "File-Crawler",
              "args": "group-args"},
             {"id": "categorizer", 
              "name": "Categorize", 
@@ -26,7 +26,7 @@
         "blocks": [
             {"id": "source",
              "name": "file-cat",
-             "args": {"directory": ".", "only_metadata": true}},
+             "args": {"directory": "."}},
             {"id": "sink",
              "name": "Dump", 
              "args": {"sleep": 0}}

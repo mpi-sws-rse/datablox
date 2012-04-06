@@ -4,8 +4,12 @@
          "name": "Dir-Src", 
          "args": {"directory": ".", "sleep": 1}},
         {"id": "categorizer", 
-         "name": "Categorize-Shard", 
-         "args": {"nodes": 2, "sleep": 2}},
+         "name": "Round-Robin-Shard", 
+         "args": 
+            {"nodes": 2, 
+             "node_type": {"name": "Categorize", "input_port": "input", "output_port": "output", "port_type": "PUSH",
+                "args": {"sleep": 2}}}
+        },
         {"id": "sink", 
          "name": "Dump", 
          "args": {"sleep": 0}}

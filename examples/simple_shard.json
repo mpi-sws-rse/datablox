@@ -2,10 +2,14 @@
     "blocks": [
         {"id": "source", 
          "name": "Zero-Src", 
-         "args": {"num_zeros": 20, "sleep": 1}},
+         "args": {"num_zeros": 40, "sleep": 1}},
         {"id": "sink",
-         "name": "Dump-Shard", 
-         "args": {"nodes": 3, "sleep": 2}}
+         "name": "Round-Robin-Shard", 
+         "args": 
+            {"nodes": 1,
+             "node_type": {"name": "Dump", "input_port": "input", "port_type": "PUSH", "args": {"sleep": 3}}
+            }
+        }
     ],
 
     "connections": [

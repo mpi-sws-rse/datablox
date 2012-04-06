@@ -63,4 +63,6 @@ class file_crawler(Block):
     self.config = config
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["path", "size", "perm", "owner" ,"volume", "url"])
     self.single_session_limit = 50
+    if config.has_key("buffer_limit"):
+      self.buffer_limit = config["buffer_limit"]
     self.log(INFO, "File-Crawler block loaded")

@@ -45,8 +45,13 @@
              "name": "RPC", 
              "args": {}},
             {"id": "crawler",
-             "name": "Web-Crawler-Shard",
-             "args": {"nodes": 3}},
+             "name": "Round-Robin-Shard",
+             "args": 
+                {"nodes": 2,
+                 "node_type": {"name": "Web-Crawler", "input_port": "input", "output_port": "output", "port_type": "PUSH",
+                    "args": {}}
+                }
+            },
             {"id": "hash",
              "name": "Secure-Hash",
              "args": {}},
@@ -56,7 +61,7 @@
         ],
 
         "connections": [
-            [{"web-service": "bookmark"}, {"crawler": "rpc"}],
+            [{"web-service": "bookmark"}, {"crawler": "input_query"}],
             [{"crawler": "output"}, {"hash": "input"}],
             [{"hash": "output"}, {"manager": "input"}],
             [{"web-service": "list"}, {"manager": "list"}],
