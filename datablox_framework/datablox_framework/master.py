@@ -25,6 +25,7 @@ else:
 logger = logging.getLogger(__name__)
 
 block_loads = {}
+block_times = {}
 #this keeps track of timed out and shutdown blocks
 block_status = {}
 
@@ -105,7 +106,7 @@ class Connection(object):
     
 class BlockHandler(object):
   def __init__(self, block_record, address_manager, context, policy=None):
-    global block_status, block_loads
+    global block_status, block_loads, block_times
     self.id = block_record["id"]
     self.name = block_record["name"]
     self.args = block_record["args"]
@@ -127,6 +128,7 @@ class BlockHandler(object):
     self.timeouts = 0
     block_loads[self.id] = {}
     block_status[self.id] = "startup"
+    block_times[self.id] = 0
     # XXX JF: this check needs to be changed - in engage multi-node
     # the individual blocks aren't necessarily on the master
     ## path = naming.block_path(bloxpath, self.name, self.version)
@@ -237,7 +239,7 @@ class BlockHandler(object):
     return t[0]
     
   def poll_load(self):
-    global block_status, block_loads
+    global block_status, block_loads, block_times
     port = self.master_port
     message = json.dumps(("POLL", {}))
     socket = self.context.socket(zmq.REQ)
@@ -248,10 +250,12 @@ class BlockHandler(object):
     socket.close()
     if load != None:
       self.timeouts = 0
-      status, requests_made, requests_served = json.loads(load)
+      status, requests_made, requests_served, processing_time = json.loads(load)
+      block_times[self.id] = processing_time
       # print self.id
       # print requests_made
       # print requests_served
+      # print processing_time
       for p, r in requests_made.items():
         try:
           to_block, to_port = self.find_target(p)
@@ -295,6 +299,7 @@ class RPCHandler(BlockHandler):
     self.timeouts = 0
     block_loads[self.id] = {}
     block_status[self.id] = "startup"
+    block_times[self.id] = 0
     self.webserver_process = None
   
   def start(self):
@@ -314,7 +319,7 @@ class RPCHandler(BlockHandler):
       self.webserver_process.terminate()
 
   def poll_load(self):
-    global block_status, block_loads
+    global block_status
     if self.webserver_process.poll() == None:
       logger.info("RPC block is working")
       block_status[self.id] = "alive"
@@ -411,7 +416,7 @@ class ShardHandler(BlockHandler):
     BlockHandler.stop(self)
       
   def poll_load(self):
-    global block_status, block_loads
+    global block_status
     running_blocks = []
     for bh in self.block_handlers:
       bh.poll_load()
@@ -444,6 +449,7 @@ class GroupHandler(BlockHandler):
     self.group_args = block_record["args"]
     block_loads[self.id] = {}
     block_status[self.id] = "startup"
+    block_times[self.id] = 0
     #substitute group-args to hold proper arguments
     block_records = copy.deepcopy(group_record["blocks"])
     for b in block_records:
@@ -525,7 +531,7 @@ class GroupHandler(BlockHandler):
     self.poll_all_loads()
   
   def poll_all_loads(self):
-    global block_status, block_loads
+    global block_status
     block_status[self.id] = "alive"
     running = False
     for bh in self.block_hash.values():
@@ -680,13 +686,25 @@ class Master(object):
     socket.close()
 
   def write_loads(self):
-    global block_status, block_loads
+    global block_status, block_loads, block_times
     # print block_loads
     loads = defaultdict(int)
     for d in block_loads.values():
       for block_id, load in d.items():
         loads[block_id] += load
     logger.info("loads: %r" % loads)
+    time_per_req = {}
+    for i, t in block_times.items():
+      try:
+        time_per_req[i] = t/(-1 * block_loads[i][i])
+      except (KeyError, ZeroDivisionError):
+        time_per_req[i] = 0
+      
+    etas = [(l * time_per_req[i], i) for i, l in loads.items()]
+    etas.sort()
+    print "ETAs"
+    for e in etas:
+      print "%r -> %.3f" % (e[1], e[0])
     with open("loads.json", 'w') as f:
       json.dump(loads, f)
     

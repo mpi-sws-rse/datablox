@@ -71,6 +71,7 @@ class Port(object):
         #holds requests processed for input ports
         #and requests sent out for output ports
         self.requests = 0
+        self.request_start_time = 0
       
       def connect_to(self, block):
         self.end_point = block
@@ -175,6 +176,7 @@ class Block(threading.Thread):
     self.poller = None
     self.alive = True
     self.task = None
+    self.total_processing_time = 0
     self.buffer_limit = 50
     self.current_buffer_size = defaultdict(int)
     self.buffered_pushes = defaultdict(list)
@@ -346,13 +348,16 @@ class Block(threading.Thread):
       requests_served[p.name] = p.requests
 
     return (requests_made, requests_served)
+  
+  def respond_poll(self):
+    rm, rs = self.get_load()
+    load = json.dumps(("ALIVE", rm, rs, self.total_processing_time))
+    self.log_send("POLL", load, self.master_port)
+    self.master_port.socket.send(load)
     
   def process_master(self, control, data):
     if control == "POLL":
-      rm, rs = self.get_load()
-      load = json.dumps(("ALIVE", rm, rs))
-      self.log_send("POLL", load, self.master_port)
-      self.master_port.socket.send(load)
+      self.respond_poll()
     else:
       self.log(logging.WARN, " Warning ** could not understand master")
   
@@ -363,7 +368,10 @@ class Block(threading.Thread):
   def process_push(self, port, log_data):
     log = Log()
     log.set_log(log_data)
+    port.request_start_time = time.time()
     self.recv_push(port.name, log)
+    e = time.time()
+    self.total_processing_time += (e - port.request_start_time)
     port.requests += 1
   
   def process_buffered_push(self, port, logs):
@@ -375,6 +383,7 @@ class Block(threading.Thread):
     log = Log()
     log.set_log(log_data)
     # print self.id + " got a query query for port " + port.name
+    port.request_start_time = time.time()
     self.recv_query(port.name, log)
   
   def no_incoming(self):
@@ -444,7 +453,7 @@ class Block(threading.Thread):
       control, data = control_data
       if control == "POLL":
         rm, rs = self.get_load()
-        message = json.dumps(("SHUTDOWN", rm, rs))
+        message = json.dumps(("SHUTDOWN", rm, rs, self.total_processing_time))
         self.log_send("''", message, self.master_port)
         self.master_port.socket.send(message)
         break
@@ -528,10 +537,12 @@ class Block(threading.Thread):
     return log
   
   def return_query_res(self, port_name, log):
+    e = time.time()
     port = self.find_port(port_name)
     port.requests += 1
     log_data = json.dumps(log.log)
     self.log_send('return_query_res', log_data, port)
+    self.total_processing_time += (e - port.request_start_time)
     port.socket.send(log_data)
     
   def get_input_port_url(self, input_port_name):
