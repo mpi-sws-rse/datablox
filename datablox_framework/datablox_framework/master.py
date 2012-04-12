@@ -129,12 +129,6 @@ class BlockHandler(object):
     block_loads[self.id] = {}
     block_status[self.id] = "startup"
     block_times[self.id] = 0
-    # XXX JF: this check needs to be changed - in engage multi-node
-    # the individual blocks aren't necessarily on the master
-    ## path = naming.block_path(bloxpath, self.name, self.version)
-    ## if not os.path.isfile(path):
-    ##   logger.error("Could not find the block " + path)
-    ##   raise NameError
   
   #creates an output port if it does not exist
   def get_output_port_connections(self, from_port):
@@ -346,6 +340,16 @@ class DynamicJoinHandler(BlockHandler):
 class ShardHandler(BlockHandler):
   def __init__(self, block_record, address_manager, context, policy=None):
     BlockHandler.__init__(self, block_record, address_manager, context, policy)
+    if using_engage:
+      # For shard blocks, we need to install the block, even on the master.
+      # This is because the block class is instantiated to call its
+      # initial_configs() method.
+      block_version = naming.DEFAULT_VERSION # TODO get this from the block metadata
+      resource_key = naming.get_block_resource_key(self.name, block_version)
+      logger.info("Using engage to install resource %s" % resource_key)
+      datablox_engage_adapter.install.install_block(resource_key)
+      logger.info("Install of %s and its dependencies successful" % \
+                  resource_key)      
     block_class = get_block_class(self.name)
     self.node_type = self.args["node_type"]
     self.initial_configs = block_class.initial_configs(self.args)

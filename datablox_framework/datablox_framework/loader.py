@@ -57,7 +57,7 @@ def main(argv):
 
   if len(args)<1:
     parser.error("Need to specify config file and nodes.")
-  elif len(args)<2 and options.pool==None:
+  elif len(args)<2: #and options.pool==None:
     parser.error("Need to specify list of nodes/ip_addreses or a DJM pool name")
 
   bloxpath = options.bloxpath

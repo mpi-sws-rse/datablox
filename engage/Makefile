@@ -82,7 +82,14 @@ test-read-files:
 	$(TEST_DEPLOY_HOME)/engage/bin/svcctl stop
 	@echo "Read-files completed successfully"
 
-test: engage-ext engage-dist test-deploy test-map-reduce test-deploy test-read-files
+test-simple-shard:
+	@echo "Running simple-shard scenario"
+	$(TEST_DEPLOY_HOME)/engage/bin/svcctl start
+	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master --log-level=$(TEST_LOG_LEVEL) $(BLOX_HOME)/examples/simple_shard.json master
+	$(TEST_DEPLOY_HOME)/engage/bin/svcctl stop
+	@echo "simple-shard completed successfully"
+
+test: engage-ext engage-dist test-deploy test-map-reduce test-deploy test-read-files test-simple-shard
 	@echo "All tests completed successfully"
 
 help:
@@ -98,4 +105,4 @@ clean:
 clean-all: clean
 	rm -rf $(PACKAGE_DIR)
 
-.PHONY: all clean clean-all engage-dist engage-ext help download-packages test-deploy test-map-reduce test-read-files test test-packages
+.PHONY: all clean clean-all engage-dist engage-ext help download-packages test-deploy test-map-reduce test-read-files test-simple-shard test test-packages

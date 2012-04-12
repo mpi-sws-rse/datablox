@@ -1,6 +1,16 @@
-from block import *
-import time
+import sys
+import os.path
 from logging import ERROR, WARN, INFO, DEBUG
+import time
+
+try:
+  import datablox_framework
+except ImportError:
+  sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                               "../../datablox_framework")))
+  import datablox_framework
+
+from datablox_framework.block import *
 
 class zero_src(Block):
   def do_task(self):
