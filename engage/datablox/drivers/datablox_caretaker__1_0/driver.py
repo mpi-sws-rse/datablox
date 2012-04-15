@@ -73,8 +73,6 @@ def make_context(resource_json, sudo_password_fn, dry_run=False):
     ctx.check_port('input_ports.host',
                    genforma_home=unicode,
                    log_directory=unicode)
-    ctx.check_port('input_ports.master_password_file',
-                   password_file=unicode)
 
     # add any extra computed properties here using the ctx.add() method.
     return ctx
@@ -89,6 +87,9 @@ def np(path):
 # PasswordRepoMixin to the inheritance list.
 #
 class Manager(service_manager.Manager):
+    # need to ensure that a password file is generated, as there might
+    # be blocks that require a password.
+    REQUIRES_PASSWORD_FILE = True
     def __init__(self, metadata, dry_run=False):
         package_name = "%s %s" % (metadata.key["name"],
                                   metadata.key["version"])
@@ -98,17 +99,18 @@ class Manager(service_manager.Manager):
                                 dry_run=dry_run)
 
     def validate_pre_install(self):
-        """The password file resource lets one change the location of
-        the master password file, but we don't currently support that.
-        """
-        p = self.ctx.props
-        act_pw_file = np(p.input_ports.master_password_file.password_file)
-        exp_pw_file = np(os.path.join(p.input_ports.host.genforma_home,
-                                      "config/master.pw"))
-        if act_pw_file != exp_pw_file:
-            raise UserError(errors[ERR_BAD_PW_FILE],
-                            msg_args={"act":act_pw_file,
-                                      "exp":exp_pw_file})
+        pass
+        ## """The password file resource lets one change the location of
+        ## the master password file, but we don't currently support that.
+        ## """
+        ## p = self.ctx.props
+        ## act_pw_file = np(p.input_ports.master_password_file.password_file)
+        ## exp_pw_file = np(os.path.join(p.input_ports.host.genforma_home,
+        ##                               "config/master.pw"))
+        ## if act_pw_file != exp_pw_file:
+        ##     raise UserError(errors[ERR_BAD_PW_FILE],
+        ##                     msg_args={"act":act_pw_file,
+        ##                               "exp":exp_pw_file})
 
     def is_installed(self):
         return os.path.exists(self.ctx.props.config_port.config_dir)

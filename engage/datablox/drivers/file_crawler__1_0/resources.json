@@ -16,15 +16,17 @@
     },
     "inside": {
        "one-of": [
-          { "key": {"name": "ubuntu-linux", "version":"9.10"}},
+          { "key": {"name": "ubuntu-linux", "version":"11.10"}},
           { "key": {"name": "ubuntu-linux", "version":"10.04"}},
           { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
                                                  "less-than":"10.7"}}}
         ]
      },
     "environment": {
-      "key": {"name":"datablox-framework", "version":"1.0"},
-      "port_mapping": {"datablox_framework":"datablox_framework"}
-    }
+     "all-of": [
+      { "key": {"name":"datablox-framework", "version":"1.0"},
+        "port_mapping": {"datablox_framework":"datablox_framework"}},
+      { "key": {"name":"datablox-fileserver", "version":"1.0"}}
+    ]}
   }
 ]

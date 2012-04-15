@@ -12,6 +12,7 @@ setup(
     entry_points = {
         'console_scripts': [
           'datablox-caretaker = datablox_framework.care_taker:call_from_console_script',
+          'datablox-fileserver = datablox_framework.fileserver:main',
           'datablox-master = datablox_framework.loader:call_from_console_script'
             ]},
     install_requires=[],

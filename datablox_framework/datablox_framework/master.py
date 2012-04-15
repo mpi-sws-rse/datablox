@@ -3,10 +3,31 @@ import json
 import time
 import copy
 import subprocess
+import logging
 
 import naming
 from block import *
 from shard import *
+
+try:
+  import datablox_engage_adapter.file_locator
+  using_engage = True
+except ImportError:
+  using_engage = False
+
+if using_engage:
+  engage_file_locator = datablox_engage_adapter.file_locator.FileLocator()
+  import datablox_engage_adapter.install
+  import datablox_engage_adapter.djm_server as djm_server
+else:
+  engage_file_locator = None
+
+logger = logging.getLogger(__name__)
+
+block_loads = {}
+block_times = {}
+#this keeps track of timed out and shutdown blocks
+block_status = {}
 
 def get_url(ip_address, port_number):
   return "tcp://" + ip_address + ":" + str(port_number)
@@ -33,7 +54,6 @@ def get_single_item(d):
   assert(len(items) == 1)
   return items[0]
 
-using_engage = False
 log_level = logging.INFO
 bloxpath = None
 global_config = None
@@ -71,9 +91,22 @@ def create_handler(block_record, address_manager, context, policy=None):
       return BlockHandler(block_record, address_manager, context, policy)
   else:
     return GroupHandler(block_record, group, address_manager, context)
+
+class Connection(object):
+  #targets = [(block, port)]
+  def __init__(self, parent, port, connection_type):
+    self.parent = parent
+    self.port = port
+    self.connection_type = connection_type
+    self.connection_urls = []
+    self.targets = []
   
+  def __repr__(self):
+    return "connection_type " + self.connection_type + " connection_urls " + str(self.connection_urls)
+    
 class BlockHandler(object):
   def __init__(self, block_record, address_manager, context, policy=None):
+    global block_status, block_loads, block_times
     self.id = block_record["id"]
     self.name = block_record["name"]
     self.args = block_record["args"]
@@ -84,27 +117,40 @@ class BlockHandler(object):
     self.policy = policy
     self.version = block_record["version"] if block_record.has_key("version") \
                                    else naming.DEFAULT_VERSION
-    if using_engage:
-      resource_key = naming.get_block_resource_key(block_name,
-                                                   block_version)
-      datablox_engage_adapter.install.install_block(resource_key)
+    ## if using_engage:
+    ##   resource_key = naming.get_block_resource_key(self.name,
+    ##                                                self.version)
+    ##   datablox_engage_adapter.install.install_block(resource_key)
 
     self.connections = {}
     self.ports = {}
     self.last_load = 0
     self.timeouts = 0
-    path = naming.block_path(bloxpath, self.name, self.version)
-    if not os.path.isfile(path):
-      print "Could not find the block " + path
-      raise NameError
+    block_loads[self.id] = {}
+    block_status[self.id] = "startup"
+    block_times[self.id] = 0
+    # XXX JF: this check needs to be changed - in engage multi-node
+    # the individual blocks aren't necessarily on the master
+    ## path = naming.block_path(bloxpath, self.name, self.version)
+    ## if not os.path.isfile(path):
+    ##   logger.error("Could not find the block " + path)
+    ##   raise NameError
   
   #creates an output port if it does not exist
   def get_output_port_connections(self, from_port):
-    return get_or_default(self.connections, from_port, ["output"])
+    c = self.connections.get(from_port)
+    if c is None:
+      c = Connection(self, from_port, "output")
+      self.connections[from_port] = c 
+    return c
   
   #creates an output port if it does not exist
   def get_input_port_connections(self, to_port):
-    return get_or_default(self.connections, to_port, ["input"])
+    c = self.connections.get(to_port)
+    if c is None:
+      c = Connection(self, to_port, "input")
+      self.connections[to_port] = c
+    return c
   
   #a basic block has the same ipaddress for every port
   #but a block-group may have different ipaddresses for individual ports
@@ -118,7 +164,7 @@ class BlockHandler(object):
     config["args"] = self.args
     config["log_level"] = log_level
     config["master_port"] = get_url(self.ipaddress, self.master_port)
-    config["ports"] = self.connections
+    config["ports"] = self.create_port_config()
     if self.policy != None:
       config["policy"] = self.policy
     return config
@@ -127,22 +173,28 @@ class BlockHandler(object):
     #used by join and shard blocks
     pass
 
+  def create_port_config(self):
+    config = {}
+    for p,c in self.connections.items():
+      config[p] = [c.connection_type] + c.connection_urls
+    return config
+    
   def start(self):
-    print "starting", self.name
+    logger.info("starting %s" % self.name)
     config = self.create_basic_config()
     self.add_additional_config(config)
     socket = self.context.socket(zmq.REQ)
     message = json.dumps(("ADD NODE", config))
     socket.connect(get_url(self.ipaddress, 5000))
     socket.send(message)
-    print "waiting for caretake to load " + self.name
+    logger.info("waiting for caretaker to load " + self.name)
     res = json.loads(socket.recv())
     socket.close()
     if not res:
-      print "Could not start block " + self.name
+      logger.error("Could not start block " + self.name)
       raise NameError
     else:
-      print self.name + " loaded"
+      logger.info(self.name + " loaded")
     return self.sync()
 
   def stop(self):
@@ -152,7 +204,7 @@ class BlockHandler(object):
     url = get_url(self.ipaddress, self.master_port)
     syncclient = self.context.socket(zmq.REQ)
     syncclient.connect(url)
-    print "syncing with block %s at url %s" % (self.name, url)
+    logger.info("syncing with block %s at url %s" % (self.name, url))
     syncclient.send('')
     # wait for synchronization reply
     # TODO: hardcoded wait for 8 seconds
@@ -164,51 +216,74 @@ class BlockHandler(object):
     if connection_url == None:
       connection_port_num = self.address_manager.new_port()
       connection_url = get_url(to_block.get_ipaddress(to_port), connection_port_num)
+
     from_connections = self.get_output_port_connections(from_port)
-    from_connections.append(connection_url)
+    from_connections.connection_urls.append(connection_url)
     to_connections = to_block.get_input_port_connections(to_port)
-    if len(to_connections) > 1:
+    from_connections.targets.append((to_connections.parent, to_connections.port))
+    if len(to_connections.connection_urls) > 0:
       try:
         #it's ok for join url to have multiple inputs
-        to_connections.index(connection_url)
+        to_connections.connection_urls.index(connection_url)
         pass
       except ValueError:
-        print "Cannot add multiple input connections"
+        logger.error("Cannot add multiple input connections")
         raise NameError
     else:
-      to_connections.append(connection_url)
-
+      to_connections.connection_urls.append(connection_url)
+      to_connections.targets.append((self, from_port))
+  
+  def find_target(self, port):
+    t = self.connections[port].targets
+    assert(len(t)==1)
+    return t[0]
+    
   def poll_load(self):
+    global block_status, block_loads, block_times
     port = self.master_port
     message = json.dumps(("POLL", {}))
     socket = self.context.socket(zmq.REQ)
     socket.connect(get_url(self.ipaddress, port))
     socket.send(message)
     #wait for 4 sec
+    #TODO: hardcoded 4
     load = timed_recv(socket, 4000)
     socket.close()
     if load != None:
       self.timeouts = 0
-      load = json.loads(load)
-      print "%s has served %r (%r)" % (self.id, load, (load - self.last_load))
-      self.last_load = load
-      #shut down
-      if load == -1:
-        print "%s has shutdown" % (self.id)
-        return []
-      #block timed out
-      else:
-        return [load]
+      status, requests_made, requests_served, processing_time = json.loads(load)
+      block_times[self.id] = processing_time
+      # print self.id
+      # print requests_made
+      # print requests_served
+      # print processing_time
+      for p, r in requests_made.items():
+        try:
+          to_block, to_port = self.find_target(p)
+          block_loads[self.id][to_block.id] = r
+        except KeyError:
+          print "Could not find port %s in block %s" % (p, self.id)
+          raise
+      total_served = sum(requests_served.values())
+      self.last_load = total_served
+      block_loads[self.id][self.id] = -1 * total_served
+      if status == "ALIVE":
+        block_status[self.id] = "alive"
+        # logger.info("%s has served %r (%r)" % (self.id, total_served, (total_served - self.last_load)))
+      elif status == "SHUTDOWN":
+        logger.info("%s has shutdown" % (self.id))
+        block_status[self.id] = "shutdown"
+    #block timed out
     else:
-      print "** Master: %s timed out" % self.id
+      logger.info("** Master: %s timed out" % self.id)
       self.timeouts += 1
-      if self.timeouts > 3:
-        return None
-      else:
-        return [0]
+      #todo: hardcoded 10
+      if self.timeouts > 10:
+        block_status[self.id] = "timeout"
 
 class RPCHandler(BlockHandler):
   def __init__(self, block_record, address_manager, context, policy=None):
+    global block_status, block_loads
     self.id = block_record["id"]
     self.name = block_record["name"]
     self.args = block_record["args"]
@@ -224,12 +299,15 @@ class RPCHandler(BlockHandler):
     self.ports = {}
     self.last_load = 0
     self.timeouts = 0
+    block_loads[self.id] = {}
+    block_status[self.id] = "startup"
+    block_times[self.id] = 0
     self.webserver_process = None
   
   def start(self):
     connections_file_name = "connections"
     with open(connections_file_name, 'w') as f:
-      f.write(json.dumps(self.connections))
+      f.write(json.dumps(self.create_port_config()))
       
     connections_file_path = os.path.join(os.getcwd(), connections_file_name)
     webserver_script = os.path.join(os.path.dirname(__file__),
@@ -243,12 +321,13 @@ class RPCHandler(BlockHandler):
       self.webserver_process.terminate()
 
   def poll_load(self):
+    global block_status
     if self.webserver_process.poll() == None:
-      print "RPC block is working"
-      return [0]
+      logger.info("RPC block is working")
+      block_status[self.id] = "alive"
     else:
-      print "RPC block has shutdown"
-      return []
+      logger.info("RPC block has shutdown")
+      block_status[self.id] = "shutdown"
   
 class DynamicJoinHandler(BlockHandler):
   def __init__(self, block_record, address_manager, context, policy=None):
@@ -270,8 +349,8 @@ class ShardHandler(BlockHandler):
   def __init__(self, block_record, address_manager, context, policy=None):
     BlockHandler.__init__(self, block_record, address_manager, context, policy)
     block_class = get_block_class(self.name)
+    self.node_type = self.args["node_type"]
     self.initial_configs = block_class.initial_configs(self.args)
-    self.node_type = block_class.node_type()
     self.block_handlers = []
     self.join_handler = None
     self.populate()
@@ -290,7 +369,7 @@ class ShardHandler(BlockHandler):
     block_type = self.node_type
     block_name = block_type["name"]
     input_port = block_type["input_port"]
-    print "num blocks in shard %d" % (len(block_configs))
+    logger.info("num blocks in shard %d" % (len(block_configs)))
     if block_type.has_key("output_port"):
       #optimization: creating the join block on the same node as the shard - TODO: verify this
       join_record = {}
@@ -337,42 +416,46 @@ class ShardHandler(BlockHandler):
     for bh in self.block_handlers:
       bh.stop()
     BlockHandler.stop(self)
-  
+      
   def poll_load(self):
-    loads = []
+    global block_status
     running_blocks = []
     for bh in self.block_handlers:
-      load = bh.poll_load()
-      if load != None and load != []:
+      bh.poll_load()
+      if block_status[bh.id] == "alive":
         running_blocks.append(bh)
-        loads.extend(load)
     if self.join_handler:
-      load = self.join_handler.poll_load()
-      if load != None and load != []:
-        loads.extend(load)
+      self.join_handler.poll_load()
     if not self.shard_shutdown:
-      load = BlockHandler.poll_load(self)
-      if load != None:
-        if load == []:
-          self.shard_shutdown = True
-        loads.extend(load)
+      BlockHandler.poll_load(self)
+      if block_status[self.id] != "alive":
+        self.shard_shutdown = True
     self.block_handlers = running_blocks
-    return loads
+    #the shard won't be shutdown unless all the blocks are done
+    if self.block_handlers == [] and self.shard_shutdown:
+      block_status[self.id] = "shutdown"
+    else:
+      block_status[self.id] = "alive"
+
     
 class GroupHandler(BlockHandler):
   #group_record is the specification of the group (like a "class")
   #block_record is the instance of the group (like an "object")
   def __init__(self, block_record, group_record, address_manager, context):
+    global block_status, block_loads
     self.id = block_record["id"]
     self.name = group_record["group-name"]
     self.address_manager = address_manager
     self.context = context
-    self.group_ports = group_record["group-ports"] if group_record.has_key("group-ports") else {}
     self.policies = group_record["policies"] if group_record.has_key("policies") else {}
     self.group_args = block_record["args"]
+    block_loads[self.id] = {}
+    block_status[self.id] = "startup"
+    block_times[self.id] = 0
     #substitute group-args to hold proper arguments
     block_records = copy.deepcopy(group_record["blocks"])
     for b in block_records:
+      b["id"] = self.full_id(b["id"]) 
       if b["args"] == "group-args":
         b["args"] = self.group_args
     self.block_handlers = [create_handler(b, self.address_manager, self.context, self.policies.get(b["id"])) 
@@ -380,15 +463,27 @@ class GroupHandler(BlockHandler):
     self.block_hash = {}
     for bh in self.block_handlers:
       self.block_hash[bh.id] = bh
+    
+    self.group_ports = {}
+    if group_record.has_key("group-ports"):
+      for port, b in group_record["group-ports"].items():
+        (block_id, b_port) = b
+        self.group_ports[port] = [self.full_id(block_id), b_port]
+    
     self.set_initial_connections(group_record["connections"])
   
+  #return the full id of the block, prepended with group's id
+  #this id should be unique across the topology
+  def full_id(self, id):
+    return self.id + "." + id
+    
   def get_output_port_connections(self, from_port):
     try:
       block_name, port = self.group_ports[from_port]
       handler = self.block_hash[block_name]
       return handler.get_output_port_connections(from_port)
     except KeyError:
-      print "Block-group %s does not have a mapping for port %s" % (self.name, from_port)
+      logger.error("Block-group %s does not have a mapping for port %s" % (self.name, from_port))
       raise NameError
 
   def get_input_port_connections(self, to_port):
@@ -397,22 +492,24 @@ class GroupHandler(BlockHandler):
       handler = self.block_hash[block_name]
       return handler.get_input_port_connections(to_port)
     except KeyError:
-      print "Block-group %s does not have a mapping for port %s" % (self.name, from_port)
+      logger.error("Block-group %s does not have a mapping for port %s" % (self.name, from_port))
       raise NameError
-  
+      
   def get_ipaddress(self, port):
     try:
       block_name, port = self.group_ports[port]
       handler = self.block_hash[block_name]
       return handler.get_ipaddress(port)
     except KeyError:
-      print "Block-group %s does not have a mapping for port %s" % (self.name, from_port)
+      logger.error("Block-group %s does not have a mapping for port %s" % (self.name, from_port))
       raise NameError
     
   def set_initial_connections(self, connections):
     for f, t in connections:
       (from_id, from_port) = get_single_item(f)
       (to_id, to_port)  = get_single_item(t)
+      from_id = self.full_id(from_id)
+      to_id = self.full_id(to_id)
       from_block = self.block_hash[from_id]
       # #if we have a shard, connect the join node instead
       # #TODO: hardcoded join output port name
@@ -433,22 +530,20 @@ class GroupHandler(BlockHandler):
       bh.stop()
 
   def poll_load(self):
-    return self.poll_all_loads()
+    self.poll_all_loads()
   
   def poll_all_loads(self):
-    #it's initially None so that it will stay None if all the blocks in the group timeout
-    #and we will return None in that case
-    all_loads = None
+    global block_status
+    block_status[self.id] = "alive"
+    running = False
     for bh in self.block_hash.values():
-      loads = bh.poll_load()
-      if loads != None:
-        #shutdown
-        if loads == []:
-          self.block_hash.pop(bh.id)
-        if all_loads == None:
-          all_loads = []
-        all_loads.extend(loads)
-    return all_loads
+      bh.poll_load()
+      if block_status[bh.id] == "alive":
+        running = True
+      else:
+        self.block_hash.pop(bh.id)
+    if not running:
+      block_status[self.id] = "shutdown"
     
 class AddressManager(object):
   def __init__(self, ipaddress_list):
@@ -461,6 +556,9 @@ class AddressManager(object):
   def get_master_port(self):
     self.master_port += 2
     return self.master_port
+
+  def get_all_ipaddresses(self):
+    return self.ipaddress_hash.keys()
   
   #if selected_ipaddress is None, return a new ipaddress
   #otherwise if selected_ipaddress exists in the list, return that otherwise raise error
@@ -470,7 +568,7 @@ class AddressManager(object):
     elif self.ipaddress_hash.has_key(selected_ipaddress):
       return selected_ipaddress
     else:
-      print "No ipaddress ", selected_ipaddress
+      logger.error("No ipaddress ", selected_ipaddress)
       raise NameError
   
   def select_ipaddress(self):
@@ -487,16 +585,53 @@ class AddressManager(object):
   def new_port(self):
     return self.port_num_gen.new_port()
 
+class DjmAddressManager(AddressManager):
+  """When running with Engage and the Distributed Job Manager,
+  we delegate the management of nodes to the DJM.
+  """
+  def __init__(self, djm_job):
+    AddressManager.__init__(self,
+                            [node["name"] for node in djm_job.nodes])
+    self.djm_job = djm_job
+
+  def select_ipaddress(self):
+    node_name = AddressManager.select_ipaddress(self)
+    return (self.djm_job.get_node(node_name))["datablox_ip_address"]
+  
+  def get_ipaddress(self, selected_ipaddress):
+    """When running under engage, the selected_ipaddress is actually
+    the name of the node. We map that to the ip address of the node.
+    """
+    if selected_ipaddress == None:
+      return self.select_ipaddress()
+    elif self.djm_job.has_node(selected_ipaddress):
+      return (self.djm_job.get_node(selected_ipaddress))["datablox_ip_address"]
+    else:
+      logger.error("No node with name %s" % selected_ipaddress)
+      raise NameError
+
+  def get_all_ipaddresses(self):
+    return [node["datablox_ip_address"] for node in self.djm_job.nodes]
+    
 class Master(object):
   def __init__(self, _bloxpath, config_file, ip_addr_list,
-               _using_engage, _log_level=logging.INFO):
+               _using_engage, _log_level=logging.INFO,
+               reuse_existing_installs=True):
     global global_config, bloxpath, using_engage, log_level
     bloxpath = _bloxpath
     using_engage = _using_engage
     log_level = _log_level
-    
+    if using_engage:
+      logger.info("Running with Engage deployment home at %s" % \
+                  engage_file_locator.get_dh())
+      djm_job = djm_server.start_job_and_get_nodes(ip_addr_list,
+                                                   os.path.basename(config_file),
+                                                   reuse_existing_installs=reuse_existing_installs)
+      self.address_manager = DjmAddressManager(djm_job)
+    else:
+      self.address_manager = AddressManager(ip_addr_list)
+
     add_blox_to_path(_bloxpath)
-    self.address_manager = AddressManager(ip_addr_list)
     self.context = zmq.Context()
     global_config = self.get_config(config_file)
     #old style, flat config
@@ -508,42 +643,100 @@ class Master(object):
     main_block_rec = {"id": "main_inst", "args": {}}
     self.main_block_handler = GroupHandler(main_block_rec, get_group("main"), self.address_manager, self.context)
     if not self.main_block_handler.start():
-      print "Master: Could not start all blocks. Ending the run"
-      self.stop_all()
-      
-    self.run()
+      self.stop_all("Master: Could not start all blocks. Ending the run")
+
+    try:
+      self.run()
+    except Exception, e:
+      logger.exception("Master run aborted due to exception %s" % e)
+      if using_engage:
+        self.address_manager.djm_job.stop_job(successful=False,
+                                              msg="Master run stopped due to exception %s" % e)
+      raise
+    if using_engage:
+      self.address_manager.djm_job.stop_job(successful=True)
+    return
   
   def get_config(self, config_file):
     with open(config_file) as f:
       return json.load(f)
 
-  def stop_all(self):
-    self.main_block_handler.stop()
-    print "Master: trying to stop all blocks"
-    for ip in self.address_manager.ipaddress_hash.keys():
-      self.stop_all_node(ip)
-    print "done, quitting"
-    self.context.term()
-    sys.exit(0)
+  def stop_all(self, msg):
+    logger.error(msg)
+    try:
+      self.main_block_handler.stop()
+      logger.info("Master: trying to stop all blocks")
+      for ip in self.address_manager.get_all_ipaddresses():
+        self.stop_all_in_node(ip)
+      logger.info("done, quitting")
+      # since we are stopping due to an error, don't wait around
+      # for other ports - set linger to false.
+      self.context.destroy(linger=0)
+    finally:
+      if using_engage:
+        self.address_manager.djm_job.stop_job(successful=False,
+                                              msg=msg)
+    sys.exit(1)
 
-  def stop_all_node(self, ipaddress):
+  def stop_all_in_node(self, ipaddress):
     socket = self.context.socket(zmq.REQ)
     message = json.dumps(("STOP ALL", {}))
     socket.connect(get_url(ipaddress, 5000))
     socket.send(message)
-    print "waiting for caretaker at %s to stop all blocks " % ipaddress
+    logger.info("waiting for caretaker at %s to stop all blocks " % ipaddress)
     res = json.loads(socket.recv())
     socket.close()
 
-  def run(self):
-    while True:
+  def write_loads(self):
+    global block_status, block_loads, block_times
+    # print block_loads
+    loads = defaultdict(int)
+    for d in block_loads.values():
+      for block_id, load in d.items():
+        loads[block_id] += load
+    logger.info("loads: %r" % loads)
+    time_per_req = {}
+    for i, t in block_times.items():
       try:
-        res = self.main_block_handler.poll_load()
-        if len(res) == 0:
-          print "Master: no more running nodes, quitting"
+        time_per_req[i] = t/(-1 * block_loads[i][i])
+      except (KeyError, ZeroDivisionError):
+        time_per_req[i] = 0
+      
+    etas = [(l * time_per_req[i], i) for i, l in loads.items()]
+    etas.sort()
+    print "ETAs"
+    for e in etas:
+      print "%r -> %.3f" % (e[1], e[0])
+    with open("loads.json", 'w') as f:
+      json.dump(loads, f)
+    
+  def running(self):
+    global block_status, block_loads
+    for v in block_status.values():
+      if v == "alive":
+        return True
+
+  def has_timeouts(self):
+    global block_status, block_loads
+    for i, v in block_status.items():
+      if v == "timeout":
+        logger.info("%s has a timeout" % i)
+        return True
+    
+  def run(self):
+    try:
+      while True:
+        self.main_block_handler.poll_load()
+        self.write_loads()
+        if not self.running():
+          if self.has_timeouts():
+            logger.info("Master: topology has timeouts, killing all blocks and exiting")
+            self.stop_all("Quitting topology due to remaining blocks timing out")
+          else:
+            logger.info("Master: no more running nodes, quitting")
           return
-        #todo: hard coded 10
-        time.sleep(10)
-      except KeyboardInterrupt:
-        self.stop_all()
-        break
+        #todo: hard coded 4
+        time.sleep(4)
+    except KeyboardInterrupt:
+      self.stop_all("Got a keyboard interrupt") # does not return
+      

@@ -1,4 +1,74 @@
 [
+   { "key": {"name":"distributed-job-manager", "version":"0.1"},
+     "display_name": "Distributed Job Manager",
+     "input_ports": {
+        "python": {
+          "home" : "path"
+        },
+	"pip": { "pipbin": "path" }
+     },
+    "output_ports" : {
+      "pkg_info": {
+        "provides_pkg": {"type":"string", "fixed-value":"dist_job_mgr"},
+        "test_module": {"type":"string",
+                        "fixed-value":"dist_job_mgr.version"},
+        "version": {"type":"string", "fixed-value":"0.1.0"}
+      }
+    },
+    "inside": {
+       "one-of": [
+          { "key": {"name": "ubuntu-linux", "version":"11.10"}},
+          { "key": {"name": "ubuntu-linux", "version":"10.04"}},
+          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
+                                                 "less-than":"10.7"}}}
+        ]
+     },
+     "environment": {
+        "all-of": [
+          { "key": {"name":"python",
+                    "version":{"greater-than-or-equal":"2.6"}},
+            "port_mapping": {"python":"python"}
+          },
+          { "key": {"name":"pip", "version":"any"},
+            "port_mapping": {"pip":"pip"}
+          }
+      ]}
+   },
+   { "key": {"name": "djm-server-config", "version":"0.1"},
+     "display_name": "Server configuration for Distributed Job Manager",
+     "input_ports": {
+        "host": {
+          "genforma_home": "path"
+        },
+        "pkg_info": {
+          "version":"string"
+        }
+     },
+     "output_ports": {
+       "djm_server": {
+         "server_config_dir":{"type":"path",
+                              "fixed-value":"${input_ports.host.genforma_home}/djm"}
+       } 
+    },
+    "inside": {
+       "one-of": [
+          { "key": {"name": "ubuntu-linux", "version":"11.10"},
+            "port_mapping":{"host":"host"}},
+          { "key": {"name": "ubuntu-linux", "version":"10.04"},
+            "port_mapping":{"host":"host"}},
+          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
+                                                 "less-than":"10.7"}},
+            "port_mapping":{"host":"host"}}
+        ]
+     },
+     "environment": {
+        "all-of": [
+          { "key": {"name":"distributed-job-manager",
+                    "version":{"greater-than-or-equal":"0.1"}},
+            "port_mapping":{"pkg_info":"pkg_info"}
+          }
+      ]}
+   },
    { "key": {"name":"datablox-framework", "version":"1.0"},
      "display_name": "Datablox framework",
      "input_ports": {
@@ -21,6 +91,9 @@
                        "fixed-value": "${input_ports.host.genforma_home}/blox"},
           "caretaker_exe": {
             "type":"path", "fixed-value":"${input_ports.python.python_bin_dir}/datablox-caretaker"
+          },
+          "fileserver_exe": {
+            "type":"path", "fixed-value":"${input_ports.python.python_bin_dir}/datablox-fileserver"
           },
           "loader_exe": {
             "type":"path", "fixed-value":"${input_ports.python.python_bin_dir}/datablox-loader"
@@ -78,9 +151,6 @@
         "datablox_framework": {
           "BLOXPATH": "path",
           "caretaker_exe": "path"
-        },
-        "master_password_file": {
-          "password_file": "path"
         }
       },
      "inside": {
@@ -99,9 +169,53 @@
           { "key": {"name":"datablox-framework", "version":"1.0"},
                     "version":{"greater-than-or-equal":""},
             "port_mapping": {"datablox_framework":"datablox_framework"}},
-          {"key":{"name":"datablox-engage-adapter", "version":"1.0"}},
-          {"key":{"name":"master-password-file", "version":"1.0"},
-           "port_mapping": {"master_password_file":"master_password_file"}}
+          {"key":{"name":"datablox-engage-adapter", "version":"1.0"}}
+        ]
+    }
+  },
+   { "key": {"name":"datablox-fileserver", "version":"1.0"},
+     "display_name": "Datablox Fileserver process",
+     "config_port": {
+       "config_dir": {
+         "type":"path",
+         "default":"${input_ports.host.genforma_home}/datablox_fileserver"
+       },
+       "pid_file": {
+         "type":"path",
+         "default":"${input_ports.host.genforma_home}/datablox_fileserver/fileserver.pid"
+       },
+       "log_file": {
+         "type":"path",
+         "default":"${input_ports.host.log_directory}/datablox_fileserver.log"
+       }
+     },
+     "input_ports": {
+        "host": {
+          "genforma_home": "path",
+          "log_directory": "path"
+        },
+        "datablox_framework": {
+          "BLOXPATH": "path",
+          "fileserver_exe": "path"
+        }
+      },
+     "inside": {
+        "one-of": [
+          { "key": {"name": "ubuntu-linux", "version":"11.10"},
+            "port_mapping": {"host":"host"}},
+          { "key": {"name": "ubuntu-linux", "version":"10.04"},
+            "port_mapping": {"host":"host"}},
+          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
+                                                 "less-than":"10.7"}},
+            "port_mapping": {"host":"host"}}
+        ]
+     },
+     "environment": {
+        "all-of": [
+          { "key": {"name":"datablox-framework", "version":"1.0"},
+                    "version":{"greater-than-or-equal":""},
+            "port_mapping": {"datablox_framework":"datablox_framework"}},
+          {"key":{"name":"datablox-engage-adapter", "version":"1.0"}}
         ]
     }
   },
@@ -269,7 +383,9 @@
             "port_mapping": {"setuptools":"setuptools"}
           },
           { "key": {"name":"pyzmq-abstract",
-                    "version":{"greater-than-or-equal":"2.1"}}}
+                    "version":{"greater-than-or-equal":"2.1"}}},
+          { "key": {"name":"distributed-job-manager",
+                    "version":{"greater-than-or-equal":"0.1"}}}
       ]}
   },
   { "key": {"name":"filetypes", "version":"0.1"},
@@ -285,6 +401,40 @@
         "provides_pkg": {"type":"string", "fixed-value":"filetypes"},
         "test_module": {"type":"string",
                         "fixed-value":"filetypes"}
+      }
+    },
+    "inside": {
+       "one-of": [
+          { "key": {"name": "ubuntu-linux", "version":"11.10"}},
+          { "key": {"name": "ubuntu-linux", "version":"10.04"}},
+          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
+                                                 "less-than":"10.7"}}}
+        ]
+     },
+     "environment": {
+        "all-of": [
+          { "key": {"name":"python",
+                    "version":{"greater-than-or-equal":"2.5"}},
+            "port_mapping": {"python":"python"}
+          },
+          { "key": {"name":"pip", "version":"any"},
+            "port_mapping": {"pip":"pip"}
+          }
+      ]}
+  },
+  { "key": {"name":"BeautifulSoup", "version":"3"},
+    "display_name": "Beautiful Soup: HTML parser",
+     "input_ports": {
+        "python": {
+          "home" : "path"
+        },
+	"pip": { "pipbin": "path" }
+     },
+    "output_ports" : {
+      "pkg_info": {
+        "provides_pkg": {"type":"string", "fixed-value":"BeautifulSoup"},
+        "test_module": {"type":"string",
+                        "fixed-value":"BeautifulSoup"}
       }
     },
     "inside": {

@@ -5,8 +5,7 @@
          "args": {"directory": "~/"}},
         {"id": "save-metadata",
          "name": "File-mongo", 
-         "args": {"crawlers": 1},
-         "at": "127.0.0.1"},
+         "args": {"crawlers": 1}},
         {"id": "map-reduce",
          "name":"mongo-map-reduce",
          "args":{
@@ -17,8 +16,7 @@
           "output_collection":"file_types",
           "query": {"volume":"${key}"},
           "run_on_each_key": true
-         },
-         "at":"127.0.0.1"}
+         }}
     ],
 
     "connections": [

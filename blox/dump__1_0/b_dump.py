@@ -25,6 +25,7 @@ class dump(Block):
     self.decode_fields(log)
     self.log(INFO, "log is: " + str(log.log))
     time.sleep(self.sleep_time)
+    #yield
   
   def recv_query(self, port, log):
     self.decode_fields(log)

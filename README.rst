@@ -65,7 +65,7 @@ killall python
 Note that this will kill other python processes unrelated to datablox.
 
 Building and Installing with Engage
-============================
+====================================
 Datablox can be installed  via the Engage deployment platform (http://github.com/genforma/engage). 
 This is accomplished by
 building an Engage distribution that includes Datablox as an extension. Engage can then install the
@@ -80,7 +80,9 @@ Here are the steps to build Datablox with Engage on Ubuntu::
 
   sudo apt-get update
   # engage dependencies
-  sudo apt-get install git-core g++ ocaml zlib1g-dev python-dev python-crypto python-virtualenv
+  sudo apt-get install git-core g++ ocaml zlib1g-dev python-dev
+  sudo apt-get install python-crypto python-virtualenv make libzmq-dev libzmq1
+  sudo pip install pyzmq
   git clone git://github.com/mpi-sws-rse/datablox.git
   cd ./datablox
   make all
@@ -90,21 +92,27 @@ Building on MacOSX
 Datablox is currently supported on MacOSX 10.5 and 10.6.  As
 prerequisites, you need to have the following software installed on
 your mac:
+
  * Python 2.6 or 2.7
  * Apple's XCode (to get g++)
  * OCaml (http://caml.inria.fr)
  * MacPorts (http://www.macports.org)
+ * ZeroMQ (http://www.zeromq.org)
  * The following Python packages:
 
    * virtualenv (http://pypi.python.org/pypi/virtualenv)
    * setuptools (http://pypi.python.org/pypi/setuptools)
    * pycrypto (http://pypi.python.org/pypi/pycrypto)
+   * pyzmq (http://pypi.python.org/pypi/pyzmq)
 
 If you are running MacOSX 10.5 (Leopard), the version of Python included with the OS is too old, and
 you will have to install a separate local copy of Python 2.6 or Python 2.7. Either way, we recommend installing
 MacPorts and using the MacPorts Python package (`python27 <https://trac.macports.org/browser/trunk/dports/lang/python27/Portfile>`_).
 
-If you use MacPorts, you can get pycrypto and ocaml setup with minimal pain by installing the associated ports: `py27-crypto <https://trac.macports.org/browser/trunk/dports/python/py27-crypto/Portfile>`_ and `ocaml <https://trac.macports.org/browser/trunk/dports/lang/ocaml/Portfile>`_, respectively.
+If you use MacPorts, you can get most of the dependencies set up with minimal pain by installing the associated ports: `py27-crypto <https://trac.macports.org/browser/trunk/dports/python/py27-crypto/Portfile>`_,
+`zmq <https://trac.macports.org/browser/trunk/dports/sysutils/zmq/Portfile>`_,
+`py27-zmq <https://trac.macports.org/browser/trunk/dports/python/py-zmq/Portfile>`_,
+`py27-virtualenv <https://trac.macports.org/browser/trunk/dports/python/py-virtualenv/Portfile>`_,  and `ocaml <https://trac.macports.org/browser/trunk/dports/lang/ocaml/Portfile>`_.
 
 With the prerequisites installed, you can now build as follows::
 
@@ -129,15 +137,20 @@ Assuming you start in the directory above your
 Datablox source tree and have already built it, the following will
 install Datablox::
 
-  cd ./datablox/engage
+  cd ./datablox/engage/engage-dist
   ./install_datablox.py <deployment_home>
 
 where ``<deployment_home>`` is the target directory for your
-installation. During the installation, you will be asked to define a *master
-password*. Unless you are running as root, you will also be asked for
-the sudo password. Root access is needed to install some of the
+installation. If you are not running as root and your user requires a
+password to run ``sudo``, then you will be asked for the sudo password.
+Root access is needed to install some of the
 components (e.g. zeromq). The Datablox master script will be installed
-to ``<deployment_home>/python/bin/datablox-master``.
+to ``<deployment_home>/python/bin/datablox-master``. You can run it as
+follows::
+
+  <deployment_home>/python/bin/datablox-master <script_name> master
+
+where ``<script_name>`` is the Datablox topology JSON file you wish to run.
 
 The installation will also start the Datablox *caretaker* process. To
 start and stop it, you can use Engage's ``svcctl`` utility. To do
@@ -148,8 +161,67 @@ this, run::
 where ``<command>`` is one of: ``start``, ``stop``, or ``status``. 
 
 
-Documentation
-==============
+Installing Worker Nodes
+--------------------------
+To run a multinode configuration, one first installs the *master* node
+as described above. Next, we add *worker* nodes as follows:
+
+  1. Ensure that the worker nodes have the prerequisites for Datablox installed. These prerequisites include all the packages listed above to build Datablox, except for the C++ and Ocaml compilers.
+  2. Make sure the worker nodes are accessible via ``ssh`` without requiring a password. This can be accomplished by adding the master node's public ssh key (usually at ``~/.ssh/id_rsa.pub``) to the worker node's authorized keys file (usually at ``~/.ssh/authorized_keys``).
+  3. Add the worker nodes to the node database maintained by the master using the ``djmctl`` utility's ``add-node`` command. See below for details.
+  4. When you run ``datablox-master``, add the names you gave to the worker nodes in step 3 to the list of nodes on the command line. For example, if Datablox is installed at ``~/apps`` and we want to run the topology ``test.json`` on the nodes ``master``, ``worker1``, and ``worker2``, use: ``~/apps/python/bin/datablox-master test.json master worker1 worker2``
+
+Adding Nodes Via djmctl
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The ``djmctl`` utility, installed at ``<deployment_home>/python/bin/djmctl`` is used to manage the database of nodes maintained by Datablox.  The syntax for the ``add-node`` command is::
+
+  djmctl add-node [options] [name]
+
+where the relevant options are::
+
+    -h, --help            show help message and exit
+    --debug               If specified, print debug information to the console
+    --hostname=HOSTNAME   Public hostname of the server
+    --public-ip=PUBLIC_IP
+                          Public ip address of the server
+    --private-ip=PRIVATE_IP
+                          Private ip address of the server
+    --os-user=OS_USER     OS user for node (defaults to the current user)
+    --bootstrap           If specified, setup the DJM worker on the node (default behavior)
+    --no-bootstrap    If specified, do not setup the DJM worker on the node.
+    --no-check-for-private-ip
+                          If specified, do not try to look for a private ip
+                          address for this node
+
+The name defines a unique handle used to refer to the node (e.g. on the ``datablox-master`` command
+line). If not provided, the hostname, public ip, or private ip will be used.
+The options ``--hostname``, ``--public-ip``, and ``--private-ip`` define ways to contact the
+machine. At least one of these must be provided. A private ip (local network) address is preferred. If
+you do not provide one, Datablox will try to find one, and if the machine can be reached by that address,
+add it to the node's database entry. To suppress this automatic check, use the
+``--no-check-for-private-ip`` option.
+
+Here is an example, where we are adding the node ``test.genforma.com``, to be referred as ``test``::
+
+  djmctl add-node --hostname=test.genforma.com --osuser=datablox test
+
+Note that, when Datablox itself is installed on the master node (via
+the ``install_datablox.py`` script), a node database entry named
+``master``, corresponding to the master node, is automatically created.
+
+The ``djmctl`` utility is part of the *Distributed Job Manager*, which
+is installed as a part of Datablox. More details may be found at https://github.com/genforma/dist_job_mgr.
+
+Re-initializing Worker Nodes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+After a multinode run, the worker nodes are left with Datablox and any block dependencies installed.
+By default, subsequent runs using these workers will reuse the original Datablox install. To force a
+reinstallation of Datablox (and block dependencies), use the ``--always-reinstall-workers`` option.
+
+
+
+Additional Documentation
+=============================
 
 See docs folder for the description of configuration language.
 blox_meta folder contains documentation and requirements for individual blocks.

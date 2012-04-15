@@ -41,6 +41,14 @@ class FileLocator(object):
     check_file(self.deployer_exe)
     self.master_pw_file = os.path.join(self.config_dir, "master.pw")
     check_file(self.master_pw_file)
+    log_dir_ref_file = os.path.join(self.config_dir, "log_directory.txt")
+    check_file(log_dir_ref_file)
+    with open(log_dir_ref_file, "r") as f:
+      self.log_directory = f.read().rstrip()
+    assert self.log_directory, "%s does not seem to contain a valid directory" %\
+           log_dir_ref_file
+    self.sw_packages_dir = os.path.join(self.engage_dir, "sw_packages")
+    check_dir(self.sw_packages_dir)
 
   def get_dh(self):
     return self.dh
@@ -78,3 +86,19 @@ class FileLocator(object):
 
   def get_file_server_key_file(self):
     return os.path.join(self.dh, "datablox_file_server_key")
+
+  def get_djm_server_dir(self):
+    return os.path.join(self.dh, "djm")
+
+  def get_log_directory(self):
+    return self.log_directory
+
+  def get_engage_distribution_file(self):
+    engage_dist_file = os.path.join(self.engage_dir, "engage-dist.tar.gz")
+    if not os.path.exists(engage_dist_file):
+      raise Exception("Engage distribution file not found at %s" %
+                      engage_dist_file)
+    return engage_dist_file
+
+  def get_sw_packages_dir(self):
+    return self.sw_packages_dir

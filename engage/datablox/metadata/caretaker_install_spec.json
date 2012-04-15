@@ -1,0 +1,14 @@
+[
+  {"id":"master-host",
+     "key": {"name":"dynamic-host", "version":"*"}
+  },
+  {
+    "id": "caretaker",
+    "key": {"name":"datablox-caretaker", "version":"1.0"},
+    "inside": {
+      "id": "master-host",
+      "key": {"name":"dynamic-host", "version":"*"},
+      "port_mapping": {"host": "host"}
+    }
+  }
+]

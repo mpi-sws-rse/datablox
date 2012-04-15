@@ -13,8 +13,7 @@ class dynamic_join(Block):
       
   def process_master(self, control, data):
     if control == "POLL":
-      load = json.dumps(self.get_load())
-      self.master_port.socket.send(load)
+      self.respond_poll()
     elif control == "ADD JOIN":
       self.add_subscriber()
       self.master_port.socket.send(json.dumps(True))

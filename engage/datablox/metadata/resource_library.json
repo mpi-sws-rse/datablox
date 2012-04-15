@@ -56,5 +56,27 @@
         "location": "filetypes==0.1"
       }
     ]
+  },
+  { "key":{"name":"distributed-job-manager", "version":"0.1"},
+    "mgr_module_name":"engage.drivers.genforma.pip",
+    "packages": [
+      { "type": "Archive",
+        "package_class": "GzippedTarArchive",
+        "location": "dist_job_mgr-0.1.0.tar.gz"
+      },
+      { "type": "Reference",
+        "package_class": "PipLink",
+        "location": "https://github.com/genforma/dist_job_mgr/tarball/master"
+      }
+    ]
+  },
+  { "key":{"name":"BeautifulSoup", "version":"3"},
+    "mgr_module_name":"engage.drivers.genforma.pip",
+    "packages": [
+      { "type": "Reference",
+        "package_class": "PipLink",
+        "location": "BeautifulSoup"
+      }
+    ]
   }
 ]
