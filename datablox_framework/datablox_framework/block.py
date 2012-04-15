@@ -190,8 +190,9 @@ class Block(threading.Thread):
       self.context = zmq.Context()
       self.ready_ports()
       self.log(logging.INFO, "ports are ready")
+      #TODO: adding all times of the initial task to master port, change this
       if self.input_ports.keys() == []:
-        self.task = self.do_task()
+        self.task = [self.do_task(), self.master_port, []]
       self.start_listening()
     except KeyboardInterrupt:
       self.log(logging.INFO, "Stopping thread")
@@ -281,12 +282,8 @@ class Block(threading.Thread):
   
   def start_listening(self):
     while self.alive:
-      #TODO: only running do_task for sources, generalize this for all blocks
-      if self.input_ports.keys() == []:
-        try:
-          self.task.next()
-        except StopIteration:
-          self.shutdown()
+      if self.task or self.input_ports.keys() == []:
+        self.process_pending_task()
         
       socks = dict(self.control_poller.poll(5))
       if socks != None and socks != {}:
@@ -308,35 +305,36 @@ class Block(threading.Thread):
           assert(control == "CTRL")
           self.process_control(p, log)
       
-      #now deal with data ports
-      socks = dict(self.poller.poll(5))
-      if socks != None and socks != {}:
-        ports_with_data = [p for p in self.input_ports if p.socket in socks and socks[p.socket] == zmq.POLLIN]
-        push_ports = [p for p in ports_with_data if p.port_type == Port.PUSH]
-        query_ports = [p for p in ports_with_data if p.port_type == Port.QUERY]
+      #no more pending tasks, now deal with data ports
+      if self.task == None:
+        socks = dict(self.poller.poll(5))
+        if socks != None and socks != {}:
+          ports_with_data = [p for p in self.input_ports if p.socket in socks and socks[p.socket] == zmq.POLLIN]
+          push_ports = [p for p in ports_with_data if p.port_type == Port.PUSH]
+          query_ports = [p for p in ports_with_data if p.port_type == Port.QUERY]
       
-        for p in push_ports:
-          message = p.socket.recv()
-          try:
+          for p in push_ports:
+            message = p.socket.recv()
+            try:
+              (control, log) = json.loads(message)
+            except:
+              self.log(logging.ERROR, "JSON parse error for message '%s' from %s" % (message, p.name))
+              raise
+            self.log_recv(control, message, p)
+            if control == "END":
+              self.process_stop(p, log)
+            elif control == "BUFFERED PUSH":
+              self.process_buffered_push(p, log)
+            else:
+              self.process_push(p, log)
+          for p in query_ports:
+            message = p.socket.recv()
             (control, log) = json.loads(message)
-          except:
-            self.log(logging.ERROR, "JSON parse error for message '%s' from %s" % (message, p.name))
-            raise
-          self.log_recv(control, message, p)
-          if control == "END":
-            self.process_stop(p, log)
-          elif control == "BUFFERED PUSH":
-            self.process_buffered_push(p, log)
-          else:
-            self.process_push(p, log)
-        for p in query_ports:
-          message = p.socket.recv()
-          (control, log) = json.loads(message)
-          self.log_recv(control, message, p)
-          if control == "END":
-            self.process_stop(p, log)
-          else:
-            self.process_query(p, log)
+            self.log_recv(control, message, p)
+            if control == "END":
+              self.process_stop(p, log)
+            else:
+              self.process_query(p, log)
   
   def get_load(self):
     requests_made = defaultdict(int)
@@ -369,22 +367,34 @@ class Block(threading.Thread):
     log = Log()
     log.set_log(log_data)
     port.request_start_time = time.time()
-    self.recv_push(port.name, log)
+    res = self.recv_push(port.name, log)
     e = time.time()
     self.total_processing_time += (e - port.request_start_time)
     port.requests += 1
+    if res != None:
+      self.task = [res, port, []]
+      return self.task
   
   def process_buffered_push(self, port, logs):
     #print self.id + " got buffered push"
-    for log in logs:
-      self.process_push(port, log)
+    for i,log in enumerate(logs):
+      res = self.process_push(port, log)
+      #task is not done yet, queue pending logs
+      if res != None:
+        self.task[2] = logs[i+1:]
+        return
     
   def process_query(self, port, log_data):
     log = Log()
     log.set_log(log_data)
     # print self.id + " got a query query for port " + port.name
     port.request_start_time = time.time()
-    self.recv_query(port.name, log)
+    res = self.recv_query(port.name, log)
+    e = time.time()
+    self.total_processing_time += (e - port.request_start_time)
+    if res != None:
+      self.task = [res, port, []]
+      return self.task
   
   def no_incoming(self):
     for subscribers in self.input_ports.values():
@@ -403,6 +413,25 @@ class Block(threading.Thread):
     if self.no_incoming():
       self.on_shutdown()
       self.shutdown()
+  
+  def process_pending_task(self):
+    # self.log(logging.INFO,
+    #          "processing pending task %r" % (self.task))
+    if self.input_ports.keys() == []:
+      assert(self.task != None)
+    task, port, logs = self.task
+    try:
+      port.request_start_time = time.time()
+      task.next()
+      e = time.time()
+      self.total_processing_time += (e - port.request_start_time)
+    except StopIteration:
+      if self.input_ports.keys() == []:
+        self.shutdown()
+      else:
+        self.task = None
+        if logs != []:
+          self.process_buffered_push(port, logs)
     
   def send(self, control, message, port):
     message = (control, message)
@@ -537,12 +566,10 @@ class Block(threading.Thread):
     return log
   
   def return_query_res(self, port_name, log):
-    e = time.time()
     port = self.find_port(port_name)
     port.requests += 1
     log_data = json.dumps(log.log)
     self.log_send('return_query_res', log_data, port)
-    self.total_processing_time += (e - port.request_start_time)
     port.socket.send(log_data)
     
   def get_input_port_url(self, input_port_name):
@@ -637,16 +664,35 @@ def benchmark(func):
   from logging import ERROR, WARN, INFO, DEBUG
   @wraps(func)
   def wrapper(*args, **kwargs):
+    obj = args[0] #the block object calling this function
+    if not hasattr(obj, "benchmark_dict"):
+      obj.benchmark_dict = {}
+    d = obj.benchmark_dict
     start = time.time()
     res = func(*args, **kwargs)
     duration = time.time() - start
-    d = wrapper.func_dict
     if d.has_key("total_duration"):
       d["total_duration"] += duration
+      d["num_calls"] += 1
     else:
       d["total_duration"] = duration
-    funcself = args[0]
-    funcself.log(INFO, "perf: %r: duration: %r, total duration: %r" 
-                      % (func.__name__, duration, d["total_duration"]))
+      d["num_calls"] = 1
+    return res
+  return wrapper
+
+def print_benchmarks(func):
+  from logging import ERROR, WARN, INFO, DEBUG
+  @wraps(func)
+  def wrapper(*args, **kwargs):
+    res = func(*args, **kwargs)
+    obj = args[0]
+    if not hasattr(obj, "benchmark_dict"):
+      obj.benchmark_dict = {}
+      obj.log(INFO, "perf: never called %r" % (func.__name__))
+    else:
+      d = obj.benchmark_dict
+      avg = d["total_duration"]/d["num_calls"] if d["num_calls"] != 0 else 0
+      obj.log(INFO, "perf: %r: calls: %r, total duration: %r, avg: %r" 
+                      % (func.__name__, d["num_calls"], d["total_duration"], avg))
     return res
   return wrapper

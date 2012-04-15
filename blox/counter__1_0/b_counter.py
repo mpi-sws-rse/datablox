@@ -4,7 +4,7 @@ from logging import ERROR, WARN, INFO, DEBUG
 
 class counter(Block):
   def do_task(self):
-    for i in range(50):
+    for i in range(10):
       log = Log()
       log.log["value"] = [self.count]
       self.log(INFO, "Sending " + str(self.count))

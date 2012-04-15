@@ -64,6 +64,7 @@ class MyServer(BaseHTTPRequestHandler):
     HTTPServer(('', port), MyServer).serve_forever()
 
 def main(argv=sys.argv[1:]):
+  global deskey
   parser = OptionParser()
   parser.add_option("--config-dir", dest="config_dir", default=None,
                     help="directory for key file and other fileserver configuration")
@@ -83,8 +84,9 @@ def main(argv=sys.argv[1:]):
     root_logger.addHandler(console_handler)
     root_logger.setLevel(log_level)
 
+  deskey = gen_random(8)
   with open(file_server_keypath, 'w') as f:
-    f.write(gen_random(8))
+    f.write(deskey)
 
   logger.info("Starting server on port %d" % FILESERVER_PORT)
   MyServer.serve_forever(FILESERVER_PORT)
