@@ -26,7 +26,8 @@
       "all-of": [
         { "key": {"name":"datablox-framework", "version":"1.0"},
           "port_mapping": {"datablox_framework":"datablox_framework"}},
-        { "key": {"name":"pymongo", "version":"2.1"}}
+        { "key": {"name":"pymongo", "version":"2.1"}},
+        { "key": {"name":"mongodb", "version":"2.0"}}
      ]}
   }
 ]
