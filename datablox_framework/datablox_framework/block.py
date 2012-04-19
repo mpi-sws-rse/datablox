@@ -370,7 +370,6 @@ class Block(threading.Thread):
     res = self.recv_push(port.name, log)
     e = time.time()
     self.total_processing_time += (e - port.request_start_time)
-    port.requests += 1
     if res != None:
       self.task = [res, port, []]
       return self.task
@@ -395,6 +394,8 @@ class Block(threading.Thread):
     if res != None:
       self.task = [res, port, []]
       return self.task
+    else:
+      port.requests += 1
   
   def no_incoming(self):
     for subscribers in self.input_ports.values():
@@ -430,6 +431,7 @@ class Block(threading.Thread):
         self.shutdown()
       else:
         self.task = None
+        port.requests += 1
         if logs != []:
           self.process_buffered_push(port, logs)
     
@@ -567,7 +569,6 @@ class Block(threading.Thread):
   
   def return_query_res(self, port_name, log):
     port = self.find_port(port_name)
-    port.requests += 1
     log_data = json.dumps(log.log)
     self.log_send('return_query_res', log_data, port)
     port.socket.send(log_data)
@@ -687,7 +688,6 @@ def print_benchmarks(func):
     res = func(*args, **kwargs)
     obj = args[0]
     if not hasattr(obj, "benchmark_dict"):
-      obj.benchmark_dict = {}
       obj.log(INFO, "perf: never called %r" % (func.__name__))
     else:
       d = obj.benchmark_dict

@@ -24,12 +24,12 @@ print "Downloading %d urls" % (len(urls))
 #         "http://www.apple.com", "https://github.com/", "http://www.microsoft.com",
 #         "http://www.daringfireball.net"]
 
-print "start time: %r" % (time.localtime())
+print "start time: %r" % (time.ctime())
 
 start = time.time()
 
 for url in urls:
-  print "url: %r, time: %r" % (url, time.localtime())
+  print "url: %r, time: %r" % (url, time.ctime())
   log = {"internet_url": [url]}
   res = json.loads(proxy.bookmark(json.dumps(log)))["result"]
   assert(res == True)
