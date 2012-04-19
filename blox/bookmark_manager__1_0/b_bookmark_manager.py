@@ -41,4 +41,7 @@ class bookmark_manager(Block):
     self.add_chunks(log)
     self.add_meta(log)
     #self.delete_temp(log)
-    self.log(INFO, "perf: done adding URL at %r" % time.localtime())
+    if log.log.has_key("asset_of") and log.log["asset_of"] != []:
+      self.log(INFO, "perf: done adding URL %r at %r" % (log.log["asset_of"][0], time.ctime()))
+    else:
+      self.log(INFO, "nothing to add")

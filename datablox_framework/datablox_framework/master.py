@@ -240,6 +240,7 @@ class BlockHandler(object):
     socket.connect(get_url(self.ipaddress, port))
     socket.send(message)
     #wait for 4 sec
+    #TODO: hardcoded 4
     load = timed_recv(socket, 4000)
     socket.close()
     if load != None:
@@ -270,7 +271,8 @@ class BlockHandler(object):
     else:
       logger.info("** Master: %s timed out" % self.id)
       self.timeouts += 1
-      if self.timeouts > 3:
+      #todo: hardcoded 10
+      if self.timeouts > 10:
         block_status[self.id] = "timeout"
 
 class RPCHandler(BlockHandler):

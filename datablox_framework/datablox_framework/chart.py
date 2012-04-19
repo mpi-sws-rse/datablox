@@ -12,7 +12,7 @@ with open("loads.json") as f:
 labels = [i[i.rfind('.')+1:] for i in d.keys()]
 full_labels = d.keys()
 data =   d.values()
-ticks = max(data) + 10
+ticks = int(max(data) + 10)
 fig = plt.figure()
 ax = fig.add_subplot(111)
 
@@ -31,7 +31,7 @@ ax.set_yticks(range(0, ticks))
 ax.set_xticks(xlocations+ width/2)
 ax.set_xticklabels(labels)
 ax.set_xlim(0, xlocations[-1]+width*2)
-ax.set_title("Average Queue Sizes")
+ax.set_title("Average Processing Time")
 
 def animate(i):
   global ticks
