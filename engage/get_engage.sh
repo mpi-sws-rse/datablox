@@ -24,10 +24,11 @@ if [ -d $TEST_ENGAGE_SRC ]; then
     ENGAGE_BUILD=$ENGAGE_CODE/build_output/engage
     echo "[get_engage.sh] Using Engage source at $ENGAGE_CODE"
     run rm -rf $ENGAGE_DIST
-    cd $ENGAGE_CODE
-    echo "[get_engage.sh] Building engage"
-    run make engage
-    echo cp -r $ENGAGE_BUILD $ENGAGE_DIST
+    if ! [ -d $ENGAGE_BUILD ]; then
+      cd $ENGAGE_CODE
+      echo "[get_engage.sh] Building engage"
+      run make engage
+    fi
     run cp -r $ENGAGE_BUILD $ENGAGE_DIST
     echo "[get_engage.sh] Engage built successfully"
     exit 0

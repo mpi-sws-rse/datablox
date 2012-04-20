@@ -1,0 +1,18 @@
+{
+    "blocks": [
+        {"id": "crawler", 
+         "name": "File-Crawler", 
+         "args": {"directory": "~/apps"}},
+        {"id": "categorizer",
+         "name": "Filename-Categorizer",
+         "args": {}},
+        {"id": "sink", 
+        "name": "Dump", 
+        "args": {}}
+    ],
+
+    "connections": [
+        [{"crawler": "output"}, {"categorizer": "input"}],
+        [{"categorizer": "output"}, {"sink": "input"}]
+    ]
+}
