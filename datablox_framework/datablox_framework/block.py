@@ -41,7 +41,12 @@ class Log(object):
       assert(set(row.keys())==set(self.log.keys()))
       for k, v in row.items():
         self.log[k].append(v)
-  
+
+  def num_rows(self):
+    if self.log=={}: return 0
+    for k, v in self.log.items():
+      return len(v)
+    
   def filtered_log(self, filter_func):
     nl = Log()
     for row in self.iter_flatten():

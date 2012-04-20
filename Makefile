@@ -6,6 +6,8 @@ all:
 test:
 	cd engage; make test
 
+test-deploy:
+	cd engage; make test-deploy
 
 clean:
 	cd datablox_framework; rm -rf ./build ./dist ./*.egg-info ./datablox_framework/*.json
@@ -15,4 +17,4 @@ clean:
 clean-all: clean
 	cd engage; make clean-all
 
-.PHONY: all clean clean-all
+.PHONY: all clean clean-all test-deploy

@@ -659,6 +659,7 @@ class Master(object):
       raise
     if using_engage:
       self.address_manager.djm_job.stop_job(successful=True)
+      self.write_final_perfstats()
     return
   
   def get_config(self, config_file):
@@ -714,7 +715,14 @@ class Master(object):
       print "%r -> %.3f (%.3f x %r)" % (e[1], e[0], time_per_req[e[1]], loads[e[1]])
     with open("loads.json", 'w') as f:
       json.dump(dict([(e[1], e[0]) for e in etas]), f)
-    
+
+  def write_final_perfstats(self):
+    global block_loads
+    logger.debug("Message counts:")
+    for (s, dct) in block_loads.items():
+      for (d, cnt) in dct.items():
+        logger.info("  %s => %s: %d msgs" % (s, d, cnt))
+        
   def running(self):
     global block_status, block_loads
     for v in block_status.values():

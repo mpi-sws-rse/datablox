@@ -6,13 +6,17 @@
         {"id": "categorizer",
          "name": "Filename-Categorizer",
          "args": {}},
-        {"id": "sink", 
+        {"id": "mongo-sink", 
+        "name": "Dump", 
+        "args": {}},
+        {"id": "solr-sink", 
         "name": "Dump", 
         "args": {}}
     ],
 
     "connections": [
         [{"crawler": "output"}, {"categorizer": "input"}],
-        [{"categorizer": "output"}, {"sink": "input"}]
+        [{"categorizer": "output"}, {"mongo-sink": "input"}],
+        [{"categorizer": "indexable_output"}, {"solr-sink": "input"}]
     ]
 }
