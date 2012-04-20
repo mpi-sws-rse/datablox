@@ -30,6 +30,25 @@ class Log(object):
   def remove_field(self, key):
     del self.log[key]
 
+  def append_row(self, row):
+    """row is a dict"""
+    #new log
+    if self.log == {}:
+      for k, v in row.items():
+        self.log[k] = [v]
+    else:
+      #make sure we have the same columns
+      assert(set(row.keys())==set(self.log.keys()))
+      for k, v in row.items():
+        self.log[k].append(v)
+  
+  def filtered_log(self, filter_func):
+    nl = Log()
+    for row in self.iter_flatten():
+      if filter_func(row) == True:
+        nl.append_row(row)
+    return nl
+
   def iter_flatten(self):
     if self.log.keys() == []:
       yield {}
