@@ -31,7 +31,7 @@ ax.set_yticks(range(0, ticks))
 ax.set_xticks(xlocations+ width/2)
 ax.set_xticklabels(labels)
 ax.set_xlim(0, xlocations[-1]+width*2)
-ax.set_title("Average Processing Time")
+ax.set_title("Loads")
 
 def animate(i):
   global ticks
@@ -41,7 +41,7 @@ def animate(i):
   #preserve order of the labels  
   new_data = [nd[l] for l in full_labels]
   if max(new_data) > ticks:
-    ticks = max(new_data) + 10
+    ticks = int(max(new_data) + 10)
   ax.set_yticks(range(0, ticks))
   [rect.set_height(height) for rect, height in zip(rects, new_data)]
 

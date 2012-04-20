@@ -693,26 +693,27 @@ class Master(object):
 
   def write_loads(self):
     global block_status, block_loads, block_times
-    # print block_loads
+    # print "Block loads", block_loads
     loads = defaultdict(int)
     for d in block_loads.values():
       for block_id, load in d.items():
         loads[block_id] += load
     logger.info("loads: %r" % loads)
     time_per_req = {}
+    # print "Block times: %r" % block_times
     for i, t in block_times.items():
       try:
         time_per_req[i] = t/(-1 * block_loads[i][i])
       except (KeyError, ZeroDivisionError):
         time_per_req[i] = 0
-      
+    # print "Time_per_req: %r" % time_per_req
     etas = [(l * time_per_req[i], i) for i, l in loads.items()]
     etas.sort()
     print "ETAs"
     for e in etas:
-      print "%r -> %.3f" % (e[1], e[0])
+      print "%r -> %.3f (%.3f x %r)" % (e[1], e[0], time_per_req[e[1]], loads[e[1]])
     with open("loads.json", 'w') as f:
-      json.dump(loads, f)
+      json.dump(dict([(e[1], e[0]) for e in etas]), f)
     
   def running(self):
     global block_status, block_loads

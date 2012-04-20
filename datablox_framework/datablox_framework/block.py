@@ -373,6 +373,8 @@ class Block(threading.Thread):
     if res != None:
       self.task = [res, port, []]
       return self.task
+    else:
+      port.requests += 1
   
   def process_buffered_push(self, port, logs):
     #print self.id + " got buffered push"
