@@ -31,7 +31,7 @@ ax.set_yticks(range(0, ticks))
 ax.set_xticks(xlocations+ width/2)
 ax.set_xticklabels(labels)
 ax.set_xlim(0, xlocations[-1]+width*2)
-ax.set_title("Loads")
+ax.set_title("ETAs")
 
 def animate(i):
   global ticks
