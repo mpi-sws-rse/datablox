@@ -79,9 +79,9 @@ class web_crawler(Block):
     return log
     
   def add_url(self, log, iurl, path, asset_of):
-    log.log["internet_url"].append(iurl)
-    log.log["url"].append(BlockUtils.generate_url_for_path(path))
-    log.log["asset_of"].append(asset_of)
+    row = {"internet_url": iurl, "url": BlockUtils.generate_url_for_path(path),
+           "asset_of": asset_of}
+    log.append_row(row)
     
   def recv_push(self, port, log):
     if port == "input":
