@@ -37,16 +37,16 @@ class file_mongo(Block):
     
   def recv_push(self, port, log):
     if log.log.has_key("token"):
-      self.log(INFO, "got the finish token for directory " + log.log["token"])
+      self.log(INFO, "got the finish token for directory " + log.log["token"][0])
       self.num_tokens = self.num_tokens - 1
-      self.emit_completed_message(log.log["token"], self.num_tokens==0)
+      self.emit_completed_message(log.log["token"][0], self.num_tokens==0)
       if self.num_tokens == 0:
         self.crawler_done = True
         self.process_outstanding_queries()
     else:
       entries = []
-      if log.log.has_key("data"):
-        log.remove_field("data")
+      if log.log.has_key("url"):
+        log.remove_field("url")
       cnt = 0
       for l in log.iter_flatten():
         cnt += 1
