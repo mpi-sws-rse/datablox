@@ -18,7 +18,7 @@ class solr_index(Block):
   
   def recv_push(self, port, log):
     if log.log.has_key("token"):
-      self.log(INFO, self.id + " got the finish token for the directory " + log.log["token"])
+      self.log(INFO, self.id + " got the finish token for the directory " + log.log["token"][0])
       self.num_tokens = self.num_tokens - 1
       if self.num_tokens == 0:
         self.crawler_done = True

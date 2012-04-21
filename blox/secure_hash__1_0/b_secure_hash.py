@@ -20,7 +20,7 @@ class secure_hash(Block):
     
   def recv_push(self, port, log):
     if log.log.has_key("token"):
-      self.log(INFO, self.id + " got the finish token for directory " + log.log["token"])
+      self.log(INFO, self.id + " got the finish token for directory " + log.log["token"][0])
     else:
       hashes = self.get_hashes(log.log)
       log.append_field("fingerprint", hashes)

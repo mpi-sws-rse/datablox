@@ -89,7 +89,7 @@ class lucene_index(Block):
   def recv_push(self, port, log):
     self.vm.attachCurrentThread()
     if log.log.has_key("token"):
-      self.log(INFO, self.id + " got the finish token for the directory " + log.log["token"])
+      self.log(INFO, self.id + " got the finish token for the directory " + log.log["token"][0])
       # self.indexer.optimize_index()
       # self.crawler_done = True
       # self.process_outstanding_queries()

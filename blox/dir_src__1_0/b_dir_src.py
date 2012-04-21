@@ -46,7 +46,7 @@ class dir_src(Block):
     self.buffered_push("output", log)
   
   def send_token(self, volume_name):
-    token = {"token": volume_name}
+    token = {"token": [volume_name]}
     log = Log()
     log.set_log(token)
     self.buffered_push("output", log)

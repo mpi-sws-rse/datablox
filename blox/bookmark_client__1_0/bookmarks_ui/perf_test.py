@@ -19,11 +19,6 @@ urls = [u.strip() for u in urls]
 
 print "Downloading %d urls" % (len(urls))
 
-# urls = ["http://www.google.com", "http://www.python.org/", "http://www.msn.com", 
-#         "http://www.ucla.edu", "http://www.cs.ucla.edu", "http://geekandpoke.typepad.com/", 
-#         "http://www.apple.com", "https://github.com/", "http://www.microsoft.com",
-#         "http://www.daringfireball.net"]
-
 print "start time: %r" % (time.ctime())
 
 start = time.time()

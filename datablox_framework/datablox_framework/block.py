@@ -95,7 +95,6 @@ class Port(object):
         #holds requests processed for input ports
         #and requests sent out for output ports
         self.requests = 0
-        self.request_start_time = 0
       
       def connect_to(self, block):
         self.end_point = block
@@ -202,7 +201,7 @@ class Block(threading.Thread):
     self.task = None
     self.total_processing_time = 0
     self.last_poll_time = time.time()
-    self.buffer_limit = 50
+    self.buffer_limit = 500
     self.current_buffer_size = defaultdict(int)
     self.buffered_pushes = defaultdict(list)
 
@@ -215,9 +214,8 @@ class Block(threading.Thread):
       self.context = zmq.Context()
       self.ready_ports()
       self.log(logging.INFO, "ports are ready")
-      #TODO: adding all times of the initial task to master port, change this
       if self.input_ports.keys() == []:
-        self.task = [self.do_task(), self.master_port, []]
+        self.task = [self.do_task(), self.master_port, [], 0]
       self.start_listening()
     except KeyboardInterrupt:
       self.log(logging.INFO, "Stopping thread")
@@ -391,40 +389,45 @@ class Block(threading.Thread):
   def process_push(self, port, log_data):
     log = Log()
     log.set_log(log_data)
-    port.request_start_time = time.time()
+    requests = log.num_rows()
+    start_time = time.time()
     res = self.recv_push(port.name, log)
     e = time.time()
-    self.total_processing_time += (e - port.request_start_time)
+    self.total_processing_time += (e - start_time)
     if res != None:
-      self.task = [res, port, []]
+      self.task = [res, port, [], requests]
       return self.task
     else:
-      port.requests += 1
+      port.requests += requests
   
   def process_buffered_push(self, port, logs):
     #print self.id + " got buffered push"
     for i,log in enumerate(logs):
       res = self.process_push(port, log)
       #task is not done yet, queue pending logs
-      #or this task is done but we still have pending logs and we haven't polled in a while
       #TODO: hardcoded 2
-      if res != None or (time.time() - self.last_poll_time > 2 and i < (len(logs) - 1)):
+      if res != None:
         self.task[2] = logs[i+1:]
+        return
+      #or this task is done but we still have pending logs and we haven't polled in a while  
+      elif (i < (len(logs) - 1) and time.time() - self.last_poll_time > 2):
+        self.task = [None, port, logs[i+1:], 0]
         return
     
   def process_query(self, port, log_data):
     log = Log()
     log.set_log(log_data)
+    requests = log.num_rows()
     # print self.id + " got a query query for port " + port.name
-    port.request_start_time = time.time()
+    port.start_time = time.time()
     res = self.recv_query(port.name, log)
     e = time.time()
-    self.total_processing_time += (e - port.request_start_time)
+    self.total_processing_time += (e - start_time)
     if res != None:
-      self.task = [res, port, []]
+      self.task = [res, port, [], requests]
       return self.task
     else:
-      port.requests += 1
+      port.requests += requests
   
   def no_incoming(self):
     for subscribers in self.input_ports.values():
@@ -449,7 +452,7 @@ class Block(threading.Thread):
     #          "processing pending task %r" % (self.task))
     if self.input_ports.keys() == []:
       assert(self.task != None)
-    task, port, logs = self.task
+    task, port, logs, requests = self.task
     #we have pending buffered pushes
     if task == None:
       assert(logs != [])
@@ -458,16 +461,16 @@ class Block(threading.Thread):
     else:
       assert(task != None)
       try:
-        port.request_start_time = time.time()
+        start_time = time.time()
         task.next()
         e = time.time()
-        self.total_processing_time += (e - port.request_start_time)
+        self.total_processing_time += (e - start_time)
       except StopIteration:
         if self.input_ports.keys() == []:
           self.shutdown()
         else:
           self.task = None
-          port.requests += 1
+          port.requests += requests
           if logs != []:
             self.process_buffered_push(port, logs)
     
@@ -566,12 +569,12 @@ class Block(threading.Thread):
       "Attempt to do an unbuffered push on port '%s' that has buffered data" % \
       port_name
     port = self.find_port(port_name)
-    port.requests += 1
+    port.requests += log.num_rows()
     self.send("PUSH", log.log, port)
   
   def buffered_push(self, port_name, log):
     self.buffered_pushes[port_name].append(log.log)
-    self.current_buffer_size[port_name] += 1
+    self.current_buffer_size[port_name] += log.num_rows()
     if self.current_buffer_size[port_name] > self.buffer_limit:
       self.log(logging.DEBUG, "port %s is full (%d messages)" %
                (port_name, self.current_buffer_size[port_name]))
@@ -594,7 +597,7 @@ class Block(threading.Thread):
   #query is blocking for now
   def query(self, port_name, log):
     port = self.find_port(port_name)
-    port.requests += 1
+    port.requests += log.num_rows()
     self.send("QUERY", log.log, port)
     res = self.get_one(port.sockets).recv()
     log_data = json.loads(res)
