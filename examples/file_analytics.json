@@ -28,8 +28,8 @@
           "output_collection":"file_categories"
          }},
         {"id": "solr-sink", 
-        "name": "Dump", 
-        "args": {}}
+        "name": "Solr-Index", 
+        "args": {"crawlers":1}}
     ],
 
     "connections": [
