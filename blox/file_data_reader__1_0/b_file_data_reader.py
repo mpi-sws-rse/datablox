@@ -15,7 +15,7 @@ class file_data_reader(Block):
     
   def recv_push(self, port, log):
     if log.log.has_key("token"):
-      self.log(INFO, self.id + " got the finish token for directory " + log.log["token"])
+      self.log(INFO, self.id + " got the finish token for directory " + log.log["token"][0])
     else:
       log.append_field("data", self.get_data(log.log))
 

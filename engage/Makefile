@@ -66,7 +66,7 @@ test-deploy: test-packages
 test-map-reduce:
 	# substitute BLOX_HOME for the ~/ in the file map reduce scenario, so that
 	# we only crawl the datablox source tree
-	python -c "import sys; sys.stdout.write(open(sys.argv[1], 'rb').read().replace('~/', sys.argv[2]))" $(BLOX_HOME)/examples/file_map_reduce.json $(BLOX_HOME) >$(TEST_DEPLOY_HOME)/file_map_reduce.json
+	python -c "import sys; sys.stdout.write(open(sys.argv[1], 'rb').read().replace('~/apps', sys.argv[2]))" $(BLOX_HOME)/examples/file_analytics.json $(BLOX_HOME) >$(TEST_DEPLOY_HOME)/file_map_reduce.json
 	@echo "Running map-reduce scenario"
 	$(TEST_DEPLOY_HOME)/engage/bin/svcctl start
 	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master --log-level=$(TEST_LOG_LEVEL) $(TEST_DEPLOY_HOME)/file_map_reduce.json master
