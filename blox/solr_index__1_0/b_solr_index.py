@@ -24,50 +24,23 @@ class solr_index(Block):
         self.crawler_done = True
         self.indexer.commit()
         self.process_outstanding_queries()
-    elif log.log.has_key("data"):
-      self.index_entries(log.log)
-    else:
-      files = log.log["path"]
-      try:
-          self.index_docs(files)
-      except Exception, e:
-          self.log(ERROR, "Failed: ", e)
-  
-  def indexible_file(self, path):
-    return path.endswith('.txt') or path.endswith('.py')
-    
-  def index_docs(self, paths):
-    for path in paths:
-      if not self.indexible_file(path):
-        continue
-      self.log(INFO, "adding", path)
-      try:
-        file = open(path)
-        contents = unicode(file.read(), 'iso-8859-1')
-        file.close()
-        entry = {"path": path,
-                "name": os.path.split(path)[-1],
-                "contents": contents}
-        self.indexer.add(entry)
-      except Exception, e:
-          self.log(ERROR, "Failed in index_docs:", e)
+    else: 
+      self.index_entries(log)
   
   def index_entries(self, log):
-    paths = log["path"]
-    data = log["data"]
-    # self.log(INFO, "path len: %d, data len %d" % (len(paths), len(data)))
-    for i in range(len(paths)):
-      if not self.indexible_file(paths[i]):
-        continue
-      self.log(INFO, "adding " + paths[i])
-      entry = {"path": paths[i],
-               "name": os.path.split(paths[i])[-1],
-               "contents": base64.b64decode(data[i])}
+    for path, url in log.iter_fields("path", "url"):
+      # self.log(INFO, "adding " + path)
+      contents = BlockUtils.fetch_file_at_url(url)
+      contents = contents.decode('utf-8', 'ignore')
+      entry = {"path": path,
+               "name": os.path.split(path)[-1],
+               "contents": contents}
       try:
         self.indexer.add(entry)
       except Exception, e:
-          self.log(ERROR, "Failed to add doc %s due to: %r" % (paths[i], e))
-    
+          self.log(ERROR, "Failed to add doc %s due to: %r" % (path, e))
+          #raise
+
   def on_shutdown(self):
     self.indexer.commit()
     
