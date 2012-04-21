@@ -201,6 +201,7 @@ class Block(threading.Thread):
     self.alive = True
     self.task = None
     self.total_processing_time = 0
+    self.last_poll_time = time.time()
     self.buffer_limit = 50
     self.current_buffer_size = defaultdict(int)
     self.buffered_pushes = defaultdict(list)
@@ -405,7 +406,9 @@ class Block(threading.Thread):
     for i,log in enumerate(logs):
       res = self.process_push(port, log)
       #task is not done yet, queue pending logs
-      if res != None:
+      #or this task is done but we still have pending logs and we haven't polled in a while
+      #TODO: hardcoded 2
+      if res != None or (time.time() - self.last_poll_time > 2 and i < (len(logs) - 1)):
         self.task[2] = logs[i+1:]
         return
     
@@ -447,19 +450,26 @@ class Block(threading.Thread):
     if self.input_ports.keys() == []:
       assert(self.task != None)
     task, port, logs = self.task
-    try:
-      port.request_start_time = time.time()
-      task.next()
-      e = time.time()
-      self.total_processing_time += (e - port.request_start_time)
-    except StopIteration:
-      if self.input_ports.keys() == []:
-        self.shutdown()
-      else:
-        self.task = None
-        port.requests += 1
-        if logs != []:
-          self.process_buffered_push(port, logs)
+    #we have pending buffered pushes
+    if task == None:
+      assert(logs != [])
+      self.task = None
+      self.process_buffered_push(port, logs)
+    else:
+      assert(task != None)
+      try:
+        port.request_start_time = time.time()
+        task.next()
+        e = time.time()
+        self.total_processing_time += (e - port.request_start_time)
+      except StopIteration:
+        if self.input_ports.keys() == []:
+          self.shutdown()
+        else:
+          self.task = None
+          port.requests += 1
+          if logs != []:
+            self.process_buffered_push(port, logs)
     
   def send(self, control, message, port):
     message = (control, message)
