@@ -405,11 +405,11 @@ class Block(threading.Thread):
     for i,log in enumerate(logs):
       res = self.process_push(port, log)
       #task is not done yet, queue pending logs
-      #TODO: hardcoded 2
       if res != None:
         self.task[2] = logs[i+1:]
         return
-      #or this task is done but we still have pending logs and we haven't polled in a while  
+      #or this task is done but we still have pending logs and we haven't polled in a while
+      #TODO: hardcoded 2
       elif (i < (len(logs) - 1) and time.time() - self.last_poll_time > 2):
         self.task = [None, port, logs[i+1:], 0]
         return
@@ -419,7 +419,7 @@ class Block(threading.Thread):
     log.set_log(log_data)
     requests = log.num_rows()
     # print self.id + " got a query query for port " + port.name
-    port.start_time = time.time()
+    start_time = time.time()
     res = self.recv_query(port.name, log)
     e = time.time()
     self.total_processing_time += (e - start_time)
