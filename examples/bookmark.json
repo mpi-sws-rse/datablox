@@ -47,7 +47,7 @@
             {"id": "crawler",
              "name": "Round-Robin-Shard",
              "args": 
-                {"nodes": 5,
+                {"nodes": 1,
                  "node_type": {"name": "Web-Crawler", "input_port": "input", "output_port": "output", "port_type": "PUSH",
                     "args": {}}
                 }

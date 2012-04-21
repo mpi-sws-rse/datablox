@@ -100,8 +100,8 @@ class web_crawler(Block):
           try:
             path = self.download_url(rurl)
             self.add_url(log, rurl, path, url)
-            #yield after every 3 downloads
-            if i%3 == 0:
+            #yield after every 2 seconds
+            if time.time() - self.last_poll_time > 2:
               yield
           except Exception as e:
             self.log(WARN, "could not download url %r" % rurl)
