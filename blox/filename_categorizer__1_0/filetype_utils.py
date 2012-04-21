@@ -7,6 +7,7 @@ Copyright 2011 by genForma Corporation. Licenced under the Apache 2.0 license.
 """
 
 import os.path
+import re
 
 try:
     import filetypes.filetypes
@@ -110,3 +111,31 @@ def is_indexable_file(filepath):
             return True
         else:
             return False
+
+doc_pat = r"(\.xlsx$)|(\.xls$)|(\.doc$)|(\.docx$)|(\.pdf$)|(\.tax[0-9]*$)|(\.qbmb$)|(\.qb20[0-9][0-9]$)"
+doc_re = re.compile(doc_pat)
+
+tax_data = r"((^|\D)(1099|7004|w2|w4|940|941|1040|de9|de7|de6|1120)\D)|(\.qbmb$)|(\.qb20[0-9][0-9]$)|(\.tax[0-9]*$)"
+tax_re = re.compile(tax_data)
+
+fin_data = r"(receipt)|(payroll)|(accounts.receivable)|(accounts.payable)|(checking)|(savings)|(expense)"
+fin_re = re.compile(fin_data)
+
+legal_data = r"(patent)|(contract)|(agreement)|(nda)|(legal)|(loan)"
+legal_re = re.compile(legal_data)
+
+def get_tags(filepath):
+    """Simulation of file content tagging. For now, just use a regexp on the
+    filename"""
+    filename = os.path.basename(filepath.lower())
+    if not doc_re.search(filename):
+        return []
+    elif tax_re.search(filename):
+        return ["tax"]
+    elif fin_re.search(filename):
+        return ["financial"]
+    elif legal_re.search(filename):
+        return ["legal"]
+    else:
+        return []
+

@@ -8,7 +8,7 @@ from logging import ERROR, WARN, INFO, DEBUG
 
 # file logging will only show up if we set the log level to ALL
 FILE_LOGGING=DEBUG-1
-LOG_SIZE_LIMIT=2
+LOG_SIZE_LIMIT=50
 
 class file_crawler(Block):
   def add_file(self, host, volume, path, stat):

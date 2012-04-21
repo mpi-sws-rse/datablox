@@ -47,20 +47,25 @@ class filename_categorizer(Block):
     paths = log["path"]
     filetypes = []
     categories = []
+    tag_lists = []
     for p in paths:
+      filepath = p2f(p)
       (filetype,category) = \
-          filetype_utils.get_file_description_and_category(p2f(p))
+          filetype_utils.get_file_description_and_category(filepath)
       filetypes.append(filetype)
       categories.append(category)
-    return (filetypes, categories)
+      tags = filetype_utils.get_tags(filepath)
+      tag_lists.append(tags)
+    return (filetypes, categories, tag_lists)
   
   def recv_push(self, port, log):
     if log.log.has_key("token"):
       self.log(INFO, "got the finish token for directory " + log.log["token"][0])
     else:
-      (filetypes, categories) = self.get_categories(log.log)
+      (filetypes, categories, tag_lists) = self.get_categories(log.log)
       log.append_field("filetype", filetypes)
       log.append_field("category", categories)
+      log.append_field("tags", tag_lists)
           
     self.buffered_push("output", log)
     def include(record):
