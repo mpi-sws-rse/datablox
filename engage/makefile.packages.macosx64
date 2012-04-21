@@ -1,6 +1,6 @@
 all: apache-solr-3.5.0.tgz mongodb-osx-x86_64-2.0.2.tgz
 
-test: mongodb-osx-x86_64-2.0.2.tgz
+test: mongodb-osx-x86_64-2.0.2.tgz apache-solr-3.5.0.tgz
 
 apache-solr-3.5.0.tgz:
 	wget -O apache-solr-3.5.0.tgz http://www.trieuvan.com/apache/lucene/solr/3.5.0/apache-solr-3.5.0.tgz

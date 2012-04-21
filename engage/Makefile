@@ -89,7 +89,7 @@ test-simple-shard:
 	$(TEST_DEPLOY_HOME)/engage/bin/svcctl stop
 	@echo "simple-shard completed successfully"
 
-test: engage-ext engage-dist test-deploy test-map-reduce test-deploy test-read-files test-simple-shard
+test: engage-ext engage-dist test-deploy test-map-reduce test-deploy test-simple-shard
 	@echo "All tests completed successfully"
 
 help:
