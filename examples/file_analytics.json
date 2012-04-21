@@ -9,6 +9,24 @@
         {"id": "file_data", 
         "name": "File-Mongo", 
         "args": {"crawlers":1}},
+        {"id": "aggregator",
+         "name":"mongo-map-reduce",
+         "args":{
+           "database": "file_db",
+           "input_collection": "file_data",
+           "map_function": "function () {emit(this.filetype, {count: 1, size: this.size, category: this.category});}",
+          "reduce_function": "function (key, values) {var result = {filetype: key, count: 0, size: 0, category: ''}; values.forEach(function (value) {result.count += 1; result.size += value.size; result.category = value.category;}); return result;}",
+          "output_collection":"file_types"
+         }},
+        {"id": "summarizer",
+         "name":"mongo-map-reduce",
+         "args":{
+           "database": "file_db",
+           "input_collection": "file_types",
+           "map_function": "function () {emit(this.value.category, {count: 1, size: this.value.size});}",
+          "reduce_function": "function (key, values) {var result = {count: 0, size: 0, category: key}; values.forEach(function (value) {result.count += 1; result.size += value.size;}); return result;}",
+          "output_collection":"file_categories"
+         }},
         {"id": "solr-sink", 
         "name": "Dump", 
         "args": {}}
@@ -17,6 +35,8 @@
     "connections": [
         [{"crawler": "output"}, {"categorizer": "input"}],
         [{"categorizer": "output"}, {"file_data": "input"}],
+        [{"file_data":"completed"}, {"aggregator":"input"}],
+        [{"aggregator":"output"}, {"summarizer":"input"}],
         [{"categorizer": "indexable_output"}, {"solr-sink": "input"}]
     ]
 }

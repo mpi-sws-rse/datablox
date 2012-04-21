@@ -162,12 +162,12 @@ class mongo_map_reduce(Block):
     
   def send_finished_token(self):
     log = Log()
-    log.set_log({"token":self.name})
+    log.set_log({"token":[self.name]})
     self.push("output", log)
     
   def recv_push(self, port, log):
     if log.log.has_key("token"):
-      self.log(INFO, "Got completion token %s" % log.log["token"])
+      self.log(INFO, "Got completion token %s" % log.log["token"][0])
       if not self.run_on_each_key:
         self.process_all()
       self.send_finished_token()
