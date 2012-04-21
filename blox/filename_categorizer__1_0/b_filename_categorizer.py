@@ -48,6 +48,9 @@ class filename_categorizer(Block):
     filetypes = []
     categories = []
     for p in paths:
+      if isinstance(p, list):
+        self.log.error("path is a list: %s" % p)
+        raise Exception("path is a list: %s" % p)
       (filetype,category) = \
           filetype_utils.get_file_description_and_category(p2f(p))
       filetypes.append(filetype)
