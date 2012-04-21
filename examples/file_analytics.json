@@ -23,8 +23,8 @@
          "args":{
            "database": "file_db",
            "input_collection": "file_types",
-           "map_function": "function () {emit(this.value.category, {count: 1, size: this.value.size});}",
-          "reduce_function": "function (key, values) {var result = {count: 0, size: 0, category: key}; values.forEach(function (value) {result.count += 1; result.size += value.size;}); return result;}",
+           "map_function": "function () {emit(this.value.category, {count: this.value.count, size: this.value.size});}",
+          "reduce_function": "function (key, values) {var result = {count: 0, size: 0, category: key}; values.forEach(function (value) {result.count += value.count; result.size += value.size;}); return result;}",
           "output_collection":"file_categories"
          }},
         {"id": "solr-sink", 

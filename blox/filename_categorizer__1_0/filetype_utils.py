@@ -28,7 +28,10 @@ extra_files = {
 # Map from extension to (description, category, is_indexable) tuple. This
 # is used to override the defaults from the filetypes module
 extra_extns = {
-    "json": ("JSON file", "data", True) # picking data category to be consistent w/ XML
+    "json": ("JSON file", "data", True), # picking data category to be consistent w/ XML
+    "pdf" : ("Portable Document File", "text", False), # need to see if solr supports pdf,
+    "qb2010" : ("QuickBooks 2010 data file", "data", False),
+    "py" : ("Python Script", "development", True),
 }
 
 def _get_extn(filename):

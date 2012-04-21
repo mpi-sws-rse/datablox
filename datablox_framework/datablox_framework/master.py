@@ -721,7 +721,8 @@ class Master(object):
     logger.debug("Message counts:")
     for (s, dct) in block_loads.items():
       for (d, cnt) in dct.items():
-        logger.info("  %s => %s: %d msgs" % (s, d, cnt))
+        if s != d:
+          logger.info("  %s => %s: %d msgs" % (s, d, cnt))
         
   def running(self):
     global block_status, block_loads

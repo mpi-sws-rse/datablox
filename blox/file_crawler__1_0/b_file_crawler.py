@@ -5,6 +5,7 @@ import os.path
 import socket
 import base64
 from logging import ERROR, WARN, INFO, DEBUG
+import time
 
 # file logging will only show up if we set the log level to ALL
 FILE_LOGGING=DEBUG-1
@@ -19,6 +20,7 @@ class file_crawler(Block):
     listing["owner"] = stat.st_uid
     listing["volume"] = volume
     listing["url"] = BlockUtils.generate_url_for_path(path)
+    listing["crawl_id"] = self.crawl_id
     
     self.current_log.append_row(listing)
 
@@ -73,5 +75,12 @@ class file_crawler(Block):
     self.single_session_limit = 50
     if config.has_key("buffer_limit"):
       self.buffer_limit = config["buffer_limit"]
+    if config.has_key("crawl_id"):
+      #if you put a crawl_id in the config file, it is your responsibility to
+      #ensure that it is unique.
+      self.crawl_id = unicode(config["crawl_id"])
+    else:
+      self.crawl_id = self.id + " " + time.ctime()
+    self.log(INFO, "File-Crawler crawl_id = %s" % self.crawl_id)
     self.log(INFO, "File-Crawler block loaded")
     self.current_log = Log()
