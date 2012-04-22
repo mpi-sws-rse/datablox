@@ -204,7 +204,11 @@ class BlockHandler(object):
     # TODO: hardcoded wait for 8 seconds
     res = timed_recv(syncclient, 8000)
     syncclient.close()
-    return False if res == None else True
+    if res != None:
+      block_status[self.id] = "alive"
+      return True
+    else:
+      return False
   
   def connect_to(self, from_port, to_block, to_port, connection_url=None):
     if connection_url == None:
