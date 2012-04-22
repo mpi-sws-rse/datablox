@@ -92,8 +92,14 @@ test-simple-shard:
 test: engage-ext engage-dist test-deploy test-map-reduce test-deploy test-simple-shard
 	@echo "All tests completed successfully"
 
+kill-test-procs:
+	$(BLOX_HOME)/scripts/killproc -n python
+	$(BLOX_HOME)/scripts/killproc -n mongo
+	$(BLOX_HOME)/scripts/killproc -n solr/example/start.jar
+
+
 help:
-	@echo "Targets are all engage-ext engage-dist test-deploy test-map-reduce test-read-files test download-packages clean clean-all"
+	@echo "Targets are all engage-ext engage-dist test-deploy test-map-reduce test-read-files test download-packages kill-test-procs clean clean-all"
 
 clean:
 	rm -rf $(ENGAGE_EXT_HOME)/datablox/sw_packages
@@ -105,4 +111,4 @@ clean:
 clean-all: clean
 	rm -rf $(PACKAGE_DIR)
 
-.PHONY: all clean clean-all engage-dist engage-ext help download-packages test-deploy test-map-reduce test-read-files test-simple-shard test test-packages
+.PHONY: all clean clean-all engage-dist engage-ext help download-packages test-deploy test-map-reduce test-read-files test-simple-shard test test-packages kill-test-procs
