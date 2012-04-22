@@ -1,0 +1,6 @@
+[
+  { "type": "Archive",
+    "package_class": "GzippedTarArchive",
+    "location": "dynamic_join__1_0.tgz"
+  }
+]

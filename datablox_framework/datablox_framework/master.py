@@ -186,7 +186,7 @@ class BlockHandler(object):
     socket.close()
     if not res:
       logger.error("Could not start block " + self.name)
-      raise NameError
+      raise Exception("Could not start block " + self.name)
     else:
       logger.info(self.name + " loaded")
     return self.sync()
@@ -380,7 +380,6 @@ class ShardHandler(BlockHandler):
       join_record["id"] = self.join_id()
       join_record["name"] = "dynamic-join"
       join_record["args"] = {}
-      join_record["at"] = self.ipaddress
       self.join_handler = DynamicJoinHandler(join_record, self.address_manager, self.context, self.policy)
 
     for i, block_config in enumerate(block_configs):
@@ -612,7 +611,7 @@ class DjmAddressManager(AddressManager):
       return (self.djm_job.get_node(selected_ipaddress))["datablox_ip_address"]
     else:
       logger.error("No node with name %s" % selected_ipaddress)
-      raise NameError
+      raise Exception("No node with name %s" % selected_ipaddress)
 
   def get_all_ipaddresses(self):
     return [node["datablox_ip_address"] for node in self.djm_job.nodes]
