@@ -5,6 +5,8 @@ import urlparse
 import os
 import collections
 import time
+import tempfile
+import shutil
 
 from BeautifulSoup import BeautifulSoup
 from collections import defaultdict
@@ -20,12 +22,14 @@ class web_crawler(Block):
     self.file_num = 0
     self.total_download_time = 0
     self.fetch_timeout = 4
+    self.download_dir = tempfile.mkdtemp()
 
   @print_benchmarks
   def on_shutdown(self):
     self.log(INFO, "deleting all temporary downloaded files")
     for url in self.downloaded_files.keys():
       self.delete_url(url)
+    shutil.rmtree(self.download_dir)
   
   def add_path(self, url, path):
     self.downloaded_files[url].append(path)
@@ -39,9 +43,9 @@ class web_crawler(Block):
     req = urllib2.Request(url)
     response = urllib2.urlopen(req, None, self.fetch_timeout)
     new_name = self.get_new_file_name()
-    with open(new_name, 'w') as f:
+    path = os.path.join(self.download_dir, new_name)
+    with open(path, 'w') as f:
       f.write(response.read())
-    path = os.path.join(os.getcwd(), new_name)
     response.close()
     self.add_path(url, path)
     return path

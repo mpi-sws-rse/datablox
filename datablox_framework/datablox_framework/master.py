@@ -222,7 +222,7 @@ class BlockHandler(object):
         pass
       except ValueError:
         logger.error("Cannot add multiple input connections")
-        raise NameError
+        raise Exception("Cannot add multiple input connections")
     else:
       to_connections.connection_urls.append(connection_url)
       to_connections.targets.append((self, from_port))
@@ -698,7 +698,7 @@ class Master(object):
     for d in block_loads.values():
       for block_id, load in d.items():
         loads[block_id] += load
-    logger.info("loads: %r" % loads)
+    # logger.info("loads: %r" % loads)
     time_per_req = {}
     # print "Block times: %r" % block_times
     for i, t in block_times.items():
