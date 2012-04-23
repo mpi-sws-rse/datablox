@@ -119,6 +119,8 @@ def main(argv):
   socket.bind('tcp://*:5000')
   os.system("rm %s/*.json" % config_dir)
   file_num = 0
+  os.putenv("LC_CTYPE", "en_US.UTF-8")
+  logger.info("Set encoding to en_US.UTF-8")
   logger.info('Care taker loaded')
   while True:
     try:
