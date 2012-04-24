@@ -17,7 +17,12 @@ from datablox_framework.shard import *
 class round_robin_shard(Shard):
   @classmethod
   def initial_configs(cls, config):
-    return [config["node_type"]["args"] for i in range(config["nodes"])]
+    if isinstance(config["node_type"]["args"], list):
+      #at least have as many arguments as there are nodes
+      assert(len(config["node_type"]["args"]) >= config["nodes"])
+      return [config["node_type"]["args"][i] for i in range(config["nodes"])]
+    else:
+      return [config["node_type"]["args"] for i in range(config["nodes"])]
   
   def on_load(self, config):
     self.nodes = config["nodes"]

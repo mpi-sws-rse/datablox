@@ -28,8 +28,14 @@
           "output_collection":"file_categories"
          }},
         {"id": "solr-sink", 
-        "name": "Solr-Index", 
-        "args": {"crawlers":1}}
+        "name": "Hash-Shard",
+        "args": 
+           {"nodes": 1,
+            "node_type": {"name": "Solr-Index", "input_port": "input", "port_type": "PUSH", 
+                          "args": [{"crawlers": 1, "port": 8983}, {"crawlers": 1, "port": 7574}]},
+            "hash_field": "path"
+           }
+        }
     ],
 
     "connections": [

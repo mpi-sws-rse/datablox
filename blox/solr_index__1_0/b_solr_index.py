@@ -12,8 +12,10 @@ class solr_index(Block):
     self.add_port("query", Port.QUERY, Port.UNNAMED, ["query"])
     self.crawler_done = False
     self.queries = []
+    self.pending_entries = []
     self.num_tokens = config["crawlers"]
-    self.indexer = sunburnt.SolrInterface("http://localhost:8983/solr/")
+    self.port = config["port"] if config.has_key("port") else 8983
+    self.indexer = sunburnt.SolrInterface("http://localhost:" + str(self.port) + "/solr/")
     self.log(INFO, "Solr-index block loaded")
   
   def recv_push(self, port, log):
@@ -22,12 +24,25 @@ class solr_index(Block):
       self.num_tokens = self.num_tokens - 1
       if self.num_tokens == 0:
         self.crawler_done = True
+        self.add_pending_entries()
         self.indexer.commit()
         self.process_outstanding_queries()
     else: 
       self.index_entries(log)
   
+  def add_pending_entries(self):
+    self.log(INFO, "adding num entries: %d" % len(self.pending_entries))
+    try:
+      self.indexer.add(self.pending_entries)
+    except Exception, e:
+        self.log(ERROR, "Failed to add doc due to: %r" % (e))
+        #raise
+    self.pending_entries = []
+    
   def index_entries(self, log):
+    #TODO: hardcoded 500
+    if len(self.pending_entries) > 500:
+      self.add_pending_entries()
     for path, url in log.iter_fields("path", "url"):
       # self.log(INFO, "adding " + path)
       contents = BlockUtils.fetch_file_at_url(url)
@@ -35,11 +50,7 @@ class solr_index(Block):
       entry = {"path": path,
                "name": os.path.split(path)[-1],
                "contents": contents}
-      try:
-        self.indexer.add(entry)
-      except Exception, e:
-          self.log(ERROR, "Failed to add doc %s due to: %r" % (path, e))
-          #raise
+      self.pending_entries.append(entry)
 
   def on_shutdown(self):
     self.indexer.commit()
