@@ -3,6 +3,9 @@ all:
 	cd engage; make all
 	@echo "Completed datablox build"
 
+help:
+	@echo "targets are: all test test-deploy kill-test-procs clean clean-all"
+
 test:
 	cd engage; make test
 
@@ -20,4 +23,4 @@ clean:
 clean-all: clean
 	cd engage; make clean-all
 
-.PHONY: all clean clean-all test-deploy kill-test-procs
+.PHONY: all clean clean-all test-deploy kill-test-procs help

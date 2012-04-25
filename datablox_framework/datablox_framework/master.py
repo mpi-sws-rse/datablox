@@ -729,9 +729,15 @@ class Master(object):
       for (d, cnt) in dct.items():
         if s != d:
           logger.info("  %s => %s: %d msgs" % (s, d, cnt))
-    f = csv.writer(open('loads.csv', 'wb'))
-    for b, loads in self.load_history.items():
-      f.writerow([b] + loads)
+    if using_engage:
+      loads_csv_file = os.path.join(engage_file_locator.get_log_directory(),
+                                    "loads.csv")
+    else:
+      loads_csv_file = "loads.csv"
+    with open(loads_csv_file, 'wb') as f:
+      w = csv.writer(f)
+      for b, loads in self.load_history.items():
+        w.writerow([b] + loads)
           
   def running(self):
     global block_status, block_loads
