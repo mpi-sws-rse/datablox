@@ -4,6 +4,7 @@ import time
 import copy
 import subprocess
 import logging
+import csv
 
 import naming
 from block import *
@@ -641,6 +642,7 @@ class Master(object):
     add_blox_to_path(_bloxpath)
     self.context = zmq.Context()
     global_config = self.get_config(config_file)
+    self.load_history = defaultdict(list)
     #old style, flat config
     #convert it into a one group list.
     if not (type(global_config) == list):
@@ -660,9 +662,9 @@ class Master(object):
         self.address_manager.djm_job.stop_job(successful=False,
                                               msg="Master run stopped due to exception %s" % e)
       raise
+    self.write_final_perfstats()
     if using_engage:
       self.address_manager.djm_job.stop_job(successful=True)
-      self.write_final_perfstats()
     return
   
   def get_config(self, config_file):
@@ -716,6 +718,7 @@ class Master(object):
     print "ETAs"
     for e in etas:
       print "%r -> %.3f (%.3f x %r)" % (e[1], e[0], time_per_req[e[1]], loads[e[1]])
+      self.load_history[e[1]].append(e[0])
     with open("loads.json", 'w') as f:
       json.dump(dict([(e[1], e[0]) for e in etas]), f)
 
@@ -726,7 +729,10 @@ class Master(object):
       for (d, cnt) in dct.items():
         if s != d:
           logger.info("  %s => %s: %d msgs" % (s, d, cnt))
-        
+    f = csv.writer(open('loads.csv', 'wb'))
+    for b, loads in self.load_history.items():
+      f.writerow([b] + loads)
+          
   def running(self):
     global block_status, block_loads
     for v in block_status.values():
