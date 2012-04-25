@@ -48,26 +48,24 @@ class file_crawler(Block):
     self.flush_port("output")
     
   def do_task(self):
-    files_sent_in_session = {"cnt":0}
-    # Function to actually handle the file.
-    # We keep it as a separate function to enable the @benchmark
-    # decorator (defined in block.py).
-    @benchmark
-    def process_file(self, fpath):
-      try:
-        stat = os.stat(fpath)
-        self.log(FILE_LOGGING, "Sending file %s" % fpath)
-        self.add_file(HOST, volume_name, fpath, stat)
-        if self.current_log.num_rows()>=LOG_SIZE_LIMIT:
-          self.send_log()
-        files_sent_in_session["cnt"] += 1
-        if files_sent_in_session["cnt"] > self.single_session_limit:
-          files_sent_in_session["cnt"] = 0
-          self.send_log()
-          return False
-      except OSError:
-        self.log(WARN, "not dealing with file " + fpath)
-      return True
+    # helpers for managing timer. To improve accuracy, we time the
+    # sessions and divide rather than measure individual messages.
+    if not hasattr(self, "benchmark_dict"):
+      self.benchmark_dict = {}
+    d = self.benchmark_dict
+    if not d.has_key("total_duration"):
+      d["total_duration"] = 0
+      d["num_calls"] = 0
+    files_sent_in_session = 0
+    def start_timer():
+      assert files_sent_in_session==0
+      assert not d.has_key("start_time")
+      d["start_time"] = time.time()
+    def stop_timer():
+      duration = time.time() - d["start_time"]
+      d["total_duration"] += duration
+      d["num_calls"] += files_sent_in_session
+      del d["start_time"]
     # just a function to use for wrapping by the print_benchmarks decorator
     @print_benchmarks
     def done(self):
@@ -76,12 +74,26 @@ class file_crawler(Block):
     volume_name = get_volume_name(path)
     self.log(INFO, "Starting walk at %s" % volume_name)
     # the main loop
+    start_timer()
     for root, dirnames, filenames in os.walk(path):
       for filename in filenames:
         fpath = os.path.join(root, filename)
-        within_session_limit = process_file(self, fpath)
-        if not within_session_limit:
-          yield
+        try:
+          stat = os.stat(fpath)
+          self.log(FILE_LOGGING, "Sending file %s" % fpath)
+          self.add_file(HOST, volume_name, fpath, stat)
+          if self.current_log.num_rows()>=LOG_SIZE_LIMIT:
+            self.send_log()
+          files_sent_in_session += 1
+          if files_sent_in_session > self.single_session_limit:
+            self.send_log()
+            stop_timer()
+            files_sent_in_session = 0
+            yield
+            start_timer()
+        except OSError:
+          self.log(WARN, "not dealing with file " + fpath)
+    stop_timer()
     yield
     #this will clear all outstanding files in the buffer
     self.send_token(volume_name)
