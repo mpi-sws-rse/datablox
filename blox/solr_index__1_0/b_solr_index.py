@@ -40,8 +40,8 @@ class solr_index(Block):
     self.pending_entries = []
     
   def index_entries(self, log):
-    #TODO: hardcoded 500
-    if len(self.pending_entries) > 500:
+    #TODO: hardcoded 50
+    if len(self.pending_entries) > 50:
       self.add_pending_entries()
     for path, url in log.iter_fields("path", "url"):
       # self.log(INFO, "adding " + path)
