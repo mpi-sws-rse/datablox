@@ -11,6 +11,15 @@ import time
 FILE_LOGGING=DEBUG-1
 LOG_SIZE_LIMIT=50
 
+
+try:
+  HOST = socket.gethostname()
+except:
+  HOST = "local"
+
+def get_volume_name(volume_path):
+  return HOST + ":" + volume_path
+
 class file_crawler(Block):
   def add_file(self, host, volume, path, stat):
     listing = {}
@@ -29,6 +38,7 @@ class file_crawler(Block):
       self.buffered_push("output", self.current_log)
       self.current_log = Log()
 
+  @benchmark
   def send_token(self, volume_name):
     self.send_log()
     token = {"token": [volume_name]}
@@ -38,37 +48,45 @@ class file_crawler(Block):
     self.flush_port("output")
     
   def do_task(self):
+    files_sent_in_session = {"cnt":0}
+    # Function to actually handle the file.
+    # We keep it as a separate function to enable the @benchmark
+    # decorator (defined in block.py).
+    @benchmark
+    def process_file(self, fpath):
+      try:
+        stat = os.stat(fpath)
+        self.log(FILE_LOGGING, "Sending file %s" % fpath)
+        self.add_file(HOST, volume_name, fpath, stat)
+        if self.current_log.num_rows()>=LOG_SIZE_LIMIT:
+          self.send_log()
+        files_sent_in_session["cnt"] += 1
+        if files_sent_in_session["cnt"] > self.single_session_limit:
+          files_sent_in_session["cnt"] = 0
+          self.send_log()
+          return False
+      except OSError:
+        self.log(WARN, "not dealing with file " + fpath)
+      return True
+    # just a function to use for wrapping by the print_benchmarks decorator
+    @print_benchmarks
+    def done(self):
+      pass
     path = os.path.abspath(os.path.expanduser(self.config["directory"]))
-    files_sent = 0
-    try:
-      ## #using the ip-address for now
-      ## volume_name = socket.gethostbyname(socket.gethostname())
-      host = socket.gethostname()
-    except:
-      host = "local"
-    volume_name = host + ":" + path
-    self.log(DEBUG, "Starting walk at %s" % path)
+    volume_name = get_volume_name(path)
+    self.log(INFO, "Starting walk at %s" % volume_name)
+    # the main loop
     for root, dirnames, filenames in os.walk(path):
       for filename in filenames:
         fpath = os.path.join(root, filename)
-        try:
-          stat = os.stat(fpath)
-          self.log(FILE_LOGGING, "Sending fie %s" % fpath)
-          self.add_file(host, volume_name, fpath, stat)
-          if self.current_log.num_rows()>=LOG_SIZE_LIMIT:
-            self.send_log()
-          files_sent += 1
-          if files_sent > self.single_session_limit:
-            files_sent = 0
-            self.send_log()
-            yield
-        except OSError:
-          self.log(WARN, "not dealing with file " + fpath)
-          continue
+        within_session_limit = process_file(self, fpath)
+        if not within_session_limit:
+          yield
     yield
     #this will clear all outstanding files in the buffer
     self.send_token(volume_name)
-    
+    done(self)
+
   def on_load(self, config):
     self.config = config
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["path", "size", "perm", "owner" ,"volume", "url"])
@@ -84,3 +102,5 @@ class file_crawler(Block):
     self.log(INFO, "File-Crawler crawl_id = %s" % self.crawl_id)
     self.log(INFO, "File-Crawler block loaded")
     self.current_log = Log()
+
+

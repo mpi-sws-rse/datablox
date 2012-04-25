@@ -493,6 +493,8 @@ class Block(threading.Thread):
     raise NotImplementedError
     
   def on_shutdown(self):
+    """Note that this is not called for crawler blocks.
+    """
     pass
 
   def shutdown(self):

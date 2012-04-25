@@ -1,0 +1,61 @@
+{
+    "blocks": [
+        {"id": "crawler1", 
+         "name": "File-Crawler", 
+         "args": {"directory": "~/genforma"}},
+        {"id": "categorizer1",
+         "name": "Filename-Categorizer",
+         "args": {}},
+        {"id": "crawler2", 
+         "name": "File-Crawler", 
+         "args": {"directory": "~/apps"}},
+        {"id": "categorizer2",
+         "name": "Filename-Categorizer",
+         "args": {}},
+        {"id":"join-metadata",
+         "name":"Join",
+         "args": {"joins":2}
+        },
+        {"id":"join-index",
+         "name":"Join",
+         "args": {"joins":2}
+        },
+        {"id": "file_data", 
+        "name": "File-Mongo", 
+        "args": {"crawlers":2}},
+        {"id": "aggregator",
+         "name":"mongo-map-reduce",
+         "args":{
+           "database": "file_db",
+           "input_collection": "file_data",
+           "map_function": "function () {emit(this.filetype, {count: 1, size: this.size, category: this.category});}",
+          "reduce_function": "function (key, values) {var result = {filetype: key, count: 0, size: 0, category: ''}; values.forEach(function (value) {result.count += 1; result.size += value.size; result.category = value.category;}); return result;}",
+          "output_collection":"file_types"
+         }},
+        {"id": "summarizer",
+         "name":"mongo-map-reduce",
+         "args":{
+           "database": "file_db",
+           "input_collection": "file_types",
+           "map_function": "function () {emit(this.value.category, {count: this.value.count, size: this.value.size});}",
+          "reduce_function": "function (key, values) {var result = {count: 0, size: 0, category: key}; values.forEach(function (value) {result.count += value.count; result.size += value.size;}); return result;}",
+          "output_collection":"file_categories"
+         }},
+        {"id": "solr-sink", 
+        "name": "Solr-Index", 
+        "args": {"crawlers":2}}
+    ],
+
+    "connections": [
+        [{"crawler1": "output"}, {"categorizer1": "input"}],
+        [{"categorizer1": "output"}, {"join-metadata": "input1"}],
+        [{"crawler2": "output"}, {"categorizer2": "input"}],
+        [{"categorizer2": "output"}, {"join-metadata": "input2"}],
+        [{"join-metadata": "output"}, {"file_data": "input"}],
+        [{"file_data":"completed"}, {"aggregator":"input"}],
+        [{"aggregator":"output"}, {"summarizer":"input"}],
+        [{"categorizer1": "indexable_output"}, {"join-index": "input1"}],
+        [{"categorizer2": "indexable_output"}, {"join-index": "input2"}],
+        [{"join-index": "output"}, {"solr-sink": "input"}]
+    ]
+}
