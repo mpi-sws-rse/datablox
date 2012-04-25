@@ -389,7 +389,8 @@ class ShardHandler(BlockHandler):
 
     for i, block_config in enumerate(block_configs):
       output_port = "output"+str(i)
-      rec = {"id": self.block_id(i), "name": block_name, "args": block_config}
+      loc = block_config["at"] if block_config.has_key("at") else None
+      rec = {"id": self.block_id(i), "name": block_name, "args": block_config, "at": loc}
       block_handler = create_handler(rec, self.address_manager, self.context, self.policy)
       self.block_handlers.append(block_handler)
       #hack, this will get substituted to the right port in get_output_port_connections

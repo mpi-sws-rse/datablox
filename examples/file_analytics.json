@@ -2,7 +2,7 @@
     "blocks": [
         {"id": "crawler", 
          "name": "File-Crawler", 
-         "args": {"directory": "~/apps"}},
+         "args": {"directory": "."}},
         {"id": "categorizer",
          "name": "Filename-Categorizer",
          "args": {}},
@@ -30,9 +30,10 @@
         {"id": "solr-sink", 
         "name": "Hash-Shard",
         "args": 
-           {"nodes": 1,
+           {"nodes": 2,
             "node_type": {"name": "Solr-Index", "input_port": "input", "port_type": "PUSH", 
-                          "args": [{"crawlers": 1, "port": 8983}, {"crawlers": 1, "port": 7574}]},
+                          "args": [{"crawlers": 1, "port": 8983, "at": "127.0.0.1"}, 
+                                   {"crawlers": 1, "port": 7574, "at": "127.0.0.1"}]},
             "hash_field": "path"
            }
         }
