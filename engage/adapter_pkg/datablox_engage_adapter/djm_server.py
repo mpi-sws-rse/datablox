@@ -52,14 +52,17 @@ class DjmJob(object):
                                                   self.nodes_except_master)
             if s!=common.TaskStatus.TASK_SUCCESSFUL:
                 logger.warn("Not able to stop DJM worker on all nodes")
+        logger.debug("Stopped DJM workers")
         if successful:
             self.c.stop_job(self.job_id,
                             common.JobStatus.JOB_SUCCESSFUL,
                             comment=msg)
+            logger.debug("Stopped job %s, status=JOB_SUCESSFUL" % self.job_id)
         else:
             self.c.stop_job(self.job_id,
                             common.JobStatus.JOB_FAILED,
                             comment=msg)
+            logger.debug("Stopped job %s, status=FAILED" % self.job_id)
 
 def _check_task_status(s, r, msg):
     if s!=common.TaskStatus.TASK_SUCCESSFUL:
