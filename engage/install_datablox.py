@@ -58,6 +58,13 @@ def main(argv):
         print "Engage install of Datablox caretaker failed, return code was %d. Check logfile %s for details." % \
               (rc, di_log)
         return 1
+    svcctl_exe = os.path.join(dh, "engage/bin/svcctl")
+    assert os.path.exists(svcctl_exe), "Missing svcctl script at %s" % svccctl_exe
+    svcctl_link = os.path.join(dh, "python/bin/svcctl")
+    rc = subprocess.call(["/bin/ln", "-s", svcctl_exe, svcctl_link])
+    if rc != 0:
+        print "Unable to setup svcctl link at %s" % svccctl_link
+        return 1
     print "Datablox deployment successful"
     return 0
 
