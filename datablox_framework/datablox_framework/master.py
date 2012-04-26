@@ -25,6 +25,10 @@ else:
 
 logger = logging.getLogger(__name__)
 
+# The timeout for polling a remote block, in milliseconds.
+# See issue #62 for details.
+POLL_TIMEOUT_MS = 5000
+
 block_loads = {}
 block_times = {}
 #this keeps track of timed out and shutdown blocks
@@ -244,9 +248,7 @@ class BlockHandler(object):
     socket = self.context.socket(zmq.REQ)
     socket.connect(get_url(self.ipaddress, port))
     socket.send(message)
-    #wait for 4 sec
-    #TODO: hardcoded 4
-    load = timed_recv(socket, 4000)
+    load = timed_recv(socket, POLL_TIMEOUT_MS)
     socket.close()
     if load != None:
       self.timeouts = 0

@@ -5,6 +5,9 @@ from datetime import datetime
 import base64
 from logging import ERROR, WARN, INFO, DEBUG
 
+# number of messages to process in a solr batch
+BATCH_SIZE = 25
+
 class solr_index(Block):
   def on_load(self, config):
     import sunburnt
@@ -40,8 +43,7 @@ class solr_index(Block):
     self.pending_entries = []
     
   def index_entries(self, log):
-    #TODO: hardcoded 50
-    if len(self.pending_entries) > 50:
+    if len(self.pending_entries) > BATCH_SIZE:
       self.add_pending_entries()
     for path, url in log.iter_fields("path", "url"):
       # self.log(INFO, "adding " + path)
