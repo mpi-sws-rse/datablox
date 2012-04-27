@@ -755,7 +755,6 @@ class Master(object):
         row = [times[i]] + [v[i] for v in loads]
         w.writerow(row)
 
->>>>>>> Writing elapsed time since the start of the topology in loads.csv file
   def running(self):
     global block_status, block_loads
     for v in block_status.values():
