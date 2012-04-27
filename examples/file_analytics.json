@@ -28,20 +28,8 @@
           "output_collection":"file_categories"
          }},
         {"id": "solr-sink", 
-<<<<<<< HEAD
         "name": "Solr-Index", 
         "args": {"crawlers":1}}
-=======
-        "name": "Hash-Shard",
-        "args": 
-           {"nodes": 1,
-            "node_type": {"name": "Solr-Index", "input_port": "input", "port_type": "PUSH", 
-                          "args": [{"crawlers": 1, "port": 8983, "at": "127.0.0.1"}, 
-                                   {"crawlers": 1, "port": 7574, "at": "127.0.0.1"}]},
-            "hash_field": "path"
-           }
-        }
->>>>>>> Writing elapsed time since the start of the topology in loads.csv file
     ],
 
     "connections": [
