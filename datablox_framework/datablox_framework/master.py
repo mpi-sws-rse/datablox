@@ -654,6 +654,7 @@ class Master(object):
     #can fill this with command line args
     main_block_rec = {"id": "main_inst", "args": {}}
     self.main_block_handler = GroupHandler(main_block_rec, get_group("main"), self.address_manager, self.context)
+    self.start_time = time.time()
     if not self.main_block_handler.start():
       self.stop_all("Master: Could not start all blocks. Ending the run")
 
@@ -722,6 +723,9 @@ class Master(object):
     for e in etas:
       print "%r -> %.3f (%.3f x %r)" % (e[1], e[0], time_per_req[e[1]], loads[e[1]])
       self.load_history[e[1]].append(e[0])
+    duration = time.time() - self.start_time
+    #writing the time stamps of the polls in the same dictionary
+    self.load_history["times"].append(duration)
     with open("loads.json", 'w') as f:
       json.dump(dict([(e[1], e[0]) for e in etas]), f)
 
@@ -739,9 +743,19 @@ class Master(object):
       loads_csv_file = "loads.csv"
     with open(loads_csv_file, 'wb') as f:
       w = csv.writer(f)
-      for b, loads in self.load_history.items():
-        w.writerow([b] + loads)
-          
+      # for b, loads in self.load_history.items():
+      #   w.writerow([b] + loads)
+      times = self.load_history["times"]
+      del(self.load_history["times"])
+      block_ids = self.load_history.keys()
+      loads = self.load_history.values()
+      #write the legend
+      w.writerow(["Time"] + block_ids)
+      for i in range(len(times)):
+        row = [times[i]] + [v[i] for v in loads]
+        w.writerow(row)
+
+>>>>>>> Writing elapsed time since the start of the topology in loads.csv file
   def running(self):
     global block_status, block_loads
     for v in block_status.values():

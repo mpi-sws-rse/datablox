@@ -459,7 +459,6 @@ class Block(threading.Thread):
       self.task = None
       self.process_buffered_push(port, logs)
     else:
-      assert(task != None)
       try:
         start_time = time.time()
         task.next()

@@ -50,6 +50,7 @@ class file_mongo(Block):
       cnt = 0
       for l in log.iter_flatten():
         cnt += 1
+        # self.file_data.remove({"path" : l["path"]})
         entries.append(l)
       stime = time.time()
       self.file_data.insert(entries)
