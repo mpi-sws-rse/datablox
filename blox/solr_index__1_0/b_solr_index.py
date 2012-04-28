@@ -21,7 +21,20 @@ class solr_index(Block):
     self.port = config["port"] if config.has_key("port") else 8983
     indexer_url = "http://localhost:" + str(self.port) + "/solr/"
     self.log(INFO, "Indexer connecting to %s" % indexer_url)
-    self.indexer = sunburnt.SolrInterface(indexer_url)
+    self.indexer = None
+    tries = 0
+    while not self.indexer:
+      try:
+        tries += 1
+        self.indexer = sunburnt.SolrInterface(indexer_url)
+      except Exception, e:
+        self.logger.exception("Error in connecting to indexer: %s" % e)
+        if tries == 10:
+          self.logger.error("Giving up after 10 tries")
+          raise
+        else:
+          time.sleep(2)
+    self.log(DEBUG, "Connect to indexer successful")
     self.msg_timer = PerfCounter(self.name, "msgs")
     self.url_timer = PerfCounter(self.name, "url")
     self.log(INFO, "Solr-index block loaded")
