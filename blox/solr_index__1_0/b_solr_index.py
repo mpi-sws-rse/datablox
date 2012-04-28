@@ -1,4 +1,5 @@
 from block import *
+from perf_counter import PerfCounter
 import time
 import sys, os, threading, time
 from datetime import datetime
@@ -18,10 +19,15 @@ class solr_index(Block):
     self.pending_entries = []
     self.num_tokens = config["crawlers"]
     self.port = config["port"] if config.has_key("port") else 8983
-    self.indexer = sunburnt.SolrInterface("http://localhost:" + str(self.port) + "/solr/")
+    indexer_url = "http://localhost:" + str(self.port) + "/solr/"
+    self.log(INFO, "Indexer connecting to %s" % indexer_url)
+    self.indexer = sunburnt.SolrInterface(indexer_url)
+    self.msg_timer = PerfCounter(self.name, "msgs")
+    self.url_timer = PerfCounter(self.name, "url")
     self.log(INFO, "Solr-index block loaded")
   
   def recv_push(self, port, log):
+    self.msg_timer.start_timer()
     if log.log.has_key("token"):
       self.log(INFO, self.id + " got the finish token for the directory " + log.log["token"][0])
       self.num_tokens = self.num_tokens - 1
@@ -32,6 +38,7 @@ class solr_index(Block):
         self.process_outstanding_queries()
     else: 
       self.index_entries(log)
+    self.msg_timer.stop_timer(log.num_rows())
   
   def add_pending_entries(self):
     self.log(INFO, "adding num entries: %d" % len(self.pending_entries))
@@ -46,8 +53,9 @@ class solr_index(Block):
     if len(self.pending_entries) > BATCH_SIZE:
       self.add_pending_entries()
     for path, url in log.iter_fields("path", "url"):
-      # self.log(INFO, "adding " + path)
+      self.url_timer.start_timer()
       contents = BlockUtils.fetch_file_at_url(url)
+      self.url_timer.stop_timer()
       contents = contents.decode('utf-8', 'ignore')
       entry = {"path": path,
                "name": os.path.split(path)[-1],
@@ -56,6 +64,8 @@ class solr_index(Block):
 
   def on_shutdown(self):
     self.indexer.commit()
+    self.msg_timer.log_final_results(self.logger)
+    self.url_timer.log_final_results(self.logger)
     
   def recv_query(self, port_name, log):
     if not self.crawler_done:

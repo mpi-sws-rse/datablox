@@ -7,6 +7,8 @@ import base64
 from logging import ERROR, WARN, INFO, DEBUG
 import time
 
+from perf_counter import PerfCounter
+
 # file logging will only show up if we set the log level to ALL
 FILE_LOGGING=DEBUG-1
 LOG_SIZE_LIMIT=50
@@ -38,43 +40,23 @@ class file_crawler(Block):
       self.buffered_push("output", self.current_log)
       self.current_log = Log()
 
-  @benchmark
   def send_token(self, volume_name):
+    self.msg_timer.start_timer()
     self.send_log()
     token = {"token": [volume_name]}
     log = Log()
     log.set_log(token)
     self.buffered_push("output", log)
     self.flush_port("output")
+    self.msg_timer.stop_timer()
     
   def do_task(self):
-    # helpers for managing timer. To improve accuracy, we time the
-    # sessions and divide rather than measure individual messages.
-    if not hasattr(self, "benchmark_dict"):
-      self.benchmark_dict = {}
-    d = self.benchmark_dict
-    if not d.has_key("total_duration"):
-      d["total_duration"] = 0
-      d["num_calls"] = 0
     files_sent_in_session = 0
-    def start_timer():
-      assert files_sent_in_session==0
-      assert not d.has_key("start_time")
-      d["start_time"] = time.time()
-    def stop_timer():
-      duration = time.time() - d["start_time"]
-      d["total_duration"] += duration
-      d["num_calls"] += files_sent_in_session
-      del d["start_time"]
-    # just a function to use for wrapping by the print_benchmarks decorator
-    @print_benchmarks
-    def done(self):
-      pass
     path = os.path.abspath(os.path.expanduser(self.config["directory"]))
     volume_name = get_volume_name(path)
     self.log(INFO, "Starting walk at %s" % volume_name)
     # the main loop
-    start_timer()
+    self.msg_timer.start_timer()
     for root, dirnames, filenames in os.walk(path):
       for filename in filenames:
         fpath = os.path.join(root, filename)
@@ -87,17 +69,17 @@ class file_crawler(Block):
           files_sent_in_session += 1
           if files_sent_in_session > self.single_session_limit:
             self.send_log()
-            stop_timer()
+            self.msg_timer.stop_timer(files_sent_in_session)
             files_sent_in_session = 0
             yield
-            start_timer()
+            self.msg_timer.start_timer()
         except OSError:
           self.log(WARN, "not dealing with file " + fpath)
-    stop_timer()
+    self.msg_timer.stop_timer(self.current_log.num_rows())
     yield
     #this will clear all outstanding files in the buffer
     self.send_token(volume_name)
-    done(self)
+    self.msg_timer.log_final_results(self.logger)
 
   def on_load(self, config):
     self.config = config
@@ -114,5 +96,6 @@ class file_crawler(Block):
     self.log(INFO, "File-Crawler crawl_id = %s" % self.crawl_id)
     self.log(INFO, "File-Crawler block loaded")
     self.current_log = Log()
+    self.msg_timer = PerfCounter(self.name, "msgs")
 
 
