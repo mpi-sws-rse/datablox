@@ -30,7 +30,7 @@ class file_crawler(Block):
     listing["perm"] = stat.st_mode
     listing["owner"] = stat.st_uid
     listing["volume"] = volume
-    listing["url"] = BlockUtils.generate_url_for_path(path)
+    listing["url"] = BlockUtils.generate_url_for_path(path, self.ip_address)
     listing["crawl_id"] = self.crawl_id
     
     self.current_log.append_row(listing)

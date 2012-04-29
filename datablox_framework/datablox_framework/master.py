@@ -117,16 +117,11 @@ class BlockHandler(object):
     self.args = block_record["args"]
     self.context = context
     self.address_manager = address_manager
-    self.ipaddress = address_manager.get_ipaddress(block_record["at"] if block_record.has_key("at") else None)
+    self.ip_address = address_manager.get_ipaddress(block_record["at"] if block_record.has_key("at") else None)
     self.master_port = address_manager.get_master_port()
     self.policy = policy
     self.version = block_record["version"] if block_record.has_key("version") \
                                    else naming.DEFAULT_VERSION
-    ## if using_engage:
-    ##   resource_key = naming.get_block_resource_key(self.name,
-    ##                                                self.version)
-    ##   datablox_engage_adapter.install.install_block(resource_key)
-
     self.connections = {}
     self.ports = {}
     self.last_load = 0
@@ -154,7 +149,7 @@ class BlockHandler(object):
   #a basic block has the same ipaddress for every port
   #but a block-group may have different ipaddresses for individual ports
   def get_ipaddress(self, to_port):
-    return self.ipaddress
+    return self.ip_address
     
   def create_basic_config(self):
     config = {}
@@ -162,10 +157,11 @@ class BlockHandler(object):
     config["id"] = self.id
     config["args"] = self.args
     config["log_level"] = log_level
-    config["master_port"] = get_url(self.ipaddress, self.master_port)
+    config["master_port"] = get_url(self.ip_address, self.master_port)
     config["ports"] = self.create_port_config()
     if self.policy != None:
       config["policy"] = self.policy
+    config["ip_address"] = self.ip_address
     return config
   
   def add_additional_config(self, config):
@@ -184,7 +180,7 @@ class BlockHandler(object):
     self.add_additional_config(config)
     socket = self.context.socket(zmq.REQ)
     message = json.dumps(("ADD NODE", config))
-    socket.connect(get_url(self.ipaddress, 5000))
+    socket.connect(get_url(self.ip_address, 5000))
     socket.send(message)
     logger.info("waiting for caretaker to load " + self.name)
     res = json.loads(socket.recv())
@@ -200,7 +196,7 @@ class BlockHandler(object):
     pass
     
   def sync(self):
-    url = get_url(self.ipaddress, self.master_port)
+    url = get_url(self.ip_address, self.master_port)
     syncclient = self.context.socket(zmq.REQ)
     syncclient.connect(url)
     logger.info("syncing with block %s at url %s" % (self.name, url))
@@ -246,7 +242,7 @@ class BlockHandler(object):
     port = self.master_port
     message = json.dumps(("POLL", {}))
     socket = self.context.socket(zmq.REQ)
-    socket.connect(get_url(self.ipaddress, port))
+    socket.connect(get_url(self.ip_address, port))
     socket.send(message)
     load = timed_recv(socket, POLL_TIMEOUT_MS)
     socket.close()
@@ -291,7 +287,7 @@ class RPCHandler(BlockHandler):
     self.context = context
     self.address_manager = address_manager
     #TODO: we don't really need it, but put master node's ip in it
-    self.ipaddress = "127.0.0.1"
+    self.ip_address = "127.0.0.1"
     self.master_port = address_manager.get_master_port()
     self.policy = policy
     self.version = block_record["version"] if block_record.has_key("version") \
@@ -337,7 +333,7 @@ class DynamicJoinHandler(BlockHandler):
     self.join_port = address_manager.new_port()
   
   def join_url(self):
-    return get_url(self.ipaddress, self.join_port)
+    return get_url(self.ip_address, self.join_port)
     
   def add_subscriber(self):
     self.subscribers += 1
@@ -559,24 +555,24 @@ class GroupHandler(BlockHandler):
 class AddressManager(object):
   def __init__(self, ipaddress_list):
     self.master_port = 6500
-    self.ipaddress_hash = {}
+    self.ip_address_hash = {}
     self.port_num_gen = PortNumberGenerator()
     for ip in ipaddress_list:
-      self.ipaddress_hash[ip] = 0
+      self.ip_address_hash[ip] = 0
   
   def get_master_port(self):
     self.master_port += 2
     return self.master_port
 
   def get_all_ipaddresses(self):
-    return self.ipaddress_hash.keys()
+    return self.ip_address_hash.keys()
   
   #if selected_ipaddress is None, return a new ipaddress
   #otherwise if selected_ipaddress exists in the list, return that otherwise raise error
   def get_ipaddress(self, selected_ipaddress):
     if selected_ipaddress == None:
       return self.select_ipaddress()
-    elif self.ipaddress_hash.has_key(selected_ipaddress):
+    elif self.ip_address_hash.has_key(selected_ipaddress):
       return selected_ipaddress
     else:
       logger.error("No ipaddress ", selected_ipaddress)
@@ -584,13 +580,13 @@ class AddressManager(object):
   
   def select_ipaddress(self):
     #select the node which has the least number of running blocks
-    ips = self.ipaddress_hash.items()
+    ips = self.ip_address_hash.items()
     min_ip = (ips[0][0], ips[0][1])
     for k, v in ips:
       if min_ip[1] > v:
         min_ip = (k, v)
     #increment the blocks on this one
-    self.ipaddress_hash[min_ip[0]] = min_ip[1] + 1
+    self.ip_address_hash[min_ip[0]] = min_ip[1] + 1
     return min_ip[0]
   
   def new_port(self):

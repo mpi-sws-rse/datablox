@@ -139,7 +139,7 @@ class BlockUtils(object):
       return node_ipaddress
     
   @staticmethod
-  def generate_url_for_path(path):
+  def generate_url_for_path(path, block_ip=None):
     path = path.encode('utf-8')
     with open(file_server_keypath, 'r') as f:
       deskey = f.read()
@@ -150,7 +150,11 @@ class BlockUtils(object):
     path = padding + path
     enc_path = obj.encrypt(path)
     url_path = urllib.quote(enc_path)
-    return "http://" + BlockUtils.get_ipaddress() + ":4990/?key=" + url_path
+    if block_ip:
+      ip = block_ip
+    else:
+      ip = BlockUtils.get_ipaddress()
+    return "http://" + ip + ":4990/?key=" + url_path
   
   @staticmethod
   def fetch_local_file(enc_path):
@@ -164,9 +168,14 @@ class BlockUtils(object):
       return f.read()
     
   @staticmethod
-  def fetch_file_at_url(url):
+  def fetch_file_at_url(url, block_ip_address):
+    """Fetch a file from the fileserver at the specified url. Try to do it
+    by a local read if possible. The block_ip_address parameter is used to help
+    determine locality.
+    """
     p = urlparse(url)
-    if p.hostname == BlockUtils.get_ipaddress():
+    if (p.hostname == BlockUtils.get_ipaddress()) or \
+       (p.hostname == block_ip_address):
       url_enc_path = p.query[len("key="):].encode('ascii')
       enc_path = urllib.unquote(url_enc_path)
       return BlockUtils.fetch_local_file(enc_path)

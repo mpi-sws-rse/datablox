@@ -14,7 +14,7 @@ class store(Block):
     #str doesn't give enough digits
     name = time.time().__repr__()
     path = os.path.join(self.store_dir, name)
-    chunk = BlockUtils.fetch_file_at_url(chunk_url)
+    chunk = BlockUtils.fetch_file_at_url(chunk_url, self.ip_address)
     with open(path, 'w') as f:
       f.write(chunk)
     return name
@@ -22,7 +22,7 @@ class store(Block):
   def do_restore(self, chunk_id):
     path = os.path.join(self.store_dir, chunk_id)
     if os.path.exists(path):
-      return BlockUtils.generate_url_for_path(path)
+      return BlockUtils.generate_url_for_path(path, self.ip_address)
     else:
       self.log(WARN, "could not find chunk with id: %r" % chunk_id)
       return ''

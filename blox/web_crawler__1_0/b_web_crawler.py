@@ -83,7 +83,9 @@ class web_crawler(Block):
     return log
     
   def add_url(self, log, iurl, path, asset_of):
-    row = {"internet_url": iurl, "url": BlockUtils.generate_url_for_path(path),
+    row = {"internet_url": iurl,
+           "url": BlockUtils.generate_url_for_path(path,
+                                                   self.ip_address),
            "asset_of": asset_of}
     log.append_row(row)
     

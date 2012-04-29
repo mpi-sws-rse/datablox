@@ -67,7 +67,7 @@ class solr_index(Block):
       self.add_pending_entries()
     for path, url in log.iter_fields("path", "url"):
       self.url_timer.start_timer()
-      contents = BlockUtils.fetch_file_at_url(url)
+      contents = BlockUtils.fetch_file_at_url(url, self.ip_address)
       self.url_timer.stop_timer()
       contents = contents.decode('utf-8', 'ignore')
       entry = {"path": path,

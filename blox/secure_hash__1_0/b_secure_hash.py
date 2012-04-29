@@ -15,7 +15,8 @@ class secure_hash(Block):
 
   def get_hashes(self, log):
     data_urls = log["url"]
-    hash_list = [self.hash(BlockUtils.fetch_file_at_url(u)) for u in data_urls]
+    hash_list = [self.hash(BlockUtils.fetch_file_at_url(u, self.ip_address))
+                 for u in data_urls]
     return hash_list
     
   def recv_push(self, port, log):

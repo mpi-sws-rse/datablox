@@ -59,6 +59,7 @@ def start(blox_dir, configuration_file_name, log_dir):
   
   inst = block_class(config["master_port"])
   inst.id = config["id"]
+  inst.ip_address = config["ip_address"]
   inst.log_level = config["log_level"]
   # intialize logging
   inst.initialize_logging(log_directory=log_dir)

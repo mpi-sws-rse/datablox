@@ -11,7 +11,8 @@ class file_data_reader(Block):
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["url", "data"])
 
   def get_data(self, log):
-    return [base64.b64encode(BlockUtils.fetch_file_at_url(u)) for u in log["url"]]
+    return [base64.b64encode(BlockUtils.fetch_file_at_url(u, self.ip_address))
+            for u in log["url"]]
     
   def recv_push(self, port, log):
     if log.log.has_key("token"):

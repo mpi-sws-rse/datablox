@@ -85,13 +85,14 @@ class bookmark_query(Block):
       for aurl, fp in asset_pairs:
         assets[aurl] = fp
       local_url = assets[url]
-      html = BlockUtils.fetch_file_at_url(self.fetch_store(local_url))
+      html = BlockUtils.fetch_file_at_url(self.fetch_store(local_url),
+                                          self.ip_address)
       html = self.rewrite_links(url, html, assets)
       name = 'bookmark_restored'
       with open(name, 'w') as f:
         f.write(html)
       path = os.path.join(os.getcwd(), name)
-      return BlockUtils.generate_url_for_path(path)
+      return BlockUtils.generate_url_for_path(path, self.ip_address)
     except KeyError:
       self.log(WARN, "could not restore file: %r" % url)
       return ''
