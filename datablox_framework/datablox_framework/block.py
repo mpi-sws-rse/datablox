@@ -14,6 +14,9 @@ from Crypto.Cipher import DES
 
 from fileserver import file_server_keypath
 
+# cache the key here so that we avoid having to read the keyfile for each file
+GENERATE_URL_FILE_SERVER_KEY=None
+
 class Log(object):
   def __init__(self):
     self.log = {}
@@ -140,10 +143,12 @@ class BlockUtils(object):
     
   @staticmethod
   def generate_url_for_path(path, block_ip=None):
+    global GENERATE_URL_FILE_SERVER_KEY
     path = path.encode('utf-8')
-    with open(file_server_keypath, 'r') as f:
-      deskey = f.read()
-    obj = DES.new(deskey, DES.MODE_ECB)
+    if GENERATE_URL_FILE_SERVER_KEY==None:
+      with open(file_server_keypath, 'r') as f:
+        GENERATE_URL_FILE_SERVER_KEY = f.read()
+    obj = DES.new(GENERATE_URL_FILE_SERVER_KEY, DES.MODE_ECB)
     padding = ''
     for i in range(0 if len(path)%8 == 0 else 8 - (len(path)%8)):
       padding += '/'

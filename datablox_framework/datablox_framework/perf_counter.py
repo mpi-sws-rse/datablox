@@ -53,6 +53,37 @@ class PerfCounter(object):
             logger.warn("Timer for performance counter %s.%s not stopped!" %
                         self.block_name, self.counter_name)
         logger.info(self._format_stats())
+
+    @staticmethod
+    def combine_counters(counter_list, block_name=None, counter_name=None):
+        assert len(counter_list)>0
+        if not block_name:
+            block_name = counter_list[0].block_name
+        if not counter_name:
+            counter_name = counter_list[0].counter_name
+        sum_counter = PerfCounter(block_name, counter_name)
+        for c in counter_list:
+            sum_counter.num_events += c.num_events
+            sum_counter.total_duration += c.total_duration
+        return sum_counter
+
+    @staticmethod
+    def average_counters(counter_list, block_name=None, counter_name=None):
+      num_counters = len(counter_list)
+      assert num_counters>0
+      if not block_name:
+        block_name = counter_list[0].block_name
+      if not counter_name:
+        counter_name = counter_list[0].counter_name
+      num_events = 0
+      total_duration = 0.0
+      for c in counter_list:
+        num_events += c.num_events
+        total_duration += c.total_duration
+      sum_counter = PerfCounter(block_name, counter_name)
+      sum_counter.num_events = num_events/num_counters
+      sum_counter.total_duration = total_duration/float(num_counters)
+      return sum_counter
         
 
 import unittest
