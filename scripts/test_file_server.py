@@ -208,7 +208,7 @@ def coordinate_workers(num_workers, key_file, server_ip, file_list_filename):
   print all
   print _format_avg_size(float(total_size)/float(num_workers), num_files,
                          all.total_duration)
-  bw = ((float(total_size)/1000000.0)*float(num_workers))/all.total_duration
+  bw = (float(total_size)/1000000.0)/all.total_duration
   print "Total Bandwidth: %.2f mb/s" % bw
   print "Total errors: %d" % total_errors
   return 0
