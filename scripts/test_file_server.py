@@ -52,6 +52,10 @@ class PerfCounter(object):
         self.num_events += num_events
         self.timer = None
 
+    def abort_timer(self):
+      assert self.timer
+      self.timer = None
+
     def _format_stats(self):
         avg = 0.0 if self.num_events==0 else self.total_duration/float(self.num_events)
         return "perf: %s.%s: events: %d, total duration: %s, avg: %s" % \
@@ -137,20 +141,26 @@ def run_worker(worker_idx, server_ip, q1, q2):
   q1.task_done()
   size = 0
   start_token = q2.get()
-  try:
-    for filename in file_list:
-      url = generate_url_for_path(filename, key_file, server_ip)
-      pc.start_timer()
+  errors = 0
+  for filename in file_list:
+    url = generate_url_for_path(filename, key_file, server_ip)
+    pc.start_timer()
+    try:
       data = fetch_file(url)
+    except:
+      errors += 1
+      pc.abort_timer()
+      data = None
+    if data!=None:
       size += len(data)
       pc.stop_timer()
-  except Exception, e:
-    q1.put((worker_idx, e, None),)
-    raise
-  q1.put((worker_idx, pc, size),)
+  q1.put((worker_idx, pc, size, errors),)
 
 
 def _format_avg_size(total_size, num_files, total_time):
+  if total_size==0 or num_files==0:
+    return "Unable to compute averages: total_size=%d num_files=%d" % \
+           (total_size, num_files)
   avg_size_per_file = float(total_size)/float(num_files)/1000000.0
   time_per_file = total_time/float(num_files)
   time_per_megabyte = total_time/(float(total_size)/1000000.0)
@@ -176,15 +186,16 @@ def coordinate_workers(num_workers, key_file, server_ip, file_list_filename):
   results = []
   total_size = 0
   num_files = None
+  total_errors = 0
   for i in range(num_workers):
-    (worker_num, result, worker_total_size) = q1.get()
-    if isinstance(result, Exception):
-      raise Exception("Worker %d got exception: %r" % (worker_num, result))
-    print "Result for worker %d:\n  %s\n  %s" % \
+    (worker_num, result, worker_total_size, worker_errors) = q1.get()
+    print "Result for worker %d:\n  %s\n  %s\n  %d errors" % \
           (worker_num, result,
            _format_avg_size(worker_total_size, result.num_events,
-                            result.total_duration))
+                            result.total_duration),
+           worker_errors)
     total_size += worker_total_size
+    total_errors += worker_errors
     if num_files:
       assert result.num_events==num_files, \
              "Worker %d saw %d files, which does not agree with previous count of %d"%\
@@ -197,6 +208,9 @@ def coordinate_workers(num_workers, key_file, server_ip, file_list_filename):
   print all
   print _format_avg_size(float(total_size)/float(num_workers), num_files,
                          all.total_duration)
+  bw = ((float(total_size)/1000000.0)*float(num_workers))/all.total_duration
+  print "Total Bandwidth: %.2f mb/s" % bw
+  print "Total errors: %d" % total_errors
   return 0
 
 def generate_file_list(root_dir, file_list_filename):
