@@ -100,11 +100,11 @@ class PerfCounter(object):
       return sum_counter
 
 
-def generate_url_for_path(path, server_ip):
+def generate_url_for_path(path, key_file, server_ip):
   global FILE_SERVER_KEY
   path = path.encode('utf-8')
   if FILE_SERVER_KEY==None:
-    with open(file_server_keypath, 'r') as f:
+    with open(key_file, 'r') as f:
       FILE_SERVER_KEY = f.read()
   obj = DES.new(FILE_SERVER_KEY, DES.MODE_ECB)
   padding = ''
@@ -137,12 +137,16 @@ def run_worker(worker_idx, server_ip, q1, q2):
   q1.task_done()
   size = 0
   start_token = q2.get()
-  for filename in file_list:
-    url = generate_url_for_path(filename, server_ip)
-    pc.start_timer()
-    data = fetch_file(url)
-    size += len(data)
-    pc.stop_timer()
+  try:
+    for filename in file_list:
+      url = generate_url_for_path(filename, key_file, server_ip)
+      pc.start_timer()
+      data = fetch_file(url)
+      size += len(data)
+      pc.stop_timer()
+  except Exception, e:
+    q1.put((worker_idx, e, None),)
+    raise
   q1.put((worker_idx, pc, size),)
 
 
@@ -174,6 +178,8 @@ def coordinate_workers(num_workers, key_file, server_ip, file_list_filename):
   num_files = None
   for i in range(num_workers):
     (worker_num, result, worker_total_size) = q1.get()
+    if isinstance(result, Exception):
+      raise Exception("Worker %d got exception: %r" % (worker_num, result))
     print "Result for worker %d:\n  %s\n  %s" % \
           (worker_num, result,
            _format_avg_size(worker_total_size, result.num_events,
