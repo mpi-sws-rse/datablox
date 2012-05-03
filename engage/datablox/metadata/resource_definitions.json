@@ -92,9 +92,6 @@
           "caretaker_exe": {
             "type":"path", "fixed-value":"${input_ports.python.python_bin_dir}/datablox-caretaker"
           },
-          "fileserver_exe": {
-            "type":"path", "fixed-value":"${input_ports.python.python_bin_dir}/datablox-fileserver"
-          },
           "loader_exe": {
             "type":"path", "fixed-value":"${input_ports.python.python_bin_dir}/datablox-loader"
           }
@@ -194,9 +191,11 @@
           "genforma_home": "path",
           "log_directory": "path"
         },
+        "gunicorn": {
+          "gunicorn_exe": "path"
+        },
         "datablox_framework": {
-          "BLOXPATH": "path",
-          "fileserver_exe": "path"
+          "BLOXPATH": "path"
         }
       },
      "inside": {
@@ -215,7 +214,9 @@
           { "key": {"name":"datablox-framework", "version":"1.0"},
                     "version":{"greater-than-or-equal":""},
             "port_mapping": {"datablox_framework":"datablox_framework"}},
-          {"key":{"name":"datablox-engage-adapter", "version":"1.0"}}
+          {"key":{"name":"datablox-engage-adapter", "version":"1.0"}},
+          {"key":{"name":"gunicorn", "version":{"greater-than-or-equal":"0.14"}},
+           "port_mapping":{"gunicorn":"gunicorn"}}
         ]
     }
   },

@@ -6,6 +6,7 @@
 import sys
 import os
 import os.path
+import random
 ## import commands
 
 # fix path if necessary (if running from source or running as test)
@@ -68,19 +69,33 @@ def make_context(resource_json, sudo_password_fn, dry_run=False):
                   config_dir=unicode,
                   log_file=unicode)
     ctx.check_port('input_ports.datablox_framework',
-                  fileserver_exe=unicode,
                   BLOXPATH=unicode)
+    ctx.check_port('input_ports.gunicorn',
+                  gunicorn_exe=unicode)
     ctx.check_port('input_ports.host',
                    genforma_home=unicode,
                    log_directory=unicode)
 
     # add any extra computed properties here using the ctx.add() method.
+    ctx.add('server_key_file',
+            os.path.join(ctx.props.input_ports.host.genforma_home,
+                         "datablox_file_server_key"))
     return ctx
 
 
 def np(path):
     return os.path.abspath(os.path.expanduser(path))
-    
+
+def gen_random(length, chars=string.letters+string.digits):
+    return ''.join([ random.choice(chars) for i in range(length) ])
+
+@make_action
+def write_key_file(self, path):
+    deskey = gen_random(8)
+    with open(path, 'w') as f:
+        f.write(deskey)
+    os.chmod(path, 0600)
+
 # Now, define the main resource manager class for the driver. If this driver is
 # a service, inherit from service_manager.Manager instead of
 # resource_manager.Manager. If you need the sudo password, add
@@ -103,24 +118,32 @@ class Manager(service_manager.Manager):
 
     def install(self, package):
         p = self.ctx.props
-        self.ctx.r(ensure_dir_exists, p.config_port.config_dir)
+        r = self.ctx.r
+        r(ensure_dir_exists, p.config_port.config_dir)
+        r(write_key_file, p.server_key_file)
+        
 
     def validate_post_install(self):
         pass
 
     def start(self):
         p = self.ctx.props
-        self.ctx.r(start_server,
-                   [p.input_ports.datablox_framework.fileserver_exe,
-                    "--config-dir=%s" % p.config_port.config_dir],
-                    #"--log-dir=%s" % p.input_ports.host.log_directory],
-                   p.config_port.log_file,
-                   p.config_port.pid_file)
+        cmd = [p.input_ports.gunicorn.gunicorn_exe,
+               "--daemon", "--log-file=%s" % p.config_port.log_file,
+               "--pid=%s" % p.config_port.pid_file, "-w", "4",
+               "--bind=%s:%d" % ("0.0.0.0", 4990),
+               "datablox_framework.fileserver_wsgi:app"]
+        self.ctx.r(run_program, cmd,
+                   cwd=os.path.dirname(p.input_ports.gunicorn.gunicorn_exe))
+        self.ctx.check_poll(10, 1.0, lambda x: x!=None,
+                            get_server_status, p.config_port.pid_file)
 
     def stop(self):
         p = self.ctx.props
         self.ctx.r(stop_server,
                    p.config_port.pid_file)
+        self.ctx.check_poll(10, 1.0, lambda x: x!=None,
+                            get_server_status, p.config_port.pid_file)
 
     def is_running(self):
         p = self.ctx.props
