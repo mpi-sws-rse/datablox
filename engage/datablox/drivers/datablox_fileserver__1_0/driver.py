@@ -142,7 +142,7 @@ class Manager(service_manager.Manager):
         p = self.ctx.props
         self.ctx.r(stop_server,
                    p.config_port.pid_file)
-        self.ctx.check_poll(10, 1.0, lambda x: x!=None,
+        self.ctx.check_poll(10, 1.0, lambda x: x==None,
                             get_server_status, p.config_port.pid_file)
 
     def is_running(self):
