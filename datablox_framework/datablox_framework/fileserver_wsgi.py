@@ -30,8 +30,11 @@ BLOCK_SIZE = 128000
 KEY_MESSAGE = "key="
 KEY_MESSAGE_LEN = len(KEY_MESSAGE)
 
-with open(file_server_keypath, "r") as f:
-    deskey = f.read()
+# with open(file_server_keypath, "r") as f:
+#     deskey = f.read()
+deskey = gen_random(8)
+with open(file_server_keypath, 'w') as f:
+  f.write(deskey)
 
 error_headers = [("content-type", "text/plain")]
 
