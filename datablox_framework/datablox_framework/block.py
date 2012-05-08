@@ -136,6 +136,7 @@ class BlockUtils(object):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(('google.com', 0))
         ip = s.getsockname()[0]
+        if ip[:4] == "127.": self.log(WARN, "Could only find local ip-address!")
       node_ipaddress = ip
       return ip
     else:

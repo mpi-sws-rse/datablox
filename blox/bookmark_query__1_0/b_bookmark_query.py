@@ -49,7 +49,6 @@ class bookmark_query(Block):
     assert(len(store_urls)<=1)
     if len(store_urls) == 0:
       raise KeyError
-    self.log(INFO, "got store URLS: " % store_urls)
     return store_urls[0]
     
   def rewrite_links(self, url, html, assets):

@@ -117,7 +117,7 @@ class BlockHandler(object):
     self.args = block_record["args"]
     self.context = context
     self.address_manager = address_manager
-    self.ip_address = address_manager.get_ipaddress(block_record["at"] if block_record.has_key("at") else None)
+    self.ip_address = address_manager.get_ipaddress(block_record.get("at"))
     self.master_port = address_manager.get_master_port()
     self.policy = policy
     self.version = block_record["version"] if block_record.has_key("version") \
