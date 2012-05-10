@@ -42,6 +42,11 @@ if [[ "$rc" != "0" ]]; then
   exit $rc
 fi
 
+if [ -d ~/sw_packages ]; then
+  echo "Copying local packages to deployment home"
+  ln -P -t ~/apps/engage/sw_packages ~/sw_packages/*
+fi
+
 # create a random password
 python -c "import random; import string; print ''.join([random.choice(string.letters+string.digits) for i in range(10)])" >~/pw
 chmod 600 ~/pw

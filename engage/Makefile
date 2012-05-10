@@ -54,7 +54,7 @@ $(PACKAGE_DIR):
 test-packages: $(PACKAGE_DIR)
 	cd $(PACKAGE_DIR); make -f ../makefile.packages.$(PLATFORM) test 
 
-test-deploy: test-packages
+test-deploy: #test-packages
 	@echo "Running test deploy"
 	if [ -f $(TEST_DEPLOY_HOME)/config/installed_resources.json ]; then $(TEST_DEPLOY_HOME)/engage/bin/svcctl stop; fi
 	rm -rf $(TEST_DEPLOY_HOME)

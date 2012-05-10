@@ -13,7 +13,7 @@ import socket
 from Crypto.Cipher import DES
 
 from fileserver import file_server_keypath
-
+logger = logging.getLogger(__name__)
 # cache the key here so that we avoid having to read the keyfile for each file
 GENERATE_URL_FILE_SERVER_KEY=None
 
@@ -124,6 +124,7 @@ class PortNumberGenerator(object):
       return self.port_num
 
 node_ipaddress = None
+successes = 0
 
 class BlockUtils(object):
   @staticmethod
@@ -178,6 +179,7 @@ class BlockUtils(object):
     by a local read if possible. The block_ip_address parameter is used to help
     determine locality.
     """
+    global successes
     p = urlparse(url)
     if (p.hostname == BlockUtils.get_ipaddress()) or \
        (p.hostname == block_ip_address):
@@ -186,7 +188,14 @@ class BlockUtils(object):
       return BlockUtils.fetch_local_file(enc_path)
     else:
       opener = urllib.FancyURLopener({})
-      f = opener.open(url)
+      try:
+        f = opener.open(url)
+      except:
+        logger.error("Problem with opening URL %s" % url)
+        raise
+      successes += 1
+      if (successes % 50)==0:
+        logger.info("Fetched %d files successfully" % successes)
       return f.read()
   
 class Block(threading.Thread):

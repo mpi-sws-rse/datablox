@@ -7,7 +7,7 @@ import base64
 from logging import ERROR, WARN, INFO, DEBUG
 
 # number of messages to process in a solr batch
-BATCH_SIZE = 25
+BATCH_SIZE = 10
 
 class solr_index(Block):
   def on_load(self, config):
@@ -37,6 +37,7 @@ class solr_index(Block):
     self.log(DEBUG, "Connect to indexer successful")
     self.msg_timer = PerfCounter(self.name, "msgs")
     self.url_timer = PerfCounter(self.name, "url")
+    self.bytes_processed = 0
     self.log(INFO, "Solr-index block loaded")
   
   def recv_push(self, port, log):
@@ -70,6 +71,7 @@ class solr_index(Block):
       contents = BlockUtils.fetch_file_at_url(url, self.ip_address)
       self.url_timer.stop_timer()
       contents = contents.decode('utf-8', 'ignore')
+      self.bytes_processed += len(contents)
       entry = {"path": path,
                "name": os.path.split(path)[-1],
                "contents": contents}
@@ -79,6 +81,7 @@ class solr_index(Block):
     self.indexer.commit()
     self.msg_timer.log_final_results(self.logger)
     self.url_timer.log_final_results(self.logger)
+    self.log(INFO, "perf: total bytes processed = %d" % self.bytes_processed)
     
   def recv_query(self, port_name, log):
     if not self.crawler_done:

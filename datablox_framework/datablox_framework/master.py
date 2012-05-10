@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 # The timeout for polling a remote block, in milliseconds.
 # See issue #62 for details.
-POLL_TIMEOUT_MS = 5000
+POLL_TIMEOUT_MS = 10000
 
 block_loads = {}
 block_times = {}
