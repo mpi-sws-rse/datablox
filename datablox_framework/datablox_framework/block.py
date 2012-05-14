@@ -199,6 +199,8 @@ class Block(threading.Thread):
     self.log_level = logging.INFO
     self.logger = None
     self.queue_size = 0
+    #poll file name will be set by load_block
+    self.poll_file_name = None
     self.connection_type = Port.AGNOSTIC
     master_port = Port("master", Port.MASTER, Port.UNNAMED, [])
     master_port.port_url = master_url
@@ -322,12 +324,16 @@ class Block(threading.Thread):
     while self.alive:
       if self.task or self.input_ports.keys() == []:
         self.process_pending_task()
+      
+      #TODO: hardcoded 2
+      if time.time() - self.last_poll_time > 2:
+        #update load values
+        self.update_load()
         
-      socks = dict(self.control_poller.poll(5))
+      socks = dict(self.control_poller.poll(0))
       if socks != None and socks != {}:
         ports_with_data = [p for p in self.input_ports if p.socket in socks and socks[p.socket] == zmq.POLLIN]
-        control_ports = [p for p in ports_with_data if p.port_type == Port.CONTROL]
-      
+              
         #process master instructions if any
         if socks.has_key(self.master_port.socket) and socks[self.master_port.socket] == zmq.POLLIN:
           message = json.loads(self.master_port.socket.recv())
@@ -335,17 +341,9 @@ class Block(threading.Thread):
           self.log_recv(control, message, self.master_port)
           self.process_master(control, data)
       
-        #process control instructions
-        for p in control_ports:
-          message = p.socket.recv()
-          (control, log) = json.loads(message)
-          self.log_recv(control, message, p)
-          assert(control == "CTRL")
-          self.process_control(p, log)
-      
       #no more pending tasks, now deal with data ports
       if self.task == None:
-        socks = dict(self.poller.poll(5))
+        socks = dict(self.poller.poll(10))
         if socks != None and socks != {}:
           ports_with_data = [p for p in self.input_ports if p.socket in socks and socks[p.socket] == zmq.POLLIN]
           push_ports = [p for p in ports_with_data if p.port_type == Port.PUSH]
@@ -385,22 +383,17 @@ class Block(threading.Thread):
 
     return (requests_made, requests_served)
   
-  def respond_poll(self):
+  def update_load(self):
     rm, rs = self.get_load()
     load = json.dumps(("ALIVE", rm, rs, self.total_processing_time))
-    self.log_send("POLL", load, self.master_port)
-    self.master_port.socket.send(load)
+    with open(self.poll_file_name, 'w') as f:
+        f.write(load)
+    self.last_poll_time = time.time()
     
   def process_master(self, control, data):
-    if control == "POLL":
-      self.respond_poll()
-    else:
-      self.log(logging.WARN, " Warning ** could not understand master")
+    assert(False)
+    self.log(logging.WARN, " Warning ** could not understand master")
   
-  def process_control(self, control_data):
-    self.log(logging.ERROR, "Block object %s should not be getting a control message" % (self.id))
-    raise NotImplementedError
-    
   def process_push(self, port, log_data):
     log = Log()
     log.set_log(log_data)
@@ -534,20 +527,11 @@ class Block(threading.Thread):
     
   def report_shutdown(self):
     self.log(logging.INFO, " waiting for master to poll to report shutdown")
-    while True:
-      control_data = json.loads(self.master_port.socket.recv())
-      control, data = control_data
-      if control == "POLL":
-        rm, rs = self.get_load()
-        message = json.dumps(("SHUTDOWN", rm, rs, self.total_processing_time))
-        self.log_send("''", message, self.master_port)
-        self.master_port.socket.send(message)
-        break
-      elif control == "CAN ADD":
-        message = json.dumps((False, {}))
-        self.log_send("''", message, self.master_port)
-        self.master_port.socket.send(message)
-    
+    rm, rs = self.get_load()
+    load = json.dumps(("SHUTDOWN", rm, rs, self.total_processing_time))
+    with open(self.poll_file_name, 'w') as f:
+        f.write(load)
+
   def on_load(self, config):
     raise NotImplementedError
   

@@ -31,9 +31,7 @@ class Shard(Block):
     self.push(port, log)
   
   def process_master(self, control, data):
-    if control == "POLL":
-      self.respond_poll()
-    elif control == "CAN ADD":
+    if control == "CAN ADD":
       res = self.can_add_node()
       if res:
         message = (res, self.config_for_new_node()) 

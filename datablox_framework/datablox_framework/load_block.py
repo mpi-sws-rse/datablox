@@ -40,7 +40,7 @@ def setup_policy(inst, policy):
       raise NameError
 
 
-def start(blox_dir, configuration_file_name, log_dir):
+def start(blox_dir, configuration_file_name, poll_file_name, log_dir):
   global using_engage
   try:
     sys.path.index(blox_dir)
@@ -60,6 +60,7 @@ def start(blox_dir, configuration_file_name, log_dir):
   inst = block_class(config["master_port"])
   inst.id = config["id"]
   inst.ip_address = config["ip_address"]
+  inst.poll_file_name = poll_file_name
   inst.log_level = config["log_level"]
   # intialize logging
   inst.initialize_logging(log_directory=log_dir)
@@ -104,9 +105,10 @@ def start(blox_dir, configuration_file_name, log_dir):
 if __name__ == "__main__":
   blox_dir = sys.argv[1]
   configuration_file_name = sys.argv[2]
-  if len(sys.argv)>3:
-    log_dir=sys.argv[3]
+  poll_file_name = sys.argv[3]
+  if len(sys.argv)>4:
+    log_dir=sys.argv[4]
   else:
     log_dir=None
   
-  start(blox_dir, configuration_file_name, log_dir=log_dir)
+  start(blox_dir, configuration_file_name, poll_file_name, log_dir=log_dir)

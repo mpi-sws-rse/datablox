@@ -2,7 +2,7 @@
     "blocks": [
         {"id": "crawler", 
          "name": "File-Crawler", 
-         "args": {"directory": "~/apps"}},
+         "args": {"directory": "~"}},
         {"id": "categorizer",
          "name": "Filename-Categorizer",
          "args": {}},

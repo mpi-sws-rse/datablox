@@ -179,7 +179,7 @@ class BlockHandler(object):
     config = self.create_basic_config()
     self.add_additional_config(config)
     socket = self.context.socket(zmq.REQ)
-    message = json.dumps(("ADD NODE", config))
+    message = json.dumps(("ADD BLOCK", config))
     socket.connect(get_url(self.ip_address, 5000))
     socket.send(message)
     logger.info("waiting for caretaker to load " + self.name)
@@ -237,18 +237,12 @@ class BlockHandler(object):
     assert(len(t)==1)
     return t[0]
     
-  def poll_load(self):
+  def update_load(self, loads):
     global block_status, block_loads, block_times
-    port = self.master_port
-    message = json.dumps(("POLL", {}))
-    socket = self.context.socket(zmq.REQ)
-    socket.connect(get_url(self.ip_address, port))
-    socket.send(message)
-    load = timed_recv(socket, POLL_TIMEOUT_MS)
-    socket.close()
+    load = loads.get(self.id)
     if load != None:
       self.timeouts = 0
-      status, requests_made, requests_served, processing_time = json.loads(load)
+      status, requests_made, requests_served, processing_time = load
       block_times[self.id] = processing_time
       # print self.id
       # print requests_made
@@ -317,7 +311,7 @@ class RPCHandler(BlockHandler):
     if self.webserver_process:
       self.webserver_process.terminate()
 
-  def poll_load(self):
+  def update_load(self, loads):
     global block_status
     if self.webserver_process.poll() == None:
       logger.info("RPC block is working")
@@ -424,17 +418,17 @@ class ShardHandler(BlockHandler):
       bh.stop()
     BlockHandler.stop(self)
       
-  def poll_load(self):
+  def update_load(self, loads):
     global block_status
     running_blocks = []
     for bh in self.block_handlers:
-      bh.poll_load()
+      bh.update_load(loads)
       if block_status[bh.id] == "alive":
         running_blocks.append(bh)
     if self.join_handler:
-      self.join_handler.poll_load()
+      self.join_handler.update_load(loads)
     if not self.shard_shutdown:
-      BlockHandler.poll_load(self)
+      BlockHandler.update_load(self, loads)
       if block_status[self.id] != "alive":
         self.shard_shutdown = True
     self.block_handlers = running_blocks
@@ -536,15 +530,15 @@ class GroupHandler(BlockHandler):
     for bh in self.block_hash.values():
       bh.stop()
 
-  def poll_load(self):
-    self.poll_all_loads()
+  def update_load(self, loads):
+    self.poll_all_loads(loads)
   
-  def poll_all_loads(self):
+  def poll_all_loads(self, loads):
     global block_status
     block_status[self.id] = "alive"
     running = False
     for bh in self.block_hash.values():
-      bh.poll_load()
+      bh.update_load(loads)
       if block_status[bh.id] == "alive":
         running = True
       else:
@@ -671,13 +665,24 @@ class Master(object):
     with open(config_file) as f:
       return json.load(f)
 
+  def send_all_nodes(self, message):
+    results = []
+    for ip in self.address_manager.get_all_ipaddresses():
+      socket = self.context.socket(zmq.REQ)
+      socket.connect(get_url(ip, 5000))
+      socket.send(message)
+      res = json.loads(socket.recv())
+      results.append(res)
+      socket.close()
+    return results
+    
   def stop_all(self, msg):
     logger.error(msg)
     try:
       self.main_block_handler.stop()
       logger.info("Master: trying to stop all blocks")
-      for ip in self.address_manager.get_all_ipaddresses():
-        self.stop_all_in_node(ip)
+      message = json.dumps(("STOP ALL", {}))
+      self.send_all_nodes(message)
       logger.info("done, quitting")
       # since we are stopping due to an error, don't wait around
       # for other ports - set linger to false.
@@ -688,15 +693,23 @@ class Master(object):
                                               msg=msg)
     sys.exit(1)
 
-  def stop_all_in_node(self, ipaddress):
-    socket = self.context.socket(zmq.REQ)
-    message = json.dumps(("STOP ALL", {}))
-    socket.connect(get_url(ipaddress, 5000))
-    socket.send(message)
-    logger.info("waiting for caretaker at %s to stop all blocks " % ipaddress)
-    res = json.loads(socket.recv())
-    socket.close()
-
+  def poll_all_nodes(self):
+    #each node returns a dict with block id and load status
+    #we want to merge all of them together into one dict
+    #so collect all the items as pairs and then create a final dict
+    load_items = []
+    message = json.dumps(("POLL", {}))
+    dicts = self.send_all_nodes(message)
+    for d in dicts:
+      load_items.extend(d.items())
+    loads = dict(load_items)
+    print loads
+    return loads
+    
+  def report_end(self):
+    message = json.dumps(("END RUN", {}))
+    self.send_all_nodes(message)
+    
   def write_loads(self):
     global block_status, block_loads, block_times
     # print "Block loads", block_loads
@@ -722,8 +735,8 @@ class Master(object):
     duration = time.time() - self.start_time
     #writing the time stamps of the polls in the same dictionary
     self.load_history["times"].append(duration)
-    with open("loads.json", 'w') as f:
-      json.dump(dict([(e[1], e[0]) for e in etas]), f)
+    # with open("loads.json", 'w') as f:
+    #   json.dump(dict([(e[1], e[0]) for e in etas]), f)
 
   def write_final_perfstats(self):
     global block_loads
@@ -765,9 +778,13 @@ class Master(object):
         return True
     
   def run(self):
+    logger.info("Run started")
     try:
       while True:
-        self.main_block_handler.poll_load()
+        #todo: hard coded 4
+        time.sleep(4)
+        loads = self.poll_all_nodes()
+        self.main_block_handler.update_load(loads)
         self.write_loads()
         if not self.running():
           if self.has_timeouts():
@@ -775,9 +792,8 @@ class Master(object):
             self.stop_all("Quitting topology due to remaining blocks timing out")
           else:
             logger.info("Master: no more running nodes, quitting")
+            self.report_end()
           return
-        #todo: hard coded 4
-        time.sleep(4)
     except KeyboardInterrupt:
       self.stop_all("Got a keyboard interrupt") # does not return
       
