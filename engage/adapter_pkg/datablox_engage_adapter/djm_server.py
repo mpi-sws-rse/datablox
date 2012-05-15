@@ -45,6 +45,11 @@ class DjmJob(object):
         # set up the fabric nodes
         env.hosts = [node["name"] for node in self.nodes]
         env.roledefs['workers'] = self.nodes_except_master
+        for node in nodes:
+            env.hostdefs[node["name"]] = "%s@%s" % (node["os_username"],
+                                                    node["contact_address"])
+            logger.debug("Node %s defined as %s" % (node["name"],
+                                                    env.hostdefs[node["name"]]))
         if "master" in env.hosts:
             env.roledefs['master'] = ['master',]
         else:

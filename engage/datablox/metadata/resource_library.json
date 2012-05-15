@@ -84,7 +84,7 @@
     "packages": [
       { "type": "Reference",
         "package_class": "PipLink",
-        "location": "fabric>=1.4"
+        "location": "https://github.com/mpi-sws-rse/fabric/tarball/master"
       }
     ]
   }
