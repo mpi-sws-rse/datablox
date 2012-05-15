@@ -5,6 +5,10 @@ import os.path
 import logging
 import datetime
 
+from fabric.api import *
+from fabric.operations import put
+import fabric.network
+
 from file_locator import FileLocator
 import utils
 from dist_job_mgr.client import get_local_connection
@@ -38,7 +42,13 @@ class DjmJob(object):
             self.nodes_by_name[node["name"]] = node
         self.nodes_except_master = filter(lambda name: name!="master",
                                           [node["name"] for node in self.nodes])
-
+        # set up the fabric nodes
+        env.hosts = [node["name"] for node in self.nodes]
+        env.roledefs['workers'] = self.nodes_except_master
+        if "master" in env.hosts:
+            env.roledefs['master'] = ['master',]
+        else:
+            env.roledefs['master'] = []
 
     def has_node(self, node_name):
         return self.nodes_by_name.has_key(node_name)
@@ -47,12 +57,6 @@ class DjmJob(object):
         return self.nodes_by_name[node_name]
 
     def stop_job(self, successful=True, msg=None):
-        if len(self.nodes_except_master)>0:
-            (s, r) = self.c.run_task_on_node_list(self.job_id, "StopWorker", "stop worker",
-                                                  self.nodes_except_master)
-            if s!=common.TaskStatus.TASK_SUCCESSFUL:
-                logger.warn("Not able to stop DJM worker on all nodes")
-        logger.debug("Stopped DJM workers")
         if successful:
             self.c.stop_job(self.job_id,
                             common.JobStatus.JOB_SUCCESSFUL,
@@ -63,15 +67,25 @@ class DjmJob(object):
                             common.JobStatus.JOB_FAILED,
                             comment=msg)
             logger.debug("Stopped job %s, status=FAILED" % self.job_id)
+        fabric.network.disconnect_all()
 
-def _check_task_status(s, r, msg):
-    if s!=common.TaskStatus.TASK_SUCCESSFUL:
-        bad_nodes = filter(lambda res:
-                           res.status!=common.TaskStatus.TASK_SUCCESSFUL,
-                           r)
-        raise Exception("%s for nodes: %s" %
-                        (msg, ', '.join([r.node_name for r in bad_nodes])))
-        
+
+@task
+@roles("workers")
+def setup_worker_node(reuse_existing_installs):
+    fl = FileLocator()
+    dist_path = fl.get_engage_distribution_file()
+    # todo: don't copy engage if existing install can be reused
+    put(dist_path, "~/" + os.path.basename(dist_path))
+    setup_script = os.path.join(fl.get_sw_packages_dir(), "setup_caretaker.sh")
+    put(setup_script, "~/setup_caretaker.sh")
+    run("chmod 755 ~/setup_caretaker.sh")
+    run("~/setup_caretaker.sh")
+    if reuse_existing_installs:
+        run("~/setup_caretaker.sh --reuse-existing-install")
+    else:
+        run("~/setup_caretaker.sh")
+    
 def start_job_and_get_nodes(node_list, config_file_name, total_nodes=None,
                             reuse_existing_installs=True):
     """Given a node list and optional number of nodes, try to get the
@@ -107,39 +121,7 @@ def start_job_and_get_nodes(node_list, config_file_name, total_nodes=None,
         # for all the non-master nodes, we setup the caretaker
         nodes_except_master = djm_job.nodes_except_master
         if len(nodes_except_master)>0:
-            (s, r) = c.run_task_on_node_list(j, "StartWorker", "start worker",
-                                             nodes_except_master)
-            _check_task_status(s, r, "DJM worker start failed")
-            dist_path = fl.get_engage_distribution_file()
-            logger.info("Copying engage distribution")
-            (s, r) = c.run_task_on_node_list(j, "CopyFiles",
-                                             "Copy engage distribution",
-                                             nodes_except_master,
-                                             dist_path,
-                                             "~/" + os.path.basename(dist_path))
-            _check_task_status(s, r, "Copying of engage distribution failed")
-            (s, r) = c.run_task_on_node_list(j, "CopyFiles",
-                                             "Copy setup script",
-                                             nodes_except_master,
-                                             os.path.join(fl.get_sw_packages_dir(),
-                                                          "setup_caretaker.sh"),
-                                             "~/setup_caretaker.sh")
-            _check_task_status(s, r, "Copy of caretaker setup script failed")
-            (s, r) = c.run_task_on_node_list(j, "Command",
-                                             "Make setup script executable",
-                                             nodes_except_master,
-                                             ["/bin/chmod 755 ~/setup_caretaker.sh"],
-                                             shell=True)
-            _check_task_status(s, r, "chmod of caretaker setup script failed")
-            caretaker_cmd = ["~/setup_caretaker.sh",]
-            if reuse_existing_installs:
-                caretaker_cmd.append("--reuse-existing-install")
-            (s, r) = c.run_task_on_node_list(j, "Command",
-                                             "Setup remote caretaker",
-                                             nodes_except_master,
-                                             caretaker_cmd,
-                                             shell=True)
-            _check_task_status(s, r, "Caretaker setup script failed")
+            execute(setup_worker_node, reuse_existing_installs)
         # make sure the master node has the caretaker running
         if djm_job.has_node("master"):
             utils.run_svcctl(fl, ["start", "all"])

@@ -139,7 +139,7 @@ class Manager(resource_manager.Manager):
         ## if machine_info["public_ip"]!=None:
         ##     cmd.append("--public-ip=%s" % machine_info["public_ip"])
         ## cmd.append("master")
-        cmd = [p.djmctl, "add-master-node", "--debug", "--bootstrap"]
+        cmd = [p.djmctl, "add-master-node", "--debug"]
         r(run_program, cmd, cwd=p.output_ports.djm_server.server_config_dir)
                    
 
