@@ -343,7 +343,7 @@ class Block(threading.Thread):
       
       #no more pending tasks, now deal with data ports
       if self.task == None:
-        socks = dict(self.poller.poll(10))
+        socks = dict(self.poller.poll(500))
         if socks != None and socks != {}:
           ports_with_data = [p for p in self.input_ports if p.socket in socks and socks[p.socket] == zmq.POLLIN]
           push_ports = [p for p in ports_with_data if p.port_type == Port.PUSH]
@@ -384,11 +384,11 @@ class Block(threading.Thread):
     return (requests_made, requests_served)
   
   def update_load(self):
+    self.last_poll_time = time.time()  
     rm, rs = self.get_load()
-    load = json.dumps(("ALIVE", rm, rs, self.total_processing_time))
+    load = json.dumps(("ALIVE", rm, rs, self.total_processing_time, self.last_poll_time))
     with open(self.poll_file_name, 'w') as f:
         f.write(load)
-    self.last_poll_time = time.time()
     
   def process_master(self, control, data):
     assert(False)
@@ -527,8 +527,9 @@ class Block(threading.Thread):
     
   def report_shutdown(self):
     self.log(logging.INFO, " waiting for master to poll to report shutdown")
+    self.last_poll_time = time.time()
     rm, rs = self.get_load()
-    load = json.dumps(("SHUTDOWN", rm, rs, self.total_processing_time))
+    load = json.dumps(("SHUTDOWN", rm, rs, self.total_processing_time, self.last_poll_time))
     with open(self.poll_file_name, 'w') as f:
         f.write(load)
 

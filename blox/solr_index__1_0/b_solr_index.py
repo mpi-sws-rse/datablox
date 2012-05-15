@@ -7,7 +7,7 @@ import base64
 from logging import ERROR, WARN, INFO, DEBUG
 
 # number of messages to process in a solr batch
-BATCH_SIZE = 25
+BATCH_SIZE = 250
 
 class solr_index(Block):
   def on_load(self, config):

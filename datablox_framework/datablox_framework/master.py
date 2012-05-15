@@ -126,6 +126,7 @@ class BlockHandler(object):
     self.ports = {}
     self.last_load = 0
     self.timeouts = 0
+    self.last_poll_time = 0
     block_loads[self.id] = {}
     block_status[self.id] = "startup"
     block_times[self.id] = 0
@@ -240,9 +241,11 @@ class BlockHandler(object):
   def update_load(self, loads):
     global block_status, block_loads, block_times
     load = loads.get(self.id)
-    if load != None:
+    #we should get a fresh entry
+    if load != None and load[4] != self.last_poll_time:
       self.timeouts = 0
-      status, requests_made, requests_served, processing_time = load
+      status, requests_made, requests_served, processing_time, last_poll_time = load
+      self.last_poll_time = last_poll_time
       block_times[self.id] = processing_time
       # print self.id
       # print requests_made
