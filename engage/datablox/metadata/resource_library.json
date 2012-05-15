@@ -78,5 +78,14 @@
         "location": "BeautifulSoup"
       }
     ]
+  },
+  { "key":{"name":"fabric", "version":"1.4"},
+    "mgr_module_name":"engage.drivers.genforma.pip",
+    "packages": [
+      { "type": "Reference",
+        "package_class": "PipLink",
+        "location": "fabric>=1.4"
+      }
+    ]
   }
 ]
