@@ -679,9 +679,7 @@ class Master(object):
       for ip in self.address_manager.get_all_ipaddresses():
         self.stop_all_in_node(ip)
       logger.info("done, quitting")
-      # since we are stopping due to an error, don't wait around
-      # for other ports - set linger to false.
-      self.context.destroy(linger=0)
+      self.context.destroy()
     finally:
       if using_engage:
         self.address_manager.djm_job.stop_job(successful=False,
