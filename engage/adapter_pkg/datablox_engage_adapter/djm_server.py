@@ -76,6 +76,7 @@ class DjmJob(object):
 
 
 @task
+@parallel
 @roles("workers")
 def setup_worker_node(reuse_existing_installs):
     fl = FileLocator()

@@ -38,8 +38,17 @@ class solr_index(Block):
     self.msg_timer = PerfCounter(self.name, "msgs")
     self.url_timer = PerfCounter(self.name, "url")
     self.bytes_processed = 0
+    self.errors = 0
     self.log(INFO, "Solr-index block loaded")
   
+  def _commit(self):
+    try:
+      self.indexer.commit()
+    except Exception, e:
+      self.logger.exception("Indexer commit failed with exception %s" % e)
+      self.errors += 1 # we don't really know how many documents this will affect
+      raise
+
   def recv_push(self, port, log):
     self.msg_timer.start_timer()
     if log.log.has_key("token"):
@@ -48,10 +57,14 @@ class solr_index(Block):
       if self.num_tokens == 0:
         self.crawler_done = True
         self.add_pending_entries()
-        self.indexer.commit()
+        self._commit()
         self.process_outstanding_queries()
     else: 
-      self.index_entries(log)
+      try:
+        self.index_entries(log)
+      except Exception, e:
+        self.logger.exception("index_entries failed: %s" % e)
+        self.errors += log.num_rows()
     self.msg_timer.stop_timer(log.num_rows())
   
   def add_pending_entries(self):
@@ -60,7 +73,7 @@ class solr_index(Block):
       self.indexer.add(self.pending_entries)
     except Exception, e:
         self.log(ERROR, "Failed to add doc due to: %r" % (e))
-        #raise
+        self.errors += 1
     self.pending_entries = []
     
   def index_entries(self, log):
@@ -78,10 +91,11 @@ class solr_index(Block):
       self.pending_entries.append(entry)
 
   def on_shutdown(self):
-    self.indexer.commit()
+    self._commit()
     self.msg_timer.log_final_results(self.logger)
     self.url_timer.log_final_results(self.logger)
     self.log(INFO, "perf: total bytes processed = %d" % self.bytes_processed)
+    self.log(INFO, "Total errors: %d" % self.errors)
     
   def recv_query(self, port_name, log):
     if not self.crawler_done:

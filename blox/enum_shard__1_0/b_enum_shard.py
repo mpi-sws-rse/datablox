@@ -8,6 +8,7 @@ import sys
 import os.path
 from logging import ERROR, WARN, INFO, DEBUG
 import time
+import random
 from collections import defaultdict
 
 try:
@@ -46,6 +47,7 @@ class enum_shard(Shard):
     self.add_port("input", Port.PUSH, Port.UNNAMED, [])
     self.add_port("input_query", Port.QUERY, Port.UNNAMED, [])
     self.field_to_node_mapping = {}
+    self.msg_counts = []
     for i in range(config["nodes"]):
       node_info = config["node_type"]["args"][i]
       if not node_info.has_key("shard_field_value"):
@@ -55,6 +57,7 @@ class enum_shard(Shard):
         raise EnumShardError("Shard has multiple nodes defined for field value %s" %
                              v)
       self.field_to_node_mapping[v] = i
+      self.message_counts.append(0)
     self.log(INFO, "field to node mapping: %r" % self.field_to_node_mapping)
     self.log(INFO, "Enum shard loaded")
   
@@ -75,6 +78,7 @@ class enum_shard(Shard):
       try:
         p = self.find_node_num(row)
         logs[p].append_row(row)
+        self.message_counts[p] += 1
       except KeyError:
         #this row does not have shard field - send it to all ports
         #useful for sending tokens
@@ -85,16 +89,19 @@ class enum_shard(Shard):
         nl.append_row(row)
         for i in range(self.nodes):
           self.push_node(i, nl)
+          self.message_counts[i] += 1
       except ValueNotInEnum, e:
-        #this row's shard field value not in enum- send it to all ports
+        #this row's shard field value not in enum- send it to a random port
         #first flush all the pending logs, because this doesn't have the same names
         self.flush_logs(logs)
         logs = defaultdict(Log)
-        self.log(WARN,"%s, sending to all ports" % e)
+        dest_node = random.randint(0, self.nodes-1)
+        self.log(WARN,"%s, sending to a random node (%d)" %
+                 (e, dest_node))
         nl = Log()
         nl.append_row(row)
-        for i in range(self.nodes):
-          self.push_node(i, nl)
+        self.push_node(dest_node, nl)
+        self.message_counts[dest_node] += 1
     self.flush_logs(logs)
       
   def recv_push(self, port, log):
@@ -109,3 +116,9 @@ class enum_shard(Shard):
     ret = Log()
     ret.log["result"] = True
     self.return_query_res(port, ret)
+
+  def on_shutdown(self):
+    self.log(INFO, "Total messages processed: %d" % sum(self.message_counts))
+    for i in range(self.config["nodes"]):
+      self.log(INFO, "  Node %d: %d messages sent" %
+               (i, self.message_counts[i]))
