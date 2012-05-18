@@ -706,7 +706,7 @@ class Master(object):
     for d in dicts:
       load_items.extend(d.items())
     loads = dict(load_items)
-    print loads
+    # print loads
     return loads
     
   def report_end(self):
