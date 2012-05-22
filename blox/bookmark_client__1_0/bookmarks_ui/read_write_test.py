@@ -52,4 +52,5 @@ for url in urls:
 print "Done"
 print "Average list time:", sum(list_times)/len(list_times)
 print "Average fetch time:", sum(fetch_times)/len(fetch_times)
+proxy.shutdown()
 sys.exit(0)

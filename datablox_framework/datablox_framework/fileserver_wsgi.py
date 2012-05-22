@@ -8,6 +8,8 @@ import urlparse
 import sys
 import logging
 from Crypto.Cipher import DES
+from random import choice, randint
+import string
 
 logger = logging.getLogger("gunicorn.error")
 
@@ -30,8 +32,14 @@ BLOCK_SIZE = 128000
 KEY_MESSAGE = "key="
 KEY_MESSAGE_LEN = len(KEY_MESSAGE)
 
-with open(file_server_keypath, "r") as f:
-    deskey = f.read()
+def gen_random(length, chars=string.letters+string.digits):
+    return ''.join([ choice(chars) for i in range(length) ])
+
+# with open(file_server_keypath, "r") as f:
+#     deskey = f.read()
+deskey = gen_random(8)
+with open(file_server_keypath, 'w') as f:
+  f.write(deskey)
 
 error_headers = [("content-type", "text/plain")]
 
