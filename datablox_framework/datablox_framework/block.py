@@ -25,7 +25,7 @@ class Log(object):
     self.log = log
   
   def __str__(self):
-    return self.log.__str__()
+    return "Log: " + self.log.__str__()
     
   def append_field(self, key, values):
     self.log[key] = values
@@ -208,6 +208,7 @@ class Block(threading.Thread):
     self.ports = [master_port]
     self.output_ports = {}
     self.input_ports = {}
+    self.pending_query_res_ports = {}
     self.context = None
     #we have a different poller for control requests because the regular poller might get
     #filled with requests from other blocks and these requests might get behind
@@ -260,6 +261,17 @@ class Block(threading.Thread):
                  "has a port %s, url %d none" % (p.name, p.url))
         raise NameError
       self.poller.register(p.socket, zmq.POLLIN)
+    
+    #Listen to output QUERY ports for async QUERY calls
+    for p in self.output_ports:
+      if p.port_type == Port.QUERY:
+        socket = self.get_one(p.sockets)
+        if socket == None:
+          self.log(logging.DEBUG,
+                   "has a port %s, url %d none" % (p.name, p.url))
+          raise NameError
+        self.log(logging.INFO, "Registering QUERY port: %s" % p.name)
+        self.poller.register(socket, zmq.POLLIN)
     
   def ready_master_port(self):
     self.bind_rep_port(self.master_port)
@@ -345,9 +357,15 @@ class Block(threading.Thread):
       if self.task == None:
         socks = dict(self.poller.poll(500))
         if socks != None and socks != {}:
-          ports_with_data = [p for p in self.input_ports if p.socket in socks and socks[p.socket] == zmq.POLLIN]
+          input_ports_with_data = [p for p in self.input_ports if p.socket in socks and socks[p.socket] == zmq.POLLIN]
+          output_ports_with_data = [p for p in self.output_ports if self.get_one(p.sockets) in socks and socks[self.get_one(p.sockets)] == zmq.POLLIN]
+          ports_with_data = input_ports_with_data + output_ports_with_data
+          # port_names = [p.name for p in ports_with_data]
+          # if len(ports_with_data) > 0:
+          #   self.log(logging.INFO, "Got data from ports: %r" % port_names)
           push_ports = [p for p in ports_with_data if p.port_type == Port.PUSH]
-          query_ports = [p for p in ports_with_data if p.port_type == Port.QUERY]
+          query_input_ports = [p for p in ports_with_data if p.port_type == Port.QUERY and p in self.input_ports]
+          query_output_ports = [p for p in ports_with_data if p.port_type == Port.QUERY and p in self.output_ports]
       
           for p in push_ports:
             message = p.socket.recv()
@@ -363,7 +381,7 @@ class Block(threading.Thread):
               self.process_buffered_push(p, log)
             else:
               self.process_push(p, log)
-          for p in query_ports:
+          for p in query_input_ports:
             message = p.socket.recv()
             (control, log) = json.loads(message)
             self.log_recv(control, message, p)
@@ -371,6 +389,10 @@ class Block(threading.Thread):
               self.process_stop(p, log)
             else:
               self.process_query(p, log)
+          #there is no control message for QUERY results
+          for p in query_output_ports:
+            log = self.get_one(p.sockets).recv()
+            self.process_query_res(p, log)
   
   def get_load(self):
     requests_made = defaultdict(int)
@@ -437,6 +459,18 @@ class Block(threading.Thread):
     else:
       port.requests += requests
   
+  def process_query_res(self, port, log_data):
+    e = time.time()
+    log = Log()
+    log.set_log(log_data)
+    #are we timing this?
+    #port.start_time is set in query
+    if self.pending_query_res_ports[port]:
+      self.total_processing_time += (e - port.start_time)
+    #remove this from pending ports
+    del self.pending_query_res_ports[port]
+    self.recv_query_result(port.name, log)
+    
   def no_incoming(self):
     for subscribers in self.input_ports.values():
       if subscribers != 0:
@@ -498,6 +532,20 @@ class Block(threading.Thread):
     a data source).
     """
     raise NotImplementedError
+  
+  #TODO: doing this in a blocking fashion for now, can do it asynchronously
+  def get_pending_query_results(self):
+    if self.pending_query_res_ports.keys() != []:
+      self.log(logging.INFO, "Waiting for pending query results to shutdown")
+    else:
+      self.log(logging.INFO, "No pending query results, ready to shutdown")
+
+    #process_query_res might end up adding more pending queries, so deal with them all
+    while(self.pending_query_res_ports.keys() != []):
+      p = self.pending_query_res_ports.keys()[0]
+      socket = self.get_one(p.sockets)
+      log = json.loads(socket.recv())
+      self.process_query_res(p, log)
     
   def on_shutdown(self):
     """Note that this is not called for crawler blocks.
@@ -506,7 +554,7 @@ class Block(threading.Thread):
 
   def shutdown(self):
     self.flush_ports()
-    
+    self.get_pending_query_results()    
     for p in self.output_ports.keys():
       self.send("END", (self.id, p.name), p)
     self.alive = False
@@ -548,6 +596,7 @@ class Block(threading.Thread):
   def recv_query(self, port, log):
     raise NotImplementedError
 
+  #This is overridden by individual blocks and by shard class
   def recv_query_result(self, port, log):
     raise NotImplementedError
   
@@ -561,7 +610,7 @@ class Block(threading.Thread):
       print [p.name for p in self.ports]
       self.log(logging.ERROR,
                "could not find port with name: " + port_name)
-      raise NameError
+      raise Exception("could not find port with name: " + port_name)
     
     return port
 
@@ -595,17 +644,31 @@ class Block(threading.Thread):
     self.buffered_pushes[port_name] = []
     self.current_buffer_size[port_name] = 0
   
-  #query is blocking for now
-  def query(self, port_name, log):
+  #query is blocking if async is set to False
+  #add_time adds the time taken to run the query to this block's time
+  #this is used mainly by the shards
+  def query(self, port_name, log, async=False, add_time=False):
     port = self.find_port(port_name)
+    if port.port_type != Port.QUERY:
+      raise Exception("query did not get a QUERY port")
     port.requests += log.num_rows()
     self.send("QUERY", log.log, port)
-    res = self.get_one(port.sockets).recv()
-    log_data = json.loads(res)
-    log = Log()
-    log.set_log(log_data)
-    self.log_recv("QUERY response", res, port)
-    return log
+    port.start_time = time.time()
+    if not async:
+      res = self.get_one(port.sockets).recv()
+      e = time.time()
+      if add_time:
+        self.total_processing_time += (e - port.start_time)
+      log_data = json.loads(res)
+      log = Log()
+      log.set_log(log_data)
+      self.log_recv("QUERY response", res, port)
+      return log
+    else:
+      if self.pending_query_res_ports.has_key(port):
+        raise Exception("A query is already pending on this port")
+      self.pending_query_res_ports[port] = add_time
+      return None
   
   def return_query_res(self, port_name, log):
     port = self.find_port(port_name)

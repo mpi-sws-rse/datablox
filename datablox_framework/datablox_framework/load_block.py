@@ -75,20 +75,21 @@ def start(blox_dir, configuration_file_name, poll_file_name, log_dir):
     if is_shard(config["name"]):
       num_blocks = config["num_blocks"]
       inst.num_nodes = num_blocks
+      port_type = Port.PUSH if config["port_type"] == "PUSH" else Port.QUERY
       for i in range(num_blocks):
         output_port = "output"+str(i)
-        inst.add_port(output_port, Port.PUSH, Port.UNNAMED, [])
+        inst.add_port(output_port, port_type, Port.UNNAMED, [])
 
     for (port_name, port_config) in config["ports"].items():
-      port_type, port_nums = port_config[0], port_config[1:]
+      port_outlet, port_nums = port_config[0], port_config[1:]
       #TODO: loop does extra work, rewrite this
       for port_num in port_nums:
-        if port_type == "output":
+        if port_outlet == "output":
           inst.add_output_connection(port_name, port_num)
-        elif port_type == "input":
+        elif port_outlet == "input":
           inst.add_input_connection(port_name, port_num)
         else:
-          print "Unknown port type " + port_type
+          print "Unknown port outlet " + port_outlet
           raise NameError
 
     #for dynamic join

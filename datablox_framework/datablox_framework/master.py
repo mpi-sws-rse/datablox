@@ -278,25 +278,11 @@ class BlockHandler(object):
 class RPCHandler(BlockHandler):
   def __init__(self, block_record, address_manager, context, policy=None):
     global block_status, block_loads
-    self.id = block_record["id"]
-    self.name = block_record["name"]
-    self.args = block_record["args"]
-    self.context = context
-    self.address_manager = address_manager
+    BlockHandler.__init__(self, block_record, address_manager, context, policy)
     #TODO: we don't really need it, but put master node's ip in it
     self.ip_address = "127.0.0.1"
-    self.master_port = address_manager.get_master_port()
-    self.policy = policy
-    self.version = block_record["version"] if block_record.has_key("version") \
-                                   else naming.DEFAULT_VERSION
-    self.connections = {}
-    self.ports = {}
-    self.last_load = 0
-    self.timeouts = 0
-    block_loads[self.id] = {}
-    block_status[self.id] = "startup"
-    block_times[self.id] = 0
     self.webserver_process = None
+    self.webserver_poll_file = "webservice_poll.json"
   
   def start(self):
     connections_file_name = "connections"
@@ -314,14 +300,27 @@ class RPCHandler(BlockHandler):
     if self.webserver_process:
       self.webserver_process.terminate()
 
+  #the webservice does update its loads, but it only updates them on new requests
   def update_load(self, loads):
-    global block_status
+    alive = True
     if self.webserver_process.poll() == None:
       logger.info("RPC block is working")
-      block_status[self.id] = "alive"
     else:
       logger.info("RPC block has shutdown")
-      block_status[self.id] = "shutdown"
+      alive = False
+    try:
+      with open(self.webserver_poll_file, 'r') as f:
+        load = json.loads(f.read())
+    except IOError:
+      print "Could not find web service file"
+      load = ["ALIVE", {}, {}, 0, 0]
+    if alive:
+      load[0] = "ALIVE"
+    else:
+      load[0] = "SHUTDOWN"
+    load[4] = time.time()
+    loads[self.id] = load
+    BlockHandler.update_load(self, loads)
   
 class DynamicJoinHandler(BlockHandler):
   def __init__(self, block_record, address_manager, context, policy=None):
@@ -406,6 +405,7 @@ class ShardHandler(BlockHandler):
   #called before start by superclass BlockHandler
   def add_additional_config(self, config):
     config["num_blocks"] = len(self.initial_configs)
+    config["port_type"] = self.node_type["port_type"]
 
   def start(self):
     res = True
