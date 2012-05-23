@@ -31,4 +31,4 @@ for url in urls:
 
 duration = time.time() - start
 print "Total adding time: ", duration
-proxy.shutdown()
+# proxy.shutdown()

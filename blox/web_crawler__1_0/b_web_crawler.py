@@ -15,6 +15,7 @@ class web_crawler(Block):
   def on_load(self, config):
     self.config = config
     self.add_port("input", Port.PUSH, Port.UNNAMED, ["internet_url"])
+    self.add_port("input_query", Port.QUERY, Port.UNNAMED, ["internet_url"])
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["internet_url", "url"])
     self.add_port("can_delete", Port.PUSH, Port.UNNAMED, ["internet_url"])
     #mapping of urls downloaded to the local paths
@@ -88,32 +89,52 @@ class web_crawler(Block):
                                                    self.ip_address),
            "asset_of": asset_of}
     log.append_row(row)
+
+  def process_download(self, log):
+    for url in log.log["internet_url"]:
+      log = self.new_log()
+      self.log(INFO, "got url: %r" % url)
+      try:
+        path = self.download_url(url)
+        self.add_url(log, url, path, url)
+      except Exception as e:
+        self.log(WARN, "could not download main url %r" % url)
+        self.log(WARN, "Exception is %r" % e)
+        return
+      related_urls = self.get_related_urls(url, path)
+      for i, rurl in enumerate(related_urls):
+        try:
+          path = self.download_url(rurl)
+          self.add_url(log, rurl, path, url)
+          #yield after every 2 seconds
+          if time.time() - self.last_poll_time > 2:
+            yield
+        except Exception as e:
+          self.log(WARN, "could not download url %r" % rurl)
+          self.log(WARN, "Exception is %r" % e)
+          continue
+      self.push("output", log)
     
   def recv_push(self, port, log):
     if port == "input":
-      for url in log.log["internet_url"]:
-        log = self.new_log()
-        self.log(INFO, "got url: %r" % url)
-        try:
-          path = self.download_url(url)
-          self.add_url(log, url, path, url)
-        except Exception as e:
-          self.log(WARN, "could not download main url %r" % url)
-          self.log(WARN, "Exception is %r" % e)
-          return
-        related_urls = self.get_related_urls(url, path)
-        for i, rurl in enumerate(related_urls):
-          try:
-            path = self.download_url(rurl)
-            self.add_url(log, rurl, path, url)
-            #yield after every 2 seconds
-            if time.time() - self.last_poll_time > 2:
-              yield
-          except Exception as e:
-            self.log(WARN, "could not download url %r" % rurl)
-            self.log(WARN, "Exception is %r" % e)
-            continue
-        self.push("output", log)
+      gen = self.process_download(log)
+      if gen != None:
+        for g in gen:
+          yield
     elif port == "can_delete":
       for url in log.log["internet_url"]:
         self.delete_url(url)
+
+  def recv_query(self, port, log):
+    if port == "input_query":
+      ret = Log()
+      gen = self.process_download(log)
+      if gen != None:
+        for g in gen:
+          yield
+        ret.log["result"] = True
+      else:
+        ret.log["result"] = False
+      self.return_query_res(port, ret)
+    else:
+      self.log(ERROR, "No such port")

@@ -23,17 +23,30 @@ class Shard(Block):
   def remove_node(self, node_num):
     raise NotImplementedError
   
+  def recv_query_result_num(self, node_num, log):
+    raise NotImplementedError
+    
   def port_name(self, port_num):
     return "output" + str(port_num)
   
+  def port_number(self, port_name):
+    num = port_name[port_name.find("output") + len("output"):]
+    return int(num)
+    
   def push_node(self, node_num, log):
     port = self.port_name(node_num)
     self.push(port, log)
+
+  def recv_query_result(self, port, log):
+    port_num = self.port_number(port)
+    self.recv_query_result_num(port_num, log)
   
+  def query_node(self, node_num, log, async=False, add_time=False):
+    port = self.port_name(node_num)
+    return self.query(port, log, async, add_time)
+      
   def process_master(self, control, data):
-    if control == "POLL":
-      self.respond_poll()
-    elif control == "CAN ADD":
+    if control == "CAN ADD":
       res = self.can_add_node()
       if res:
         message = (res, self.config_for_new_node()) 
@@ -53,7 +66,7 @@ class Shard(Block):
   def register_new_node(self, node_num, port_url):
     nt = self.node_type()
     port_type = Port.QUERY if nt["port_type"] == "QUERY" else Port.PUSH
-    print self.id + " adding port " + "output"+str(node_num) + " with url " + port_url
+    self.log (INFO, self.id + " adding port " + "output"+str(node_num) + " with url " + port_url)
     port = Block.add_port(self, "output"+str(node_num), port_type, Port.UNNAMED, [])
     port.port_urls = [port_url]
     self.output_ports[port] = 1

@@ -40,7 +40,7 @@ def setup_policy(inst, policy):
       raise NameError
 
 
-def start(blox_dir, configuration_file_name, log_dir):
+def start(blox_dir, configuration_file_name, poll_file_name, log_dir):
   global using_engage
   try:
     sys.path.index(blox_dir)
@@ -60,6 +60,7 @@ def start(blox_dir, configuration_file_name, log_dir):
   inst = block_class(config["master_port"])
   inst.id = config["id"]
   inst.ip_address = config["ip_address"]
+  inst.poll_file_name = poll_file_name
   inst.log_level = config["log_level"]
   # intialize logging
   inst.initialize_logging(log_directory=log_dir)
@@ -74,20 +75,21 @@ def start(blox_dir, configuration_file_name, log_dir):
     if is_shard(config["name"]):
       num_blocks = config["num_blocks"]
       inst.num_nodes = num_blocks
+      port_type = Port.PUSH if config["port_type"] == "PUSH" else Port.QUERY
       for i in range(num_blocks):
         output_port = "output"+str(i)
-        inst.add_port(output_port, Port.PUSH, Port.UNNAMED, [])
+        inst.add_port(output_port, port_type, Port.UNNAMED, [])
 
     for (port_name, port_config) in config["ports"].items():
-      port_type, port_nums = port_config[0], port_config[1:]
+      port_outlet, port_nums = port_config[0], port_config[1:]
       #TODO: loop does extra work, rewrite this
       for port_num in port_nums:
-        if port_type == "output":
+        if port_outlet == "output":
           inst.add_output_connection(port_name, port_num)
-        elif port_type == "input":
+        elif port_outlet == "input":
           inst.add_input_connection(port_name, port_num)
         else:
-          print "Unknown port type " + port_type
+          print "Unknown port outlet " + port_outlet
           raise NameError
 
     #for dynamic join
@@ -104,9 +106,10 @@ def start(blox_dir, configuration_file_name, log_dir):
 if __name__ == "__main__":
   blox_dir = sys.argv[1]
   configuration_file_name = sys.argv[2]
-  if len(sys.argv)>3:
-    log_dir=sys.argv[3]
+  poll_file_name = sys.argv[3]
+  if len(sys.argv)>4:
+    log_dir=sys.argv[4]
   else:
     log_dir=None
   
-  start(blox_dir, configuration_file_name, log_dir=log_dir)
+  start(blox_dir, configuration_file_name, poll_file_name, log_dir=log_dir)

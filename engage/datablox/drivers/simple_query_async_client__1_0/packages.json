@@ -1,0 +1,6 @@
+[
+  { "type": "Archive",
+    "package_class": "GzippedTarArchive",
+    "location": "simple_query_async_client__1_0.tgz"
+  }
+]

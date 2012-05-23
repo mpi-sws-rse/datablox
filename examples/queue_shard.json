@@ -1,0 +1,18 @@
+{
+    "blocks": [
+	    {"id": "source", 
+	     "name": "counter", 
+	     "args": {}},		
+		{"id": "sink",
+         "name": "Queue-Shard", 
+         "args":
+            {"nodes": 2,
+             "node_type": {"name": "Simple-query", "input_port": "input", "port_type": "QUERY", "args": {}}
+            }
+        }		
+    ],
+
+    "connections": [
+        [{"source": "output"}, {"sink": "input"}]
+    ]
+}
