@@ -89,6 +89,16 @@ test-simple-shard:
 	$(TEST_DEPLOY_HOME)/engage/bin/svcctl stop
 	@echo "simple-shard completed successfully"
 
+# since this test take a long time to run, it is not run as a part of "make test"
+test-big-crawl:
+	@echo "Running test-big-crawl scenario"
+	python $(BLOX_HOME)/scripts/generate_file_data.py ~/apps/test_data 150000
+	$(TEST_DEPLOY_HOME)/engage/bin/svcctl start
+	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master --log-level=$(TEST_LOG_LEVEL) $(BLOX_HOME)/examples/join_bug1.json master
+	$(TEST_DEPLOY_HOME)/engage/bin/svcctl stop
+	@echo "test-big-crawl completed successfully"
+
+
 test: engage-ext engage-dist test-deploy test-map-reduce test-deploy test-simple-shard
 	@echo "All tests completed successfully"
 
@@ -99,7 +109,7 @@ kill-test-procs:
 
 
 help:
-	@echo "Targets are all engage-ext engage-dist test-deploy test-map-reduce test-read-files test download-packages kill-test-procs clean clean-all"
+	@echo "Targets are all engage-ext engage-dist test-deploy test-map-reduce test-read-files test test-big-crawl download-packages kill-test-procs clean clean-all"
 
 clean:
 	rm -rf $(ENGAGE_EXT_HOME)/datablox/sw_packages
@@ -111,4 +121,4 @@ clean:
 clean-all: clean
 	rm -rf $(PACKAGE_DIR)
 
-.PHONY: all clean clean-all engage-dist engage-ext help download-packages test-deploy test-map-reduce test-read-files test-simple-shard test test-packages kill-test-procs
+.PHONY: all clean clean-all engage-dist engage-ext help download-packages test-deploy test-map-reduce test-read-files test-simple-shard test test-packages kill-test-procs test-big-crawl

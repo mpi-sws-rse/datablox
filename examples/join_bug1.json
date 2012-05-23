@@ -1,0 +1,49 @@
+{
+    "blocks": [
+        {"id": "crawler1", 
+         "name": "File-Crawler", 
+         "args": {"directory": "~/apps/test_data"},
+         "at":"master"},
+        {"id": "categorizer1",
+         "name": "Filename-Categorizer",
+         "args": {}, "at":"master"},
+        {"id": "crawler2", 
+         "name": "File-Crawler", 
+         "args": {"directory": "~/apps/test_data"},
+         "at":"master"},
+        {"id": "categorizer2",
+         "name": "Filename-Categorizer",
+         "args": {},
+         "at":"master"},
+        {"id":"join-metadata",
+         "name":"Join",
+         "args": {"joins":2},
+         "at":"master"
+        },
+        {"id":"join-index",
+         "name":"Join",
+         "args": {"joins":2},
+         "at":"master"
+        },
+        {"id": "file_data", 
+        "name": "Null", 
+        "args": {"crawlers":2},
+        "at":"master"},
+        {"id": "solr-sink", 
+        "name": "Null",
+         "args": { "num_tokens":2},
+           "at":"master"
+        }
+    ],
+
+    "connections": [
+        [{"crawler1": "output"}, {"categorizer1": "input"}],
+        [{"categorizer1": "output"}, {"join-metadata": "input1"}],
+        [{"crawler2": "output"}, {"categorizer2": "input"}],
+        [{"categorizer2": "output"}, {"join-metadata": "input2"}],
+        [{"join-metadata": "output"}, {"file_data": "input"}],
+        [{"categorizer1": "indexable_output"}, {"join-index": "input1"}],
+        [{"categorizer2": "indexable_output"}, {"join-index": "input2"}],
+        [{"join-index": "output"}, {"solr-sink": "input"}]
+    ]
+}
