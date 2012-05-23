@@ -126,6 +126,7 @@ class BlockHandler(object):
     self.ports = {}
     self.last_load = 0
     self.timeouts = 0
+    self.last_poll_time = 0
     block_loads[self.id] = {}
     block_status[self.id] = "startup"
     block_times[self.id] = 0
@@ -179,7 +180,7 @@ class BlockHandler(object):
     config = self.create_basic_config()
     self.add_additional_config(config)
     socket = self.context.socket(zmq.REQ)
-    message = json.dumps(("ADD NODE", config))
+    message = json.dumps(("ADD BLOCK", config))
     socket.connect(get_url(self.ip_address, 5000))
     socket.send(message)
     logger.info("waiting for caretaker to load " + self.name)
@@ -237,18 +238,14 @@ class BlockHandler(object):
     assert(len(t)==1)
     return t[0]
     
-  def poll_load(self):
+  def update_load(self, loads):
     global block_status, block_loads, block_times
-    port = self.master_port
-    message = json.dumps(("POLL", {}))
-    socket = self.context.socket(zmq.REQ)
-    socket.connect(get_url(self.ip_address, port))
-    socket.send(message)
-    load = timed_recv(socket, POLL_TIMEOUT_MS)
-    socket.close()
-    if load != None:
+    load = loads.get(self.id)
+    #we should get a fresh entry
+    if load != None and load[4] != self.last_poll_time:
       self.timeouts = 0
-      status, requests_made, requests_served, processing_time = json.loads(load)
+      status, requests_made, requests_served, processing_time, last_poll_time = load
+      self.last_poll_time = last_poll_time
       block_times[self.id] = processing_time
       # print self.id
       # print requests_made
@@ -281,25 +278,11 @@ class BlockHandler(object):
 class RPCHandler(BlockHandler):
   def __init__(self, block_record, address_manager, context, policy=None):
     global block_status, block_loads
-    self.id = block_record["id"]
-    self.name = block_record["name"]
-    self.args = block_record["args"]
-    self.context = context
-    self.address_manager = address_manager
+    BlockHandler.__init__(self, block_record, address_manager, context, policy)
     #TODO: we don't really need it, but put master node's ip in it
     self.ip_address = "127.0.0.1"
-    self.master_port = address_manager.get_master_port()
-    self.policy = policy
-    self.version = block_record["version"] if block_record.has_key("version") \
-                                   else naming.DEFAULT_VERSION
-    self.connections = {}
-    self.ports = {}
-    self.last_load = 0
-    self.timeouts = 0
-    block_loads[self.id] = {}
-    block_status[self.id] = "startup"
-    block_times[self.id] = 0
     self.webserver_process = None
+    self.webserver_poll_file = "webservice_poll.json"
   
   def start(self):
     connections_file_name = "connections"
@@ -317,14 +300,27 @@ class RPCHandler(BlockHandler):
     if self.webserver_process:
       self.webserver_process.terminate()
 
-  def poll_load(self):
-    global block_status
+  #the webservice does update its loads, but it only updates them on new requests
+  def update_load(self, loads):
+    alive = True
     if self.webserver_process.poll() == None:
       logger.info("RPC block is working")
-      block_status[self.id] = "alive"
     else:
       logger.info("RPC block has shutdown")
-      block_status[self.id] = "shutdown"
+      alive = False
+    try:
+      with open(self.webserver_poll_file, 'r') as f:
+        load = json.loads(f.read())
+    except IOError:
+      print "Could not find web service file"
+      load = ["ALIVE", {}, {}, 0, 0]
+    if alive:
+      load[0] = "ALIVE"
+    else:
+      load[0] = "SHUTDOWN"
+    load[4] = time.time()
+    loads[self.id] = load
+    BlockHandler.update_load(self, loads)
   
 class DynamicJoinHandler(BlockHandler):
   def __init__(self, block_record, address_manager, context, policy=None):
@@ -409,6 +405,7 @@ class ShardHandler(BlockHandler):
   #called before start by superclass BlockHandler
   def add_additional_config(self, config):
     config["num_blocks"] = len(self.initial_configs)
+    config["port_type"] = self.node_type["port_type"]
 
   def start(self):
     res = True
@@ -424,17 +421,17 @@ class ShardHandler(BlockHandler):
       bh.stop()
     BlockHandler.stop(self)
       
-  def poll_load(self):
+  def update_load(self, loads):
     global block_status
     running_blocks = []
     for bh in self.block_handlers:
-      bh.poll_load()
+      bh.update_load(loads)
       if block_status[bh.id] == "alive":
         running_blocks.append(bh)
     if self.join_handler:
-      self.join_handler.poll_load()
+      self.join_handler.update_load(loads)
     if not self.shard_shutdown:
-      BlockHandler.poll_load(self)
+      BlockHandler.update_load(self, loads)
       if block_status[self.id] != "alive":
         self.shard_shutdown = True
     self.block_handlers = running_blocks
@@ -536,15 +533,15 @@ class GroupHandler(BlockHandler):
     for bh in self.block_hash.values():
       bh.stop()
 
-  def poll_load(self):
-    self.poll_all_loads()
+  def update_load(self, loads):
+    self.poll_all_loads(loads)
   
-  def poll_all_loads(self):
+  def poll_all_loads(self, loads):
     global block_status
     block_status[self.id] = "alive"
     running = False
     for bh in self.block_hash.values():
-      bh.poll_load()
+      bh.update_load(loads)
       if block_status[bh.id] == "alive":
         running = True
       else:
@@ -671,13 +668,24 @@ class Master(object):
     with open(config_file) as f:
       return json.load(f)
 
+  def send_all_nodes(self, message):
+    results = []
+    for ip in self.address_manager.get_all_ipaddresses():
+      socket = self.context.socket(zmq.REQ)
+      socket.connect(get_url(ip, 5000))
+      socket.send(message)
+      res = json.loads(socket.recv())
+      results.append(res)
+      socket.close()
+    return results
+    
   def stop_all(self, msg):
     logger.error(msg)
     try:
       self.main_block_handler.stop()
       logger.info("Master: trying to stop all blocks")
-      for ip in self.address_manager.get_all_ipaddresses():
-        self.stop_all_in_node(ip)
+      message = json.dumps(("STOP ALL", {}))
+      self.send_all_nodes(message)
       logger.info("done, quitting")
       self.context.destroy()
     finally:
@@ -686,15 +694,23 @@ class Master(object):
                                               msg=msg)
     sys.exit(1)
 
-  def stop_all_in_node(self, ipaddress):
-    socket = self.context.socket(zmq.REQ)
-    message = json.dumps(("STOP ALL", {}))
-    socket.connect(get_url(ipaddress, 5000))
-    socket.send(message)
-    logger.info("waiting for caretaker at %s to stop all blocks " % ipaddress)
-    res = json.loads(socket.recv())
-    socket.close()
-
+  def poll_all_nodes(self):
+    #each node returns a dict with block id and load status
+    #we want to merge all of them together into one dict
+    #so collect all the items as pairs and then create a final dict
+    load_items = []
+    message = json.dumps(("POLL", {}))
+    dicts = self.send_all_nodes(message)
+    for d in dicts:
+      load_items.extend(d.items())
+    loads = dict(load_items)
+    # print loads
+    return loads
+    
+  def report_end(self):
+    message = json.dumps(("END RUN", {}))
+    self.send_all_nodes(message)
+    
   def write_loads(self):
     global block_status, block_loads, block_times
     # print "Block loads", block_loads
@@ -720,8 +736,8 @@ class Master(object):
     duration = time.time() - self.start_time
     #writing the time stamps of the polls in the same dictionary
     self.load_history["times"].append(duration)
-    with open("loads.json", 'w') as f:
-      json.dump(dict([(e[1], e[0]) for e in etas]), f)
+    # with open("loads.json", 'w') as f:
+    #   json.dump(dict([(e[1], e[0]) for e in etas]), f)
 
   def write_final_perfstats(self):
     global block_loads
@@ -763,9 +779,13 @@ class Master(object):
         return True
     
   def run(self):
+    logger.info("Run started")
     try:
       while True:
-        self.main_block_handler.poll_load()
+        #todo: hard coded 4
+        time.sleep(4)
+        loads = self.poll_all_nodes()
+        self.main_block_handler.update_load(loads)
         self.write_loads()
         if not self.running():
           if self.has_timeouts():
@@ -773,9 +793,8 @@ class Master(object):
             self.stop_all("Quitting topology due to remaining blocks timing out")
           else:
             logger.info("Master: no more running nodes, quitting")
+            self.report_end()
           return
-        #todo: hard coded 4
-        time.sleep(4)
     except KeyboardInterrupt:
       self.stop_all("Got a keyboard interrupt") # does not return
       

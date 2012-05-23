@@ -1,0 +1,6 @@
+[
+  { "type": "Archive",
+    "package_class": "GzippedTarArchive",
+    "location": "queue_shard__1_0.tgz"
+  }
+]

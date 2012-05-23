@@ -45,10 +45,10 @@
              "name": "RPC", 
              "args": {}},
             {"id": "crawler",
-             "name": "Round-Robin-Shard",
+             "name": "Queue-Shard",
              "args": 
-                {"nodes": 1,
-                 "node_type": {"name": "Web-Crawler", "input_port": "input", "output_port": "output", "port_type": "PUSH",
+                {"nodes": 4,
+                 "node_type": {"name": "Web-Crawler", "input_port": "input_query", "output_port": "output", "port_type": "QUERY",
                     "args": {}}
                 }
             },

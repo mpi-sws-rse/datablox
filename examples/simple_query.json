@@ -1,7 +1,7 @@
 {
     "blocks": [
         {"id": "source",
-         "name": "Simple-query-client", 
+         "name": "Simple-query-async-client", 
          "args": {}},
         {"id": "sink",
          "name": "Simple-query", 
