@@ -375,8 +375,10 @@ class Block(threading.Thread):
           push_ports = [p for p in ports_with_data if p.port_type == Port.PUSH]
           query_input_ports = [p for p in ports_with_data if p.port_type == Port.QUERY and p in self.input_ports]
           query_output_ports = [p for p in ports_with_data if p.port_type == Port.QUERY and p in self.output_ports]
-      
-          for p in push_ports:
+          
+          while(self.task == None and push_ports != []):
+            p = push_ports[0]
+            push_ports = push_ports[1:]
             message = p.socket.recv()
             try:
               (control, log) = json.loads(message)
@@ -390,7 +392,9 @@ class Block(threading.Thread):
               self.process_buffered_push(p, log)
             else:
               self.process_push(p, log)
-          for p in query_input_ports:
+          while(self.task == None and query_input_ports != []):
+            p = query_input_ports[0]
+            query_input_ports = query_input_ports[1:]
             message = p.socket.recv()
             (control, log) = json.loads(message)
             self.log_recv(control, message, p)
@@ -399,7 +403,9 @@ class Block(threading.Thread):
             else:
               self.process_query(p, log)
           #there is no control message for QUERY results
-          for p in query_output_ports:
+          while(self.task == None and query_output_ports != []):
+            p = query_output_ports[0]
+            query_output_ports = query_output_ports[1:]
             log = self.get_one(p.sockets).recv()
             self.process_query_res(p, log)
   
