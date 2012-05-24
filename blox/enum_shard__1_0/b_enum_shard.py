@@ -47,7 +47,7 @@ class enum_shard(Shard):
     self.add_port("input", Port.PUSH, Port.UNNAMED, [])
     self.add_port("input_query", Port.QUERY, Port.UNNAMED, [])
     self.field_to_node_mapping = {}
-    self.msg_counts = []
+    self.message_counts = []
     for i in range(config["nodes"]):
       node_info = config["node_type"]["args"][i]
       if not node_info.has_key("shard_field_value"):
