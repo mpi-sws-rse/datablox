@@ -92,9 +92,10 @@ test-simple-shard:
 # since this test take a long time to run, it is not run as a part of "make test"
 test-big-crawl:
 	@echo "Running test-big-crawl scenario"
-	python $(BLOX_HOME)/scripts/generate_file_data.py ~/apps/test_data 150000
+	python $(BLOX_HOME)/scripts/generate_file_data.py -u -q -m magic_text_string_for_search ~/apps/test_data 200 | awk '{print $7}' >~/apps/num_text_files.txt
 	$(TEST_DEPLOY_HOME)/engage/bin/svcctl start
 	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master --log-level=$(TEST_LOG_LEVEL) $(BLOX_HOME)/examples/join_bug1.json master
+	$(BLOX_HOME)/scripts/check_solr_results.sh magic_text_string_for_search `cat ~/apps/num_text_files.txt`
 	$(TEST_DEPLOY_HOME)/engage/bin/svcctl stop
 	@echo "test-big-crawl completed successfully"
 
