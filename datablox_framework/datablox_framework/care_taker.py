@@ -180,6 +180,8 @@ class CareTaker(object):
         control, data = control_data
         if control == "ADD BLOCK":
           res = self.start_block(data)
+          logger.debug("%s: Got result %r from start block call" %
+                       (data["id"], res))
           self.socket.send(json.dumps(res))
         elif control == "POLL":
           res = self.collect_poll_data()

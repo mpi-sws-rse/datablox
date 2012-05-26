@@ -183,8 +183,9 @@ class BlockHandler(object):
     message = json.dumps(("ADD BLOCK", config))
     socket.connect(get_url(self.ip_address, 5000))
     socket.send(message)
-    logger.info("waiting for caretaker to load " + self.name)
+    logger.info("waiting for caretaker to load %s (%s)" % (self.id, self.name))
     res = json.loads(socket.recv())
+    logger.debug("caretaker response was %r" % res)
     socket.close()
     if not res:
       logger.error("Could not start block " + self.name)
