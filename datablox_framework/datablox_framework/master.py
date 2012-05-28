@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 # See issue #62 for details.
 POLL_TIMEOUT_MS = 10000
 
+BLOCK_SYNC_TIMEOUT_MS = 20000
+
 block_loads = {}
 block_times = {}
 #this keeps track of timed out and shutdown blocks
@@ -201,16 +203,18 @@ class BlockHandler(object):
     url = get_url(self.ip_address, self.master_port)
     syncclient = self.context.socket(zmq.REQ)
     syncclient.connect(url)
-    logger.info("syncing with block %s at url %s" % (self.name, url))
+    logger.info("syncing with block %s (%s) at url %s" % (self.id, self.name, url))
     syncclient.send('')
     # wait for synchronization reply
-    # TODO: hardcoded wait for 8 seconds
-    res = timed_recv(syncclient, 8000)
+    # TODO: hardcoded wait for 20 seconds
+    res = timed_recv(syncclient, BLOCK_SYNC_TIMEOUT_MS)
     syncclient.close()
     if res != None:
       block_status[self.id] = "alive"
       return True
     else:
+      logger.error("Synchronization failed or timed out after %d ms" %
+                   BLOCK_SYNC_TIMEOUT_MS)
       return False
   
   def connect_to(self, from_port, to_block, to_port, connection_url=None):
