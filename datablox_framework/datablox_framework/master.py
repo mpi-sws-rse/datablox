@@ -31,6 +31,10 @@ POLL_TIMEOUT_MS = 10000
 
 BLOCK_SYNC_TIMEOUT_MS = 20000
 
+# Number of times that a poll should result in a timeout before we consider
+# the associated block as dead.
+NUM_TIMEOUTS_BEFORE_DEAD = 15
+
 block_loads = {}
 block_times = {}
 #this keeps track of timed out and shutdown blocks
@@ -276,8 +280,7 @@ class BlockHandler(object):
     else:
       logger.info("** Master: %s timed out" % self.id)
       self.timeouts += 1
-      #todo: hardcoded 10
-      if self.timeouts > 10:
+      if self.timeouts > NUM_TIMEOUTS_BEFORE_DEAD:
         block_status[self.id] = "timeout"
 
 class RPCHandler(BlockHandler):
