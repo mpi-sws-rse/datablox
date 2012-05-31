@@ -81,14 +81,22 @@ class solr_index(Block):
       self.add_pending_entries()
     for path, url in log.iter_fields("path", "url"):
       self.url_timer.start_timer()
-      contents = BlockUtils.fetch_file_at_url(url, self.ip_address)
+      try:
+        contents = BlockUtils.fetch_file_at_url(url, self.ip_address)
+      except IOError, e:
+        # we might get an error because we cannot read the file
+        self.logger.exception("Got exception '%s' when trying to access url %s"
+                              % (e, url))
+        self.errors += 1
+        contents = None
       self.url_timer.stop_timer()
-      contents = contents.decode('utf-8', 'ignore')
-      self.bytes_processed += len(contents)
-      entry = {"path": path,
-               "name": os.path.split(path)[-1],
-               "contents": contents}
-      self.pending_entries.append(entry)
+      if contents:
+        contents = contents.decode('utf-8', 'ignore')
+        self.bytes_processed += len(contents)
+        entry = {"path": path,
+                 "name": os.path.split(path)[-1],
+                 "contents": contents}
+        self.pending_entries.append(entry)
 
   def on_shutdown(self):
     self._commit()

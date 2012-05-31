@@ -53,7 +53,10 @@ class file_crawler(Block):
   def do_task(self):
     files_sent_in_session = 0
     path = os.path.abspath(os.path.expanduser(self.config["directory"]))
-    volume_name = get_volume_name(path)
+    if self.volume_name:
+      volume_name = self.volume_name
+    else:
+      volume_name = get_volume_name(path)
     self.log(INFO, "Starting walk at %s" % volume_name)
     # the main loop
     self.msg_timer.start_timer()
@@ -93,6 +96,10 @@ class file_crawler(Block):
       self.crawl_id = unicode(config["crawl_id"])
     else:
       self.crawl_id = self.id + " " + time.ctime()
+    if self.config.has_key("volume_name"):
+      self.volume_name = self.config["volume_name"]
+    else:
+      self.volume_name = None
     self.log(INFO, "File-Crawler crawl_id = %s" % self.crawl_id)
     self.log(INFO, "File-Crawler block loaded")
     self.current_log = Log()

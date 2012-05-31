@@ -51,7 +51,7 @@ class PerfCounter(object):
     def log_final_results(self, logger):
         if self.timer != None:
             logger.warn("Timer for performance counter %s.%s not stopped!" %
-                        self.block_name, self.counter_name)
+                        (self.block_name, self.counter_name))
         logger.info(self._format_stats())
 
     @staticmethod
