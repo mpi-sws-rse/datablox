@@ -31,6 +31,9 @@ POLL_TIMEOUT_MS = 10000
 
 BLOCK_SYNC_TIMEOUT_MS = 20000
 
+# time between polls of the caretakers. Can override via a command line parameter
+DEFAULT_POLL_INTERVAL = 4
+
 # Number of times that a poll should result in a timeout before we consider
 # the associated block as dead.
 NUM_TIMEOUTS_BEFORE_DEAD = 15
@@ -628,11 +631,13 @@ class DjmAddressManager(AddressManager):
 class Master(object):
   def __init__(self, _bloxpath, config_file, ip_addr_list,
                _using_engage, _log_level=logging.INFO,
-               reuse_existing_installs=True):
+               reuse_existing_installs=True,
+               poll_interval=DEFAULT_POLL_INTERVAL):
     global global_config, bloxpath, using_engage, log_level
     bloxpath = _bloxpath
     using_engage = _using_engage
     log_level = _log_level
+    self.poll_interval = poll_interval
     if using_engage:
       logger.info("Running with Engage deployment home at %s" % \
                   engage_file_locator.get_dh())
@@ -790,8 +795,7 @@ class Master(object):
     logger.info("Run started")
     try:
       while True:
-        #todo: hard coded 4
-        time.sleep(4)
+        time.sleep(self.poll_interval)
         loads = self.poll_all_nodes()
         self.main_block_handler.update_load(loads)
         self.write_loads()

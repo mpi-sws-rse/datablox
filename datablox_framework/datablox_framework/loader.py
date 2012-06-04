@@ -37,6 +37,10 @@ def main(argv):
   parser = OptionParser(usage=usage)
   parser.add_option("-b", "--bloxpath", dest="bloxpath", default=None,
                     help="use this path instead of the environment variable BLOXPATH")
+  parser.add_option("-p", "--poll-interval", dest="poll_interval", type="int",
+                    default=DEFAULT_POLL_INTERVAL,
+                    help="Time in seconds between polls of the caretakers, defaults to %d" %
+                    DEFAULT_POLL_INTERVAL)
   parser.add_option("-l", "--log-level", dest="log_level", default="INFO",
                     help="Log level: ERROR|WARN|INFO|DEBUG|ALL")
   if using_engage:
@@ -100,7 +104,8 @@ def main(argv):
     
   Master(bloxpath, args[0], args[1:], using_engage,
          _log_level=log_levels[options.log_level],
-         reuse_existing_installs=True)
+         reuse_existing_installs=True,
+         poll_interval=options.poll_interval)
 
 def call_from_console_script():
     sys.exit(main(sys.argv[1:]))
