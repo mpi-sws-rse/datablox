@@ -82,8 +82,8 @@ class solr_index(Block):
     for path, url in log.iter_fields("path", "url"):
       self.url_timer.start_timer()
       try:
-        contents = BlockUtils.fetch_file_at_url(url, self.ip_address)
-      except IOError, e:
+        (contents, expected_len) = BlockUtils.fetch_file_at_url(url, self.ip_address, check_size=True)
+      except Exception, e:
         # we might get an error because we cannot read the file
         self.logger.exception("Got exception '%s' when trying to access url %s"
                               % (e, url))
@@ -91,8 +91,17 @@ class solr_index(Block):
         contents = None
       self.url_timer.stop_timer()
       if contents:
+        phys_len = len(contents)
+        if expected_len != phys_len:
+          self.logger.error("Length mismatch in file %s: expecting %ld, got %ld" %
+                            (path, expected_len, phys_len))
+          self.errors += 1
         contents = contents.decode('utf-8', 'ignore')
-        self.bytes_processed += len(contents)
+        decoded_len = len(contents)
+        if decoded_len != phys_len:
+          self.logger.warn("%s: Decoded len was %ld, physical len was %d" %
+                           (path, decoded_len, phys_len))
+        self.bytes_processed += phys_len
         entry = {"path": path,
                  "name": os.path.split(path)[-1],
                  "contents": contents}

@@ -1,3 +1,6 @@
+
+# -*- py-indent-offset:2 -*-
+
 import zmq
 import time
 import json
@@ -8,14 +11,14 @@ import sys
 import os
 import os.path
 import urllib
-from urlparse import urlparse
+from urlparse import urlparse, parse_qs
 import socket
 from Crypto.Cipher import DES
 
 from fileserver import file_server_keypath
 logger = logging.getLogger(__name__)
 # cache the key here so that we avoid having to read the keyfile for each file
-GENERATE_URL_FILE_SERVER_KEY=None
+FILE_SERVER_KEY=None
 
 class Log(object):
   def __init__(self):
@@ -145,12 +148,17 @@ class BlockUtils(object):
     
   @staticmethod
   def generate_url_for_path(path, block_ip=None):
-    global GENERATE_URL_FILE_SERVER_KEY
+    try:
+      statinfo = os.stat(path)
+    except Exception, e:
+      raise Exception("Unable to stat file at path %s: %s" %
+                      (path, e))
+    global FILE_SERVER_KEY
     path = path.encode('utf-8')
-    if GENERATE_URL_FILE_SERVER_KEY==None:
+    if FILE_SERVER_KEY==None:
       with open(file_server_keypath, 'r') as f:
-        GENERATE_URL_FILE_SERVER_KEY = f.read()
-    obj = DES.new(GENERATE_URL_FILE_SERVER_KEY, DES.MODE_ECB)
+        FILE_SERVER_KEY = f.read()
+    obj = DES.new(FILE_SERVER_KEY, DES.MODE_ECB)
     padding = ''
     for i in range(0 if len(path)%8 == 0 else 8 - (len(path)%8)):
       padding += '/'
@@ -161,13 +169,15 @@ class BlockUtils(object):
       ip = block_ip
     else:
       ip = BlockUtils.get_ipaddress()
-    return "http://" + ip + ":4990/?key=" + url_path
+    return "http://" + ip + (":4990/?len=%ld&key=" % statinfo.st_size) + url_path
   
   @staticmethod
   def fetch_local_file(enc_path):
-    with open(file_server_keypath, 'r') as f:
-      deskey = f.read()
-    obj = DES.new(deskey, DES.MODE_ECB)
+    global FILE_SERVER_KEY
+    if not FILE_SERVER_KEY:
+      with open(file_server_keypath, 'r') as f:
+        FILE_SERVER_KEY = f.read()
+    obj = DES.new(FILE_SERVER_KEY, DES.MODE_ECB)
     path = obj.decrypt(enc_path)
     path = path.decode('utf-8')
     # print "fetching local file at path", path
@@ -175,29 +185,36 @@ class BlockUtils(object):
       return f.read()
     
   @staticmethod
-  def fetch_file_at_url(url, block_ip_address):
+  def fetch_file_at_url(url, block_ip_address, check_size=False):
     """Fetch a file from the fileserver at the specified url. Try to do it
     by a local read if possible. The block_ip_address parameter is used to help
     determine locality.
+
+    If you pass in check_size as True, this function will return the data and
+    the expected length (as obtained from the URL). Note that the expected length
+    is not always correct - the file might have been changed since the last access.
     """
     global successes
     p = urlparse(url)
+    query_dict = parse_qs(p.query)
+    expected_len = long(query_dict["len"][0])
     if (p.hostname == BlockUtils.get_ipaddress()) or \
        (p.hostname == block_ip_address):
-      url_enc_path = p.query[len("key="):].encode('ascii')
+      key = p.query[p.query.index("key=")+4:]
+      url_enc_path = key.encode('ascii')
       enc_path = urllib.unquote(url_enc_path)
-      return BlockUtils.fetch_local_file(enc_path)
+      data = BlockUtils.fetch_local_file(enc_path)
     else:
       opener = urllib.FancyURLopener({})
-      try:
-        f = opener.open(url)
-      except:
-        logger.error("Problem with opening URL %s" % url)
-        raise
+      f = opener.open(url)
       successes += 1
       if (successes % 50)==0:
         logger.info("Fetched %d files successfully" % successes)
-      return f.read()
+      data = f.read()
+    if check_size:
+      return (data, expected_len)
+    else:
+      return data
   
 class Block(threading.Thread):
   def __init__(self, master_url):
