@@ -176,7 +176,6 @@ class CareTaker(object):
       try:
         message = self.socket.recv()
         control_data = json.loads(message)
-        logger.info("[caretaker] received msg: " + message)
         control, data = control_data
         if control == "ADD BLOCK":
           res = self.start_block(data)

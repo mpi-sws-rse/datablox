@@ -7,11 +7,17 @@ import urllib
 import urlparse
 import sys
 import logging
-from Crypto.Cipher import DES
 from random import choice, randint
 import string
 
 logger = logging.getLogger("gunicorn.error")
+
+DEBUG=True
+# if we're debugging stuff, we log stack traces, otherwise we only log the error message
+if DEBUG:
+  log_exc=logger.exception
+else:
+  log_exc=logger.error
 
 try:
   import datablox_engage_adapter.file_locator
@@ -24,6 +30,8 @@ if using_engage:
   file_server_keypath = engage_file_locator.get_file_server_key_file()
 else:
   file_server_keypath = os.path.expanduser('~/datablox_file_server_key')
+
+from block import decrypt_path
 
 FILESERVER_PORT=4990
 
@@ -51,29 +59,32 @@ def send_file(path, size):
       block = f.read(BLOCK_SIZE)
             
 def app(environ, start_response):
+  path = None
   try:
     qs = environ.get("QUERY_STRING")
     qdict = urlparse.parse_qs(qs)
     enc_path = qdict["key"][0]
-    obj = DES.new(deskey, DES.MODE_ECB)
-    path = obj.decrypt(enc_path)
-    path = path.decode('utf-8')
+    path = decrypt_path(enc_path, deskey)
     logger.debug("Decrypted path " + path)
     size = os.path.getsize(path)
   except KeyError, e:
-    logger.error("Invalid request: %s" % e)
+    log_exc("Invalid request(KeyError): %s" % e)
     start_response('404 Page Not Found', error_headers, sys.exc_info())
     return ["Invalid request"]
   except ValueError, e:
-    logger.error("Invalid request: %s" % e)
+    log_exc("Invalid request (ValueError): %s" % e)
+    if path:
+      logger.error("Path was %s" % path)
     start_response('404 Page Not Found', error_headers, sys.exc_info())
     return ["Invalid request"]
   except IOError:
-    logger.error("Could not open file at %s" % path)
+    log_exc("Could not open file at %s" % path)
     start_response('404 Page Not Found', error_headers, sys.exc_info())
     return ["Could not open file at %s" % path]
   except Exception, e:
-    logger.error("Unexpected error %s" % e)
+    log_exc("Unexpected error %s" % e)
+    if path:
+      logger.error("Path was %s" % path)
     start_response('500 Internal Server Error', error_headers, sys.exc_info())
     return ["Unexpected error %s" % e]
   start_response("200 OK", [

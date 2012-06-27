@@ -14,6 +14,8 @@ import urllib
 from urlparse import urlparse, parse_qs
 import socket
 from Crypto.Cipher import DES
+import base64
+import re
 
 from fileserver import file_server_keypath
 logger = logging.getLogger(__name__)
@@ -129,6 +131,47 @@ class PortNumberGenerator(object):
 node_ipaddress = None
 successes = 0
 
+def encrypt_path(path, key):
+  """Given the specified filesystem path, encrypt it and put it in a form
+  usable in a url query string. We use DES encryption and base64 encoding.
+  """
+  # we skip the original encoding step, as encoding to utf-8 was failing.
+  # It appears that the path is already unicode, but the encode() method is treating
+  # it like an ascii string. Skipping this step should be fine, as long as the
+  # character sets of the client and server are the same.
+  ## path = path.encode('utf-8')
+  assert path[0] == '/', "Path '%s' is not an absolute path" % path
+  obj = DES.new(key, DES.MODE_ECB)
+  padding = ''
+  for i in range(0 if len(path)%8 == 0 else 8 - (len(path)%8)):
+    padding += '/'
+  path = padding + path
+  enc_path = obj.encrypt(path)
+  return base64.b64encode(enc_path)
+
+_leading_slash_re = re.compile("^[/]+")
+
+def decrypt_path(encoded_path, key):
+  encrypted_path = base64.b64decode(encoded_path)
+  obj = DES.new(key, DES.MODE_ECB)
+  path = obj.decrypt(encrypted_path)
+  ## path = path.decode('utf-8')
+  return _leading_slash_re.sub("/", path) # removing the padding
+  
+
+class URLOpenError(Exception):
+  def __init(self, errcode, msg):
+    Exception.__init__(self, msg)
+    self.errcode = errcode
+
+class ErrorCheckingURLopener(urllib.FancyURLopener):
+  """We need to subclass the url opener from urllib because it silently ignores
+  errors!!"""
+  def __init__(self, *args, **kwargs):
+    urllib.FancyURLopener.__init__(self, *args, **kwargs)
+  def http_error_default(self, url, fp, errcode, errmsg, headers):
+    raise URLOpenError(errcode, "Got error %d for url %s: '%s'" % (errcode, url, errmsg))
+
 class BlockUtils(object):
   @staticmethod
   def get_ipaddress():
@@ -154,17 +197,10 @@ class BlockUtils(object):
       raise Exception("Unable to stat file at path %s: %s" %
                       (path, e))
     global FILE_SERVER_KEY
-    path = path.encode('utf-8')
     if FILE_SERVER_KEY==None:
       with open(file_server_keypath, 'r') as f:
         FILE_SERVER_KEY = f.read()
-    obj = DES.new(FILE_SERVER_KEY, DES.MODE_ECB)
-    padding = ''
-    for i in range(0 if len(path)%8 == 0 else 8 - (len(path)%8)):
-      padding += '/'
-    path = padding + path
-    enc_path = obj.encrypt(path)
-    url_path = urllib.quote(enc_path)
+    url_path = encrypt_path(path, FILE_SERVER_KEY)
     if block_ip:
       ip = block_ip
     else:
@@ -177,9 +213,7 @@ class BlockUtils(object):
     if not FILE_SERVER_KEY:
       with open(file_server_keypath, 'r') as f:
         FILE_SERVER_KEY = f.read()
-    obj = DES.new(FILE_SERVER_KEY, DES.MODE_ECB)
-    path = obj.decrypt(enc_path)
-    path = path.decode('utf-8')
+    path = decrypt_path(enc_path, FILE_SERVER_KEY)
     # print "fetching local file at path", path
     with open(path, 'r') as f:
       return f.read()
@@ -201,11 +235,9 @@ class BlockUtils(object):
     if (p.hostname == BlockUtils.get_ipaddress()) or \
        (p.hostname == block_ip_address):
       key = p.query[p.query.index("key=")+4:]
-      url_enc_path = key.encode('ascii')
-      enc_path = urllib.unquote(url_enc_path)
-      data = BlockUtils.fetch_local_file(enc_path)
+      data = BlockUtils.fetch_local_file(key)
     else:
-      opener = urllib.FancyURLopener({})
+      opener = ErrorCheckingURLopener({})
       f = opener.open(url)
       successes += 1
       if (successes % 50)==0:
