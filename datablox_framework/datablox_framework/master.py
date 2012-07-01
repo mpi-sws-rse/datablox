@@ -256,13 +256,10 @@ class BlockHandler(object):
     #we should get a fresh entry
     if load != None and load[4] != self.last_poll_time:
       self.timeouts = 0
-      status, requests_made, requests_served, processing_time, last_poll_time = load
+      status, requests_made, requests_served, processing_time, last_poll_time,pid = load
       self.last_poll_time = last_poll_time
       block_times[self.id] = processing_time
-      # print self.id
-      # print requests_made
-      # print requests_served
-      # print processing_time
+      #logger.info("%s Got updated load info - last poll time = %s" % (self.id, self.last_poll_time))
       for p, r in requests_made.items():
         try:
           to_block, to_port = self.find_target(p)
@@ -279,12 +276,14 @@ class BlockHandler(object):
       elif status == "SHUTDOWN":
         logger.info("%s has shutdown" % (self.id))
         block_status[self.id] = "shutdown"
-    #block timed out
-    else:
-      logger.info("** Master: %s timed out" % self.id)
-      self.timeouts += 1
-      if self.timeouts > NUM_TIMEOUTS_BEFORE_DEAD:
-        block_status[self.id] = "timeout"
+      elif status == "DEAD":
+        logger.info("%s has crashed" % (self.id))
+        block_status[self.id] = "crashed"
+      else:
+        logger.info("** Master: %s timed out" % self.id)
+        self.timeouts += 1
+        if self.timeouts > NUM_TIMEOUTS_BEFORE_DEAD:
+          block_status[self.id] = "timeout"
 
 class RPCHandler(BlockHandler):
   def __init__(self, block_record, address_manager, context, policy=None):
@@ -790,6 +789,9 @@ class Master(object):
       if v == "timeout":
         logger.info("%s has a timeout" % i)
         return True
+      elif v == "crashed":
+        logger.info("%s crashed" % i)
+        return True
     
   def run(self):
     logger.info("Run started")
@@ -799,13 +801,13 @@ class Master(object):
         loads = self.poll_all_nodes()
         self.main_block_handler.update_load(loads)
         self.write_loads()
-        if not self.running():
-          if self.has_timeouts():
-            logger.info("Master: topology has timeouts, killing all blocks and exiting")
-            self.stop_all("Quitting topology due to remaining blocks timing out")
-          else:
-            logger.info("Master: no more running nodes, quitting")
-            self.report_end()
+        if self.has_timeouts():
+          logger.info("Master: topology has timeouts or crashes, killing all blocks and exiting")
+          self.stop_all("Quitting topology due to remaining blocks timing out")
+          return
+        elif not self.running():
+          logger.info("Master: no more running nodes, quitting")
+          self.report_end()
           return
     except KeyboardInterrupt:
       self.stop_all("Got a keyboard interrupt") # does not return

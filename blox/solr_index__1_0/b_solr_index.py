@@ -18,6 +18,8 @@ class solr_index(Block):
     self.queries = []
     self.pending_entries = []
     self.num_tokens = config["crawlers"]
+    self.max_error_pct = config["max_error_pct"] if config.has_key("max_error_pct") \
+                         else 10.0
     self.port = config["port"] if config.has_key("port") else 8983
     indexer_url = "http://localhost:" + str(self.port) + "/solr/"
     self.log(INFO, "Indexer connecting to %s" % indexer_url)
@@ -35,8 +37,8 @@ class solr_index(Block):
         else:
           time.sleep(2)
     self.log(DEBUG, "Connect to indexer successful")
-    self.msg_timer = PerfCounter(self.name, "msgs")
-    self.url_timer = PerfCounter(self.name, "url")
+    self.msg_timer = PerfCounter(self.block_name, "msgs")
+    self.url_timer = PerfCounter(self.block_name, "url")
     self.bytes_processed = 0
     self.errors = 0
     self.log(INFO, "Solr-index block loaded")
@@ -62,6 +64,9 @@ class solr_index(Block):
     else: 
       try:
         self.index_entries(log)
+      except TooManyErrors, e:
+        self.logger.error("%s" % e)
+        raise
       except Exception, e:
         self.logger.exception("index_entries failed: %s" % e)
         self.errors += log.num_rows()
@@ -74,6 +79,7 @@ class solr_index(Block):
     except Exception, e:
         self.log(ERROR, "Failed to add doc due to: %r" % (e))
         self.errors += 1
+        check_if_error_threshold_reached(self, self.errors, self.url_timer.num_events)
     self.pending_entries = []
     
   def index_entries(self, log):
@@ -85,17 +91,22 @@ class solr_index(Block):
         (contents, expected_len) = BlockUtils.fetch_file_at_url(url, self.ip_address, check_size=True)
       except Exception, e:
         # we might get an error because we cannot read the file
-        self.logger.exception("Got exception '%s' when trying to access url %s"
+        self.logger.exception("Got exception '%s' when trying to access url '%s'"
                               % (e, url))
+        self.logger.error("The associated path was '%s'" % path)
         self.errors += 1
         contents = None
+        check_if_error_threshold_reached(self, self.errors, self.url_timer.num_events)
       self.url_timer.stop_timer()
       if contents:
         phys_len = len(contents)
         if expected_len != phys_len:
           self.logger.error("Length mismatch in file %s: expecting %ld, got %ld" %
                             (path, expected_len, phys_len))
+          self.logger.error("Url was %s, first 100 bytes:" % url)
+          self.logger.error("%s" % contents[0:100])
           self.errors += 1
+          check_if_error_threshold_reached(self, self.errors, self.url_timer.num_events)
         contents = contents.decode('utf-8', 'ignore')
         decoded_len = len(contents)
         if decoded_len != phys_len:

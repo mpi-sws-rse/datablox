@@ -162,7 +162,7 @@ class mongo_map_reduce(Block):
     
   def send_finished_token(self):
     log = Log()
-    log.set_log({"token":[self.name]})
+    log.set_log({"token":[self.block_name]})
     self.push("output", log)
     
   def recv_push(self, port, log):

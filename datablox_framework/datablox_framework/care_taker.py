@@ -13,6 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import naming
+import utils
 
 try:
   import datablox_engage_adapter.file_locator
@@ -103,6 +104,11 @@ class CareTaker(object):
         with open(block_file, 'r') as f:
           s = f.read()
           block_load = json.loads(s)
+        assert len(block_load)==6, "block load data for %s wrong len: %s" % (block_id, block_load)
+        pid = block_load[5]
+        if block_load[0]=="ALIVE" and (not utils.is_process_alive(pid)):
+          logger.error("Process %d has died" % pid)
+          block_load[0] = "DEAD"
         loads[block_id] = block_load
       #TODO: try to re-read the file as the block could have been writing to it at this time
       except Exception, e:
