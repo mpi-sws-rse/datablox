@@ -64,13 +64,14 @@ test-deploy: #test-packages
 # Run a configuration involving dir-src, file-mongo, and mongo-map-reduce.
 # At the end, look for file type records (should be 2).
 test-map-reduce:
-	# substitute BLOX_HOME for the ~/ in the file map reduce scenario, so that
-	# we only crawl the datablox source tree
-	python -c "import sys; sys.stdout.write(open(sys.argv[1], 'rb').read().replace('~/apps', sys.argv[2]))" $(BLOX_HOME)/examples/file_analytics.json $(BLOX_HOME) >$(TEST_DEPLOY_HOME)/file_map_reduce.json
 	@echo "Running map-reduce scenario"
+	python $(BLOX_HOME)/scripts/generate_file_data.py -u -q -m magic_text_string_for_search $(TEST_DEPLOY_HOME)/test_data 400 | awk '{print $$7}' >$(TEST_DEPLOY_HOME)/num_text_files.txt
+	python -c "import sys; sys.stdout.write(open(sys.argv[1], 'rb').read().replace('~/apps', sys.argv[2]))" $(BLOX_HOME)/examples/file_analytics.json $(TEST_DEPLOY_HOME)/test_data >$(TEST_DEPLOY_HOME)/file_map_reduce.json
 	$(TEST_DEPLOY_HOME)/engage/bin/svcctl start
 	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master --log-level=$(TEST_LOG_LEVEL) $(TEST_DEPLOY_HOME)/file_map_reduce.json master
-	$(TEST_DEPLOY_HOME)/mongodb-2.0/bin/mongo --eval "db.getSisterDB('file_db').file_types.count()"
+	$(BLOX_HOME)/scripts/check_mongo_results.sh $(TEST_DEPLOY_HOME) "db.getSisterDB('file_db').file_data.count()" 400
+	$(BLOX_HOME)/scripts/check_mongo_results.sh $(TEST_DEPLOY_HOME) "db.getSisterDB('file_db').file_types.count()" 2
+	$(BLOX_HOME)/scripts/check_solr_results.sh magic_text_string_for_search `cat ~/apps/num_text_files.txt`
 	$(TEST_DEPLOY_HOME)/engage/bin/svcctl stop
 	@echo "Map-reduce completed successfully"
 
@@ -92,9 +93,10 @@ test-simple-shard:
 # since this test take a long time to run, it is not run as a part of "make test"
 test-big-crawl:
 	@echo "Running test-big-crawl scenario"
-	python $(BLOX_HOME)/scripts/generate_file_data.py ~/apps/test_data 150000
+	python $(BLOX_HOME)/scripts/generate_file_data.py -u -q -m magic_text_string_for_search ~/apps/test_data 200 | awk '{print $$7}' >~/apps/num_text_files.txt
 	$(TEST_DEPLOY_HOME)/engage/bin/svcctl start
 	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master --log-level=$(TEST_LOG_LEVEL) $(BLOX_HOME)/examples/join_bug1.json master
+	$(BLOX_HOME)/scripts/check_solr_results.sh magic_text_string_for_search `cat ~/apps/num_text_files.txt`
 	$(TEST_DEPLOY_HOME)/engage/bin/svcctl stop
 	@echo "test-big-crawl completed successfully"
 

@@ -1,3 +1,6 @@
+
+# -*- py-indent-offset:2 -*-
+
 import zmq
 import time
 import json
@@ -8,14 +11,16 @@ import sys
 import os
 import os.path
 import urllib
-from urlparse import urlparse
+from urlparse import urlparse, parse_qs
 import socket
 from Crypto.Cipher import DES
+import base64
+import re
 
 from fileserver import file_server_keypath
 logger = logging.getLogger(__name__)
 # cache the key here so that we avoid having to read the keyfile for each file
-GENERATE_URL_FILE_SERVER_KEY=None
+FILE_SERVER_KEY=None
 
 class Log(object):
   def __init__(self):
@@ -126,6 +131,89 @@ class PortNumberGenerator(object):
 node_ipaddress = None
 successes = 0
 
+def encrypt_path(path, key):
+  """Given the specified filesystem path, encrypt it and put it in a form
+  usable in a url query string. We use DES encryption and base64 encoding.
+  """
+  assert isinstance(path, unicode), \
+      "Path %s is not unicode, this will cause problems" % path
+  assert path[0] == u'/', "Path '%s' is not an absolute path" % path
+  obj = DES.new(key, DES.MODE_ECB)
+  # we convert the path to utf-8 before encrypting it
+  path = path.encode('utf-8')
+  # Need to pad to a multiple of 8. This is tricky, as length is dependent
+  # on encoding. We use regular 8-bit characters, which are assumed to be valid
+  # utf-8.
+  padding = ''
+  for i in range(0 if len(path)%8 == 0 else 8 - (len(path)%8)):
+    padding += '/'
+  path = padding + path
+  enc_path = obj.encrypt(path)
+  return base64.urlsafe_b64encode(enc_path)
+
+_leading_slash_re = re.compile(u"^[/]+", re.UNICODE)
+
+def decrypt_path(encoded_path, key):
+  # The encoded_path is encrypted and base64 encoded. Base64 decoding
+  # doesn't seem to work on unicode strings (which is what we get back when
+  # parsing the path from the url). We encode as ascii first (the base64 encoding
+  # only uses valid ascii characters).
+  encoded_path = encoded_path.encode("ascii")
+  encrypted_path = base64.urlsafe_b64decode(encoded_path)
+  obj = DES.new(key, DES.MODE_ECB)
+  path = unicode(obj.decrypt(encrypted_path), encoding="utf-8")
+  return _leading_slash_re.sub(u"/", path) # removing the padding
+
+
+class TooManyErrors(Exception):
+  """This is an exception class to be used for blocks that may encounter errors. The user
+  can set the config parameter max_error_pct to a value between 0 and 100. If the error
+  rate exceeds that percentage, then the block should be aborted with this exception.
+  """
+  def __init__(self, block, num_errors, num_total_events):
+    pct = float(num_errors)/float(num_total_events) * 100.0
+    msg = "Block '%s' of type '%s' aborting due to too many errors: %d errors out of %d events (%.0f%%)" % \
+        (block.id, block.block_name, num_errors, num_total_events, pct)
+    Exception.__init__(self, msg)
+    self.msg = msg
+    self.block_id = block.id
+    self.block_name = block.block_name
+    self.num_errors = num_errors
+    self.num_total_events = num_total_events
+
+  def __str__(self):
+    return self.msg
+
+  def __repr__(self):
+    return "TooManyErrors(block_id=%s, block_name=%s, num_errors=%d, total_events=%d)" % \
+        (self.block_id, self.block_name, self.num_errors, self.num_total_events)
+
+
+def check_if_error_threshold_reached(block, num_errors, num_total_events):
+  """Utility function to see if the block execution should be aborted due to 
+  the percentage of errors exceeding the threshold. The block must have a
+  max_error_pct member. Thows TooManyErrors if the threshold is exceeded.
+  """
+  if num_total_events < 100: # we need a big enough sample size before doing the check
+    return
+  error_pct = float(num_errors)/float(num_total_events)
+  if error_pct>(float(block.max_error_pct)/100.0):
+    raise TooManyErrors(block, num_errors, num_total_events)
+
+  
+class URLOpenError(Exception):
+  def __init(self, errcode, msg):
+    Exception.__init__(self, msg)
+    self.errcode = errcode
+
+class ErrorCheckingURLopener(urllib.FancyURLopener):
+  """We need to subclass the url opener from urllib because it silently ignores
+  errors!!"""
+  def __init__(self, *args, **kwargs):
+    urllib.FancyURLopener.__init__(self, *args, **kwargs)
+  def http_error_default(self, url, fp, errcode, errmsg, headers):
+    raise URLOpenError(errcode, "Got error %d for url %s: '%s'" % (errcode, url, errmsg))
+
 class BlockUtils(object):
   @staticmethod
   def get_ipaddress():
@@ -144,67 +232,75 @@ class BlockUtils(object):
       return node_ipaddress
     
   @staticmethod
-  def generate_url_for_path(path, block_ip=None):
-    global GENERATE_URL_FILE_SERVER_KEY
-    path = path.encode('utf-8')
-    if GENERATE_URL_FILE_SERVER_KEY==None:
+  def generate_url_for_path(path, block_ip=None, key_for_testing=None):
+    try:
+      statinfo = os.stat(path)
+    except Exception, e:
+      raise Exception("Unable to stat file at path %s: %s" %
+                      (path, e))
+    global FILE_SERVER_KEY
+    if FILE_SERVER_KEY==None and key_for_testing==None:
       with open(file_server_keypath, 'r') as f:
-        GENERATE_URL_FILE_SERVER_KEY = f.read()
-    obj = DES.new(GENERATE_URL_FILE_SERVER_KEY, DES.MODE_ECB)
-    padding = ''
-    for i in range(0 if len(path)%8 == 0 else 8 - (len(path)%8)):
-      padding += '/'
-    path = padding + path
-    enc_path = obj.encrypt(path)
-    url_path = urllib.quote(enc_path)
+        FILE_SERVER_KEY = f.read()
+    url_path = encrypt_path(path,
+                            key_for_testing if key_for_testing else FILE_SERVER_KEY)
+    qs = urllib.urlencode([("len", statinfo.st_size), ("key", url_path)])
     if block_ip:
       ip = block_ip
     else:
       ip = BlockUtils.get_ipaddress()
-    return "http://" + ip + ":4990/?key=" + url_path
+    return "http://" + ip + ":4990/?" + qs
   
   @staticmethod
   def fetch_local_file(enc_path):
-    with open(file_server_keypath, 'r') as f:
-      deskey = f.read()
-    obj = DES.new(deskey, DES.MODE_ECB)
-    path = obj.decrypt(enc_path)
-    path = path.decode('utf-8')
+    global FILE_SERVER_KEY
+    if not FILE_SERVER_KEY:
+      with open(file_server_keypath, 'r') as f:
+        FILE_SERVER_KEY = f.read()
+    path = decrypt_path(enc_path, FILE_SERVER_KEY)
     # print "fetching local file at path", path
     with open(path, 'r') as f:
       return f.read()
     
   @staticmethod
-  def fetch_file_at_url(url, block_ip_address):
+  def fetch_file_at_url(url, block_ip_address, check_size=False):
     """Fetch a file from the fileserver at the specified url. Try to do it
     by a local read if possible. The block_ip_address parameter is used to help
     determine locality.
+
+    If you pass in check_size as True, this function will return the data and
+    the expected length (as obtained from the URL). Note that the expected length
+    is not always correct - the file might have been changed since the last access.
     """
     global successes
     p = urlparse(url)
+    query_dict = parse_qs(p.query)
+    assert query_dict.has_key("key"), "Url '%s' missing 'key' query parmameter" % url
+    assert query_dict.has_key("len"), "Url '%s' missing 'len' query parmameter" % url
+    expected_len = long(query_dict["len"][0])
     if (p.hostname == BlockUtils.get_ipaddress()) or \
        (p.hostname == block_ip_address):
-      url_enc_path = p.query[len("key="):].encode('ascii')
-      enc_path = urllib.unquote(url_enc_path)
-      return BlockUtils.fetch_local_file(enc_path)
+      key = query_dict["key"][0]
+      data = BlockUtils.fetch_local_file(key)
     else:
-      opener = urllib.FancyURLopener({})
-      try:
-        f = opener.open(url)
-      except:
-        logger.error("Problem with opening URL %s" % url)
-        raise
+      opener = ErrorCheckingURLopener({})
+      f = opener.open(url)
       successes += 1
       if (successes % 50)==0:
         logger.info("Fetched %d files successfully" % successes)
-      return f.read()
+      data = f.read()
+    if check_size:
+      return (data, expected_len)
+    else:
+      return data
   
 class Block(threading.Thread):
   def __init__(self, master_url):
     threading.Thread.__init__(self)
     # the following 4 fields will be initialized by load_block.start just
     # before the call to on_load()
-    self.id = None
+    self.id = None # The "id" field in metadata
+    self.block_name = None # This is the name field in metadata, but that conflicts with the thread name
     self.log_level = logging.INFO
     self.logger = None
     self.queue_size = 0
@@ -423,7 +519,7 @@ class Block(threading.Thread):
   def update_load(self):
     self.last_poll_time = time.time()  
     rm, rs = self.get_load()
-    load = json.dumps(("ALIVE", rm, rs, self.total_processing_time, self.last_poll_time))
+    load = json.dumps(("ALIVE", rm, rs, self.total_processing_time, self.last_poll_time, os.getpid()))
     with open(self.poll_file_name, 'w') as f:
         f.write(load)
     
@@ -592,7 +688,7 @@ class Block(threading.Thread):
     self.log(logging.INFO, " waiting for master to poll to report shutdown")
     self.last_poll_time = time.time()
     rm, rs = self.get_load()
-    load = json.dumps(("SHUTDOWN", rm, rs, self.total_processing_time, self.last_poll_time))
+    load = json.dumps(("SHUTDOWN", rm, rs, self.total_processing_time, self.last_poll_time, os.getpid()))
     with open(self.poll_file_name, 'w') as f:
         f.write(load)
 

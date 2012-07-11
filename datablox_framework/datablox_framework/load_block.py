@@ -59,6 +59,9 @@ def start(blox_dir, configuration_file_name, poll_file_name, log_dir):
   
   inst = block_class(config["master_port"])
   inst.id = config["id"]
+  inst.block_name = config["name"]
+  # We set the thread's name to be the block id
+  inst.name = config["id"]
   inst.ip_address = config["ip_address"]
   inst.poll_file_name = poll_file_name
   inst.log_level = config["log_level"]

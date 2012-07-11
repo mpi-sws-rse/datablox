@@ -30,9 +30,8 @@
         "args": {"crawlers":2},
         "at":"master"},
         {"id": "solr-sink", 
-        "name": "Null",
-         "args": { "num_tokens":2},
-           "at":"master"
+        "name": "Solr-Index", 
+        "args": {"crawlers":1}
         }
     ],
 

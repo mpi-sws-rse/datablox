@@ -96,6 +96,16 @@ class ResourceManager(object):
     
 resource_manager = ResourceManager()
 
+BLOCK_SYNC_TIMEOUT_MS = 20000
+
+# time between polls of the caretakers. Can override via a command line parameter
+DEFAULT_POLL_INTERVAL = 4
+
+# Number of times that a poll should result in a timeout before we consider
+# the associated block as dead.
+NUM_TIMEOUTS_BEFORE_DEAD = 15
+
+
 def get_url(ip_address, port_number):
   return "tcp://" + ip_address + ":" + str(port_number)
 
@@ -246,8 +256,9 @@ class BlockHandler(object):
     message = json.dumps(("ADD BLOCK", config))
     socket.connect(get_url(self.ip_address, 5000))
     socket.send(message)
-    logger.info("waiting for caretaker to load " + self.name)
+    logger.info("waiting for caretaker to load %s (%s)" % (self.id, self.name))
     res = json.loads(socket.recv())
+    logger.debug("caretaker response was %r" % res)
     socket.close()
     if not res:
       logger.error("Could not start block " + self.name)
@@ -263,16 +274,18 @@ class BlockHandler(object):
     url = get_url(self.ip_address, self.master_port)
     syncclient = self.context.socket(zmq.REQ)
     syncclient.connect(url)
-    logger.info("syncing with block %s at url %s" % (self.name, url))
+    logger.info("syncing with block %s (%s) at url %s" % (self.id, self.name, url))
     syncclient.send('')
     # wait for synchronization reply
-    # TODO: hardcoded wait for 8 seconds
-    res = timed_recv(syncclient, 8000)
+    # TODO: hardcoded wait for 20 seconds
+    res = timed_recv(syncclient, BLOCK_SYNC_TIMEOUT_MS)
     syncclient.close()
     if res != None:
       resource_manager.block_status[self.id] = "alive"
       return True
     else:
+      logger.error("Synchronization failed or timed out after %d ms" %
+                   BLOCK_SYNC_TIMEOUT_MS)
       return False
   
   def connect_to(self, from_port, to_block, to_port, connection_url=None):
@@ -307,7 +320,7 @@ class BlockHandler(object):
     #we should get a fresh entry
     if load != None and load[4] != self.last_poll_time:
       self.timeouts = 0
-      status, requests_made, requests_served, processing_time, last_poll_time = load
+      status, requests_made, requests_served, processing_time, last_poll_time,pid = load
       self.last_poll_time = last_poll_time
       resource_manager.block_times[self.id] = processing_time
       # print self.id
@@ -330,13 +343,14 @@ class BlockHandler(object):
       elif status == "SHUTDOWN":
         logger.info("%s has shutdown" % (self.id))
         resource_manager.block_status[self.id] = "shutdown"
-    #block timed out
-    else:
-      logger.info("** Master: %s timed out" % self.id)
-      self.timeouts += 1
-      #todo: hardcoded 10
-      if self.timeouts > 10:
-        resource_manager.block_status[self.id] = "timeout"
+      elif status == "DEAD":
+        logger.info("%s has crashed" % (self.id))
+        resource_manager.block_status[self.id] = "crashed"
+      else:
+        logger.info("** Master: %s timed out" % self.id)
+        self.timeouts += 1
+        if self.timeouts > NUM_TIMEOUTS_BEFORE_DEAD:
+          resource_manager.block_status[self.id] = "timeout"
 
 class RPCHandler(BlockHandler):
   def __init__(self, block_record, address_manager, context, policy=None):
@@ -683,11 +697,13 @@ class DjmAddressManager(AddressManager):
 class Master(object):
   def __init__(self, _bloxpath, config_file, ip_addr_list,
                _using_engage, _log_level=logging.INFO,
-               reuse_existing_installs=True):
+               reuse_existing_installs=True,
+               poll_interval=DEFAULT_POLL_INTERVAL):
     global global_config, bloxpath, using_engage, log_level
     bloxpath = _bloxpath
     using_engage = _using_engage
     log_level = _log_level
+    self.poll_interval = poll_interval
     if using_engage:
       logger.info("Running with Engage deployment home at %s" % \
                   engage_file_locator.get_dh())
@@ -785,23 +801,25 @@ class Master(object):
       if v == "timeout":
         logger.info("%s has a timeout" % i)
         return True
+      elif v == "crashed":
+        logger.info("%s crashed" % i)
+        return True
     
   def run(self):
     logger.info("Run started")
     try:
       while True:
-        #todo: hard coded 4
-        time.sleep(4)
+        time.sleep(self.poll_interval)
         loads = self.poll_all_nodes()
         self.main_block_handler.update_load(loads)
         resource_manager.write_loads(self.start_time)
-        if not self.running():
-          if self.has_timeouts():
-            logger.info("Master: topology has timeouts, killing all blocks and exiting")
-            self.stop_all("Quitting topology due to remaining blocks timing out")
-          else:
-            logger.info("Master: no more running nodes, quitting")
-            self.report_end()
+        if self.has_timeouts():
+          logger.info("Master: topology has timeouts or crashes, killing all blocks and exiting")
+          self.stop_all("Quitting topology due to remaining blocks timing out")
+          return
+        elif not self.running():
+          logger.info("Master: no more running nodes, quitting")
+          self.report_end()
           return
     except KeyboardInterrupt:
       self.stop_all("Got a keyboard interrupt") # does not return
