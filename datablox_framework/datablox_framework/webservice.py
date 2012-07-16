@@ -4,6 +4,7 @@ import zmq
 import xmlrpclib
 import json
 import time
+import os
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from collections import defaultdict
 
@@ -29,7 +30,7 @@ for port_name, rest in connections.items():
 def update_load():
   last_poll_time = time.time()
   #we don't serve any requests, so empty dict for that
-  load = json.dumps(("ALIVE", port_requests, {}, 0, last_poll_time))
+  load = json.dumps(("ALIVE", port_requests, {}, 0, last_poll_time, os.getpid()))
   with open(poll_file_name, 'w') as f:
       f.write(load)
   

@@ -390,7 +390,7 @@ class RPCHandler(BlockHandler):
         load = json.loads(f.read())
     except IOError:
       print "Could not find web service file"
-      load = ["ALIVE", {}, {}, 0, 0]
+      load = ["ALIVE", {}, {}, 0, 0, self.webserver_process.pid]
     if alive:
       load[0] = "ALIVE"
     else:
