@@ -3,12 +3,13 @@ import os.path
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 from Crypto.Cipher import DES
 import urllib
+import urlparse
 import sys
 from optparse import OptionParser
 import logging
 from random import choice, randint
 import string
-
+import base64
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,17 @@ FILESERVER_PORT=4990
 
 deskey = None
 
+def decrypt_path(encoded_path, key):
+  # The encoded_path is encrypted and base64 encoded. Base64 decoding
+  # doesn't seem to work on unicode strings (which is what we get back when
+  # parsing the path from the url). We encode as ascii first (the base64 encoding
+  # only uses valid ascii characters).
+  encoded_path = encoded_path.encode("ascii")
+  encrypted_path = base64.urlsafe_b64decode(encoded_path)
+  obj = DES.new(key, DES.MODE_ECB)
+  path = unicode(obj.decrypt(encrypted_path), encoding="utf-8")
+  return path
+
 def gen_random(length, chars=string.letters+string.digits):
     return ''.join([ choice(chars) for i in range(length) ])
 
@@ -37,12 +49,10 @@ class MyServer(BaseHTTPRequestHandler):
     
     logger.info(self.path)
     try:
-      key_message = "/?key="
-      loc = self.path.index(key_message)
-      enc_path = urllib.unquote(self.path[loc + len(key_message):])
+      qdict = urlparse.parse_qs(self.path)
+      enc_path = qdict["key"][0]
       obj = DES.new(deskey, DES.MODE_ECB)
-      path = obj.decrypt(enc_path)
-      path = path.decode('utf-8')
+      path = decrypt_path(enc_path, deskey)
       logger.info("Decrypted path " + path)
       with open(path, 'r') as f:
         self.send_response(200, 'OK')
@@ -51,6 +61,9 @@ class MyServer(BaseHTTPRequestHandler):
         self.wfile.write(f.read())
     except ValueError:
       logger.error("Invalid request")
+      self.send_response(404, 'Page Not Found')
+    except KeyError:
+      logger.error("Invalid request, no parameter named 'key'")
       self.send_response(404, 'Page Not Found')
     except IOError:
       logger.error("Could not open file")

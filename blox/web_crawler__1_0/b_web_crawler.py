@@ -37,7 +37,7 @@ class web_crawler(Block):
   
   def get_new_file_name(self):
     self.file_num += 1
-    return self.id + "_" + self.file_num.__str__()
+    return unicode(self.id + "_" + self.file_num.__str__())
 
   @benchmark
   def download_url(self, url):

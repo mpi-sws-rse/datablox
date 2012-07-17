@@ -87,7 +87,7 @@ class bookmark_query(Block):
       html = BlockUtils.fetch_file_at_url(self.fetch_store(local_url),
                                           self.ip_address)
       html = self.rewrite_links(url, html, assets)
-      name = 'bookmark_restored'
+      name = unicode('bookmark_restored')
       with open(name, 'w') as f:
         f.write(html)
       path = os.path.join(os.getcwd(), name)
