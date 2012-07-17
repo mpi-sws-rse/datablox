@@ -6,7 +6,7 @@ import sys
 import random
 
 if len(sys.argv) != 4:
-  print "%s: requires a file name and two indices as arguments"
+  print "%s: requires a URL listing file name and two indices as arguments"
   sys.exit(1)
 
 proxy = xmlrpclib.ServerProxy("http://localhost:8000/")
@@ -52,5 +52,5 @@ for url in urls:
 print "Done"
 print "Average list time:", sum(list_times)/len(list_times)
 print "Average fetch time:", sum(fetch_times)/len(fetch_times)
-proxy.shutdown()
+# proxy.shutdown()
 sys.exit(0)

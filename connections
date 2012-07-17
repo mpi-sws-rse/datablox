@@ -1,0 +1,1 @@
+{"bookmark": ["output", "tcp://127.0.0.1:7024"], "restore": ["output", "tcp://127.0.0.1:7032"], "list": ["output", "tcp://127.0.0.1:7030"], "delete": ["output", "tcp://127.0.0.1:7034"]}
