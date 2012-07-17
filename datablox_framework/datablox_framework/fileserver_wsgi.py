@@ -91,7 +91,8 @@ def app(environ, start_response):
     logger.debug("Decrypted path " + path)
     size = os.path.getsize(path)
   except KeyError, e:
-    log_exc("Invalid request(KeyError): %s" % e)
+    log_exc("Invalid request(KeyError): %s, query string was '%s'" %
+            (e, qs))
     start_response('404 Page Not Found', error_headers, sys.exc_info())
     return ["Invalid request"]
   except ValueError, e:

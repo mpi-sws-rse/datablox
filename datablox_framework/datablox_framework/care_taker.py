@@ -59,9 +59,13 @@ class CareTaker(object):
     #with open(file_server_keypath, 'w') as f:
     #  f.write(gen_random(8))
 
-    fileserver_script = os.path.join(os.path.dirname(__file__),
-                                     "fileserver.py")
-    command = [sys.executable, fileserver_script]
+    # fileserver_script = os.path.join(os.path.dirname(__file__),
+    #                                  "fileserver.py")
+    # command = [sys.executable, fileserver_script]
+    
+    # ./gunicorn -w 4 --bind=0.0.0.0:4990 datablox_framework.fileserver_wsgi:app
+    command = ["gunicorn", "fileserver_wsgi:app", "-w 4", "-b 0.0.0.0:4990"]
+    
     self.fileserver_process = subprocess.Popen(command)
   
   def start_block(self, data):
