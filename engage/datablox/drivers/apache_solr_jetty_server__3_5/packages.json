@@ -2,7 +2,8 @@
 [
   { "type": "Archive",
     "package_class": "GzippedTarArchive",
-    "location":"http://mirrors.ibiblio.org/apache/lucene/solr/3.6.1/apache-solr-3.6.1.tgz",
+    "location":["http://mirror.nexcess.net/apache/lucene/solr/3.6.1/apache-solr-3.6.1.tgz",
+                "http://mirrors.ibiblio.org/apache/lucene/solr/3.6.1/apache-solr-3.6.1.tgz"],
     "filename": "apache-solr-3.6.1.tgz",
     "downloader": "HTTPDownloader"
   }
