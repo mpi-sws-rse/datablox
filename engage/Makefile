@@ -117,7 +117,7 @@ test-big-crawl:
 	@echo "test-big-crawl completed successfully"
 
 
-test: engage-ext engage-dist test-deploy test-map-reduce test-deploy test-simple-shard
+test: engage-ext engage-dist test-deploy test-map-reduce test-deploy test-simple-shard test-deploy test-bookmarks
 	@echo "All tests completed successfully"
 
 kill-test-procs:
