@@ -1,9 +1,9 @@
-all: apache-solr-3.5.0.tgz mongodb-osx-x86_64-2.0.2.tgz
+all: apache-solr-3.6.1.tgz mongodb-osx-x86_64-2.0.2.tgz
 
-test: mongodb-osx-x86_64-2.0.2.tgz apache-solr-3.5.0.tgz
+test: mongodb-osx-x86_64-2.0.2.tgz apache-solr-3.6.1.tgz
 
-apache-solr-3.5.0.tgz:
-	wget -O apache-solr-3.5.0.tgz http://www.trieuvan.com/apache/lucene/solr/3.5.0/apache-solr-3.5.0.tgz
+apache-solr-3.6.1.tgz:
+	wget -O apache-solr-3.6.1.tgz http://mirrors.ibiblio.org/apache/lucene/solr/3.6.1/apache-solr-3.6.1.tgz
 
 mongodb-osx-x86_64-2.0.2.tgz:
 	wget -O mongodb-osx-x86_64-2.0.2.tgz http://fastdl.mongodb.org/osx/mongodb-osx-x86_64-2.0.2.tgz
