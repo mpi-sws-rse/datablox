@@ -90,6 +90,22 @@ test-simple-shard:
 	$(TEST_DEPLOY_HOME)/engage/bin/svcctl stop
 	@echo "simple-shard completed successfully"
 
+test-bookmarks:
+	@echo "Running bookmarks scenario"
+	$(TEST_DEPLOY_HOME)/engage/bin/svcctl start
+	mkdir -p $(TEST_DEPLOY_HOME)/bookmarks_downloads
+	@echo "  starting datablox..."
+	cd $(TEST_DEPLOY_HOME)/python/bin; ./datablox-master --log-level=$(TEST_LOG_LEVEL) $(BLOX_HOME)/examples/bookmark.json master &
+	while ! grep "RPC block is working" $(TEST_DEPLOY_HOME)/log/master.log; do echo "  waiting for bookmarks topology to be ready"; sleep 5; done
+	cd $(BLOX_HOME)/blox/bookmark_client__1_0/bookmarks_ui; python server.py --pidfile=$(TEST_DEPLOY_HOME)/bookmarks_ui.pid &
+	sleep 5
+	curl -f http://localhost:9000/www/list
+	curl -f http://localhost:9000/www/shutdown
+	sleep 15 # this is a big hack!!!! TODO: need to fix support for longrunning master, see issue #78
+	kill -9 `cat $(TEST_DEPLOY_HOME)/bookmarks_ui.pid`
+	$(TEST_DEPLOY_HOME)/engage/bin/svcctl stop
+	@echo "bookmarks completed successfully"
+
 # since this test take a long time to run, it is not run as a part of "make test"
 test-big-crawl:
 	@echo "Running test-big-crawl scenario"
@@ -107,11 +123,12 @@ test: engage-ext engage-dist test-deploy test-map-reduce test-deploy test-simple
 kill-test-procs:
 	$(BLOX_HOME)/scripts/killproc -n python
 	$(BLOX_HOME)/scripts/killproc -n mongo
+	$(BLOX_HOME)/scripts/killproc -n redis
 	$(BLOX_HOME)/scripts/killproc -n solr/example/start.jar
 
 
 help:
-	@echo "Targets are all engage-ext engage-dist test-deploy test-map-reduce test-read-files test test-big-crawl download-packages kill-test-procs clean clean-all"
+	@echo "Targets are all engage-ext engage-dist test-deploy test-map-reduce test-read-files test-bookmarks test test-big-crawl download-packages kill-test-procs clean clean-all"
 
 clean:
 	rm -rf $(ENGAGE_EXT_HOME)/datablox/sw_packages
@@ -123,4 +140,4 @@ clean:
 clean-all: clean
 	rm -rf $(PACKAGE_DIR)
 
-.PHONY: all clean clean-all engage-dist engage-ext help download-packages test-deploy test-map-reduce test-read-files test-simple-shard test test-packages kill-test-procs test-big-crawl
+.PHONY: all clean clean-all engage-dist engage-ext help download-packages test-deploy test-map-reduce test-read-files test-simple-shard test test-packages kill-test-procs test-big-crawl test-bookmarks

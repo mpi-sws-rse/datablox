@@ -11,7 +11,7 @@
              "args": {}},
             {"id": "store",
              "name": "Store",
-             "args": {"store_directory": "/Users/saideep/Downloads/junk"}},
+             "args": {"store_directory": "~/apps/bookmarks_downloads"}},
             {"id": "metadata",
              "name": "Meta-Store",
              "args": {}},
