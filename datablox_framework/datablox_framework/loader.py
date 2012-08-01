@@ -1,3 +1,5 @@
+"""This is the command line interface to the master.
+"""
 import os
 import os.path
 import sys
@@ -21,6 +23,31 @@ else:
   engage_file_locator = None
 
 
+def build_args(flat_args):
+  """Given flattened arguments provided by the user
+  """
+  args = {} # map where key is block id, value is a map from arg name to arg value
+  for k in flat_args.keys():
+    k_comps = k.split(".")
+    if (len(k_comps) < 2) or (len(k_comps) > 3):
+      raise Exception("invalid key %s: should have form [group_id].block_id.arg_name" % k)
+    if len(k_comps)==2:
+      gid = "main"
+      bid = k_comps[0]
+      an = k_comps[1]
+    else:
+      gid = k_comps[0]
+      bid = k_comps[1]
+      an = k_comps[2]
+    if not args.has_key(gid):
+      args[gid] = {}
+    group = args[gid]
+    if not group.has_key(bid):
+      group[bid] = {}
+    block = group[bid]
+    block[an] = flat_args[k]
+  return args
+  
 log_levels = {
   "ERROR": logging.ERROR,
   "WARN": logging.WARN,
@@ -35,6 +62,10 @@ def main(argv):
   else:
     usage = "%prog [options] config_file ip_address1 ip_address2 ..."
   parser = OptionParser(usage=usage)
+  parser.add_option("-a", "--args", dest="args", default=None,
+                    help="JSON map containing overrides of block arguments in the topology. The keys in the map have the form [group_id].block_id.arg_name. Example: --args '{\"source.sleep\":5, \"sink.sleep\":10}' Note that --args is mutually exclusive with --args-file.")
+  parser.add_option("--args-file", dest="args_file", default=None,
+                    help="File containing JSON map containing overrides of block arguments in the topology. The keys in the map have the form [group_id].block_id.arg_name. Mutually exclusive with --args.")
   parser.add_option("-b", "--bloxpath", dest="bloxpath", default=None,
                     help="use this path instead of the environment variable BLOXPATH")
   parser.add_option("-p", "--poll-interval", dest="poll_interval", type="int",
@@ -66,6 +97,34 @@ def main(argv):
 
   bloxpath = options.bloxpath
 
+  if options.args and options.args_file:
+    parser.error("Cannot specify both --args and --args-file")
+  if options.args:
+    try:
+      block_args_flat = json.loads(options.args)
+    except Exception, e:
+      parser.error("--args option value %s is not valid JSON: %s" % (options.args, e))
+    try:
+      block_args = build_args(block_args_flat)
+    except Exception, e:
+      parser.error("--args option: %s" % e)
+  elif options.args_file:
+    args_filepath = os.path.abspath(os.path.expanduser(options.args_file))
+    if not os.path.exists(args_filepath):
+      parser.error("--args-file: file %s does not exist" % args_filepath)
+    try:
+      with open(args_filepath, "rb") as f:
+        block_args_flat = json.load(f)
+    except Exception, e:
+      parser.error("--args-file %s is not valid JSON: %s" % (args_filepath, e))
+    try:
+      block_args = build_args(block_args_flat)
+    except Exception, e:
+      parser.error("--args-file option: %s" % e)
+  else:
+    block_args = None
+      
+    
   # The priorities for obtaining bloxpath are:
   # 1. Command line option
   # 2. If engage is installed, use file locator to get bloxpath
@@ -105,7 +164,8 @@ def main(argv):
   Master(bloxpath, args[0], args[1:], using_engage,
          _log_level=log_levels[options.log_level],
          reuse_existing_installs=True,
-         poll_interval=options.poll_interval)
+         poll_interval=options.poll_interval,
+         block_args=block_args)
 
 def call_from_console_script():
     sys.exit(main(sys.argv[1:]))

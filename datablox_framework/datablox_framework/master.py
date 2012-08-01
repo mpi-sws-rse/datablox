@@ -698,7 +698,8 @@ class Master(object):
   def __init__(self, _bloxpath, config_file, ip_addr_list,
                _using_engage, _log_level=logging.INFO,
                reuse_existing_installs=True,
-               poll_interval=DEFAULT_POLL_INTERVAL):
+               poll_interval=DEFAULT_POLL_INTERVAL,
+               block_args=None):
     global global_config, bloxpath, using_engage, log_level
     bloxpath = _bloxpath
     using_engage = _using_engage
@@ -716,12 +717,7 @@ class Master(object):
 
     add_blox_to_path(_bloxpath)
     self.context = zmq.Context()
-    global_config = self.get_config(config_file)
-    #old style, flat config
-    #convert it into a one group list.
-    if not (type(global_config) == list):
-      global_config["group-name"] = "main"
-      global_config = [global_config]
+    global_config = self.get_config(config_file, block_args=block_args)
     #can fill this with command line args
     main_block_rec = {"id": "main_inst", "args": {}}
     self.main_block_handler = GroupHandler(main_block_rec, get_group("main"), self.address_manager, self.context)
@@ -742,9 +738,33 @@ class Master(object):
       self.address_manager.djm_job.stop_job(successful=True)
     return
   
-  def get_config(self, config_file):
+  def get_config(self, config_file, block_args=None):
     with open(config_file) as f:
-      return json.load(f)
+      cfg = json.load(f)
+    #old style, flat config
+    #convert it into a one group list.
+    if not (type(cfg) == list):
+      cfg["group-name"] = "main"
+      cfg = [cfg]
+    if block_args:
+      # we go through the blocks in the config file and set any args that we find
+      # in the passed-in args
+      for group in cfg:
+        assert group.has_key("group-name"), "Invalid topology file, missing group-name property"
+        gn = group["group-name"]
+        if not block_args.has_key(gn): continue # no overrides for this group
+        assert group.has_key("blocks"), "Group %s missing blocks property" % gn
+        arg_blocks = block_args[gn]
+        for block in group["blocks"]:
+          assert block.has_key("id"), "Block in group %s is missing id property" % gn
+          bn = block["id"]
+          if not arg_blocks.has_key(bn): continue
+          args = block["args"]
+          for (k, v) in arg_blocks[bn].items():
+            logger.info("Overriding group '%s' block '%s' property '%s' to %s" %
+                        (gn, bn, k, v))
+            args[k] = v
+    return cfg
 
   def send_all_nodes(self, message):
     results = []
