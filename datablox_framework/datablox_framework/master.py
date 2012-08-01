@@ -44,9 +44,14 @@ class ResourceManager(object):
   def write_loads(self, poll_start_time):
     # print "Block loads", self.block_loads
     loads = defaultdict(int)
-    for d in self.block_loads.values():
-      for block_id, load in d.items():
-        loads[block_id] += load
+    for poller_id, d in self.block_loads.items():
+      #this block has timed out, but add an entry anyway
+      #to keep it in sync with other block loads
+      if d == {}:
+        loads[poller_id] += 0
+      else:
+        for block_id, load in d.items():
+          loads[block_id] += load
     # logger.info("loads: %r" % loads)
     time_per_req = {}
     # print "Block times: %r" % self.block_times
@@ -346,11 +351,11 @@ class BlockHandler(object):
       elif status == "DEAD":
         logger.info("%s has crashed" % (self.id))
         resource_manager.block_status[self.id] = "crashed"
-      else:
-        logger.info("** Master: %s timed out" % self.id)
-        self.timeouts += 1
-        if self.timeouts > NUM_TIMEOUTS_BEFORE_DEAD:
-          resource_manager.block_status[self.id] = "timeout"
+    else:
+      logger.info("** Master: %s timed out" % self.id)
+      self.timeouts += 1
+      if self.timeouts > NUM_TIMEOUTS_BEFORE_DEAD:
+        resource_manager.block_status[self.id] = "timeout"
 
 class RPCHandler(BlockHandler):
   def __init__(self, block_record, address_manager, context, policy=None):
