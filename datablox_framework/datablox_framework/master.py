@@ -259,6 +259,7 @@ class BlockHandler(object):
     self.add_additional_config(config)
     socket = self.context.socket(zmq.REQ)
     message = json.dumps(("ADD BLOCK", config))
+    logger.debug("Connecting to %s" % get_url(self.ip_address, 5000))
     socket.connect(get_url(self.ip_address, 5000))
     socket.send(message)
     logger.info("waiting for caretaker to load %s (%s)" % (self.id, self.name))

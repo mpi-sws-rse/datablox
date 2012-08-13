@@ -6,32 +6,46 @@ import re
 
 
 from block import *
+from block_cfg_utils import *
 
 query_var_re = re.compile('^\\$\\{(.+)\\}$')
 
+PROPERTIES = [
+  required_prop('database', validator=str,
+                help='The name of the mongo db database'),
+  required_prop('input_collection', validator=str,
+                help='The name of the collection on which the map-reduce will be performed'),
+  required_prop('output_collection', validator=str,
+                help='The name of the collection to store the results of the map-reduce'),
+  required_prop('map_function', validator=str,
+                help='A string containing the JavaScript map function'),
+  required_prop('reduce_function', validator=str,
+                help='A string containing the JavaScript reduce function'),
+  optional_prop('run_on_each_key', validator=bool, default=False,
+                help='If specified and True, run a map reduce on each incoming' +
+                     ' key. Otherwise run a single map reduce at the end.'),
+  optional_prop('scope', validator=dict, default=None,
+                help="Key/value pairs to be used as the 'scope' for the map" +
+                     " and reduce functions (similar to SQL bind variables)."),
+  optional_prop('query', validator=dict, default=None,
+                help="If provided, this should be a json representation of " +
+                      "a query to use on the initial map operation. Any string " +
+                      "values in the query are checked to see if they have the " +
+                      "form ${var}, where var is a key in the scope. If so, the " +
+                      "string is replaced with the associated scope value. This is " +
+                      "useful to filter the map by the key provided on the input " +
+                      "port."),
+  optional_prop('pre_delete_matching_records_in_output', validator=dict,
+                default=None,
+                help="If specified, delete the matching records in the output " +
+                     "collection before running the map-reduce. The same scope " +
+                     "substitutions are performed on the deletion query as on " +
+                     "the query property. This property is " +
+                     "useful when you are rerunning a map-reduce on updated data.")
+]
+
 class mongo_map_reduce(Block):
   """This block runs map-reduce on a mongo db collection.
-
-  Configuration Parameters
-  ------------------------
-   * database - the name of the mongo db database
-   * input_collection  - the name of the collection on which the map-reduce will be
-                         performed
-   * output_collection - the name of the collection to store the results of the
-                         map-reduce
-   * map_function      - a string containing the JavaScript map function
-   * reduce_function   - a sring containing the JavaScript reduce function
-   * run_on_each_key   - if specified and True, run a map reduce on each incoming
-                         key. Otherwise run a single map reduce at the end.
-   * scope             - Key/value pairs to be used as the 'scope' for the map
-                         and reduce functions (similar to SQL bind variables).
-   * query             - If provided, this should be a json representation of
-                         a query to use on the initial map operation. Any string
-                         values in the query are checked to see if they have the
-                         form ${var}, where var is a key in the scope. If so, the
-                         string is replaced with the associated scope value. This is
-                         useful to filter the map by the key provided on the input
-                         port.
 
   Ports
   -----
@@ -51,11 +65,7 @@ class mongo_map_reduce(Block):
   is run. Either way, a completion token is sent on the output port after all
   map-reduce operations have been run.
   """
-  def _check_config(self, property, config):
-    if not config.has_key(property):
-      raise Exception("%s: configuration missing required property '%s'" %
-                      (self.id, property))
-    
+
   def on_load(self, config):
     import pymongo
     import pymongo.database
@@ -67,37 +77,20 @@ class mongo_map_reduce(Block):
     self.add_port("output", Port.PUSH, Port.UNNAMED, ["key"])
     self.connection = Connection()
     # get the configuration
-    self._check_config("database", config)
-    self.database_name = config["database"]
-    self._check_config("input_collection", config)
-    self.input_collection_name = config["input_collection"]
-    self._check_config("output_collection", config)
-    self.output_collection_name = config["output_collection"]
-    if config.has_key("run_on_each_key") and config["run_on_each_key"]:
-      self.run_on_each_key = True
-    else:
-      self.run_on_each_key = False
-    self._check_config("map_function", config)
-    self.map_function = config["map_function"]
-    self._check_config("reduce_function", config)
-    self.reduce_function = config["reduce_function"]
-    if config.has_key("scope"):
-      self.scope = config["scope"]
-    else:
-      self.scope = None
-    if config.has_key("query"):
-      self.query = config["query"]
-      assert isinstance(self.query, dict)
-    else:
-      self.query = None
+    self.config = config
+    process_config(PROPERTIES, config, self)
+
     # now we get the actual collection on which we wil be performing the map reduce
-    database = pymongo.database.Database(self.connection, self.database_name)
-    self.input_collection = pymongo.collection.Collection(database,
-                                                          self.input_collection_name)
+    database = pymongo.database.Database(self.connection, self.database)
+    self.input_collection_obj = pymongo.collection.Collection(database,
+                                                              self.input_collection)
+    if self.pre_delete_matching_records_in_output:
+      self.output_collection_obj = pymongo.collection.Collection(database,
+                                                                 self.output_collection)
     self.log(INFO, "Mongo-Map-Reduce: block loaded")
 
-  def _create_query(self, scope):
-    """Given the query specified in the configuration, return a version that
+  def _create_query(self, query, scope):
+    """Given the specified query, return a version that
     substitutes the scope variables.
     """
     def subst(map):
@@ -120,11 +113,11 @@ class mongo_map_reduce(Block):
         else:
           r[k] = v
       return r
-    if (not scope) or (not self.query):
+    if (not scope) or (not query):
       # if no substition or there isn't a query, no need for further processing
-      return self.query
+      return query
     else:
-      q = subst(self.query)
+      q = subst(copy.deepcopy(query))
       self.log(DEBUG, "using query filter %s" % q.__repr__())
       return q
     
@@ -137,10 +130,18 @@ class mongo_map_reduce(Block):
     scope["key"] = key
     mf = self.Code(self.map_function, scope=scope)
     rf = self.Code(self.reduce_function, scope=scope)
-    oc = self.input_collection.map_reduce(mf,
-                                          rf,
-                                          self.output_collection_name,
-                                          query=self._create_query(scope))
+    if self.pre_delete_matching_records_in_output:
+      remove_query = self._create_query(self.pre_delete_matching_records_in_output,
+                                        scope)
+      self.output_collection_obj.remove(remove_query)
+      self.log(INFO,
+               "Removed rows matching %s from %s before executing map-reduce" %
+               (remove_query.__repr__(), self.output_collection))
+    oc = self.input_collection_obj.map_reduce(mf,
+                                              rf,
+                                              self.output_collection,
+                                              query=self._create_query(self.query,
+                                                                       scope))
     cnt = oc.count()
     self.log(INFO, "Successfully ran map reduce, output collection size was %d" % cnt)
 
@@ -152,10 +153,18 @@ class mongo_map_reduce(Block):
       scope = None
     mf = self.Code(self.map_function, scope=scope)
     rf = self.Code(self.reduce_function, scope=scope)
-    oc = self.input_collection.map_reduce(mf,
-                                          rf,
-                                          self.output_collection_name,
-                                          query=self._create_query(scope))
+    if self.pre_delete_matching_records_in_output:
+      remove_query = self._create_query(self.pre_delete_matching_records_in_output,
+                                        scope)
+      self.output_collection_obj.remove(remove_query)
+      self.log(INFO,
+               "Removed rows matching %s from %s before executing map-reduce" %
+               (remove_query.__repr__(), self.output_collection))
+    oc = self.input_collection_obj.map_reduce(mf,
+                                              rf,
+                                              self.output_collection,
+                                              query=self._create_query(self.query,
+                                                                       scope))
     cnt = oc.count()
     self.log(INFO, "Successfully ran map reduce, output collection size was %d" % cnt)
     
