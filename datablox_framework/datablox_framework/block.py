@@ -219,13 +219,16 @@ class BlockUtils(object):
   def get_ipaddress():
     global node_ipaddress
     if node_ipaddress == None:
-      ip = socket.gethostbyname(socket.gethostname())
-      #that hasn't worked, using a method described here: http://zeth.net/post/355/
-      if ip[:4] == "127.":
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(('google.com', 0))
-        ip = s.getsockname()[0]
-        if ip[:4] == "127.": self.log(WARN, "Could only find local ip-address!")
+      try:
+        ip = socket.gethostbyname(socket.gethostname())
+        #that hasn't worked, using a method described here: http://zeth.net/post/355/
+        if ip[:4] == "127.":
+          s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+          s.connect(('google.com', 0))
+          ip = s.getsockname()[0]
+      except socket.gaierror:
+        ip = "127.0.0.1"
+      if ip[:4] == "127.": logger.warn("Could only find local ip-address!")
       node_ipaddress = ip
       return ip
     else:
