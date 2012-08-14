@@ -92,6 +92,19 @@ def v_dir_exists(name, path, obj_inst):
                              (obj_inst.id, name, path))
 
 
+# Validator constructors
+def vc_or_types(*args):
+  def v_or_types(name, value, obj_inst):
+    for typ in args:
+      if isinstance(value, typ): return
+    raise BlockPropertyError("%s: Property %s should be one of the types %s, actual value was %s" %
+                             (obj_inst.id, name, ', '.join([arg.__name__ for arg in args]),
+                              value.__repr__()))
+  v_or_types.__doc__ = "Valid types are any one of %s" % \
+                       ', '.join([arg.__name__ for arg in args])
+  return v_or_types
+
+
   # Transformers
 def t_fixpath(name, path, obj_inst):
   return os.path.abspath(os.path.expanduser(path))

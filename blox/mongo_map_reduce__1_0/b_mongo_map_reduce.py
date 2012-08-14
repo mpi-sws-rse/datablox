@@ -15,8 +15,8 @@ PROPERTIES = [
                 help='The name of the mongo db database'),
   required_prop('input_collection', validator=str,
                 help='The name of the collection on which the map-reduce will be performed'),
-  required_prop('output_collection', validator=str,
-                help='The name of the collection to store the results of the map-reduce'),
+  required_prop('output_collection', validator=vc_or_types(unicode, dict),
+                help='The name of the collection to store the results of the map-reduce or a dictionary of the form {"reduce": "output_collection_name"}'),
   required_prop('map_function', validator=str,
                 help='A string containing the JavaScript map function'),
   required_prop('reduce_function', validator=str,
@@ -85,8 +85,15 @@ class mongo_map_reduce(Block):
     self.input_collection_obj = pymongo.collection.Collection(database,
                                                               self.input_collection)
     if self.pre_delete_matching_records_in_output:
+      if isinstance(self.output_collection, dict):
+        if not self.output_collection.has_key('reduce'):
+          raise BlockPropertyError("%s: output_collection dict missing 'reduce' key" %
+                                   self.id)
+        self.oc_name = self.output_collection['reduce']
+      else:
+        self.oc_name = self.output_collection
       self.output_collection_obj = pymongo.collection.Collection(database,
-                                                                 self.output_collection)
+                                                                 self.oc_name)
     self.log(INFO, "Mongo-Map-Reduce: block loaded")
 
   def _create_query(self, query, scope):
@@ -136,7 +143,7 @@ class mongo_map_reduce(Block):
       self.output_collection_obj.remove(remove_query)
       self.log(INFO,
                "Removed rows matching %s from %s before executing map-reduce" %
-               (remove_query.__repr__(), self.output_collection))
+               (remove_query.__repr__(), self.oc_name))
     oc = self.input_collection_obj.map_reduce(mf,
                                               rf,
                                               self.output_collection,
@@ -159,7 +166,7 @@ class mongo_map_reduce(Block):
       self.output_collection_obj.remove(remove_query)
       self.log(INFO,
                "Removed rows matching %s from %s before executing map-reduce" %
-               (remove_query.__repr__(), self.output_collection))
+               (remove_query.__repr__(), self.oc_name))
     oc = self.input_collection_obj.map_reduce(mf,
                                               rf,
                                               self.output_collection,

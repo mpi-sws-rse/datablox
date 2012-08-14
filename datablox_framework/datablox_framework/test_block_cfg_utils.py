@@ -28,6 +28,8 @@ EXAMPLE_PROPERTIES = [
                               join(abspath(expanduser(base_dumpdir)),
                                    "crawl_%d" % block_inst.crawl_id),
                   help="Directory under which crawl-specific dumps will be placed."),
+    optional_prop('multi_type_prop', validator=vc_or_types(dict, unicode),
+                  default=None, help="Testing vc_or_types"),
     optional_prop('query', default=None,
                   validator=dict,
                   help="If specified, query parameter to filter rows to be dumped"),
@@ -78,7 +80,20 @@ class TestBlockCfgUtils(unittest.TestCase):
         self.cfg['delete_data_after_dump'] = True
         process_config(EXAMPLE_PROPERTIES, self.cfg, self.block)
         self.assertTrue(self.block.delete_data_after_dump)
-        
+
+    def test_vc_or_types(self):
+        self.cfg['multi_type_prop'] = u"test"
+        process_config(EXAMPLE_PROPERTIES, self.cfg, self.block)
+        self.cfg['multi_type_prop'] = {}
+        process_config(EXAMPLE_PROPERTIES, self.cfg, self.block)
+        self.cfg['multi_type_prop'] = 1
+        try:
+            process_config(EXAMPLE_PROPERTIES, self.cfg, self.block)
+            self.fail("Did not get expected error")
+        except BlockPropertyError, e:
+            self.assertEqual(str(e),
+                             "test_block: Property multi_type_prop should be one of the types dict, unicode, actual value was 1")
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
