@@ -258,6 +258,7 @@ class BlockHandler(object):
     config = self.create_basic_config()
     self.add_additional_config(config)
     socket = self.context.socket(zmq.REQ)
+    socket.setsockopt(zmq.LINGER, 0)
     message = json.dumps(("ADD BLOCK", config))
     logger.debug("Connecting to %s" % get_url(self.ip_address, 5000))
     socket.connect(get_url(self.ip_address, 5000))
@@ -776,6 +777,7 @@ class Master(object):
     results = []
     for ip in self.address_manager.get_all_ipaddresses():
       socket = self.context.socket(zmq.REQ)
+      socket.setsockopt(zmq.LINGER, 0)
       socket.connect(get_url(ip, 5000))
       socket.send(message)
       res = json.loads(socket.recv())

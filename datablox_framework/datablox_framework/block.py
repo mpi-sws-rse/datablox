@@ -645,7 +645,7 @@ class Block(threading.Thread):
     """This method is only called when the block has no input ports (e.g. is
     a data source).
     """
-    raise NotImplementedError
+    raise NotImplementedError("%s.do_task" % self.__class__.__name__)
   
   #TODO: doing this in a blocking fashion for now, can do it asynchronously
   def get_pending_query_results(self):
@@ -705,7 +705,7 @@ class Block(threading.Thread):
     return port
   
   def recv_push(self, full_port_name, log):
-    raise NotImplementedError
+    raise NotImplementedError("%s.recv_push" % self.__class__.__name__)
   
   def recv_query(self, port, log):
     raise NotImplementedError

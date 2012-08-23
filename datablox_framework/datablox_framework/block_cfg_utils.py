@@ -6,6 +6,7 @@
 import os.path
 import json
 from collections import namedtuple
+import re
 
 
 class BlockPropertyError(Exception):
@@ -90,6 +91,16 @@ def v_dir_exists(name, path, obj_inst):
   if not os.path.isdir(path):
     raise BlockPropertyError("%s: Property %s refers to non-existant directory '%s'" %
                              (obj_inst.id, name, path))
+
+
+# match YYYY-MM-DDTHH:MM:SS*
+timestamp_re = re.compile(r"^(\d\d\d\d)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)")
+
+def v_iso_timestamp(name, value, obj_inst):
+  if (not isinstance(value, str) and not isinstance(value, unicode)) or \
+     timestamp_re.match(value)==None:
+    raise BlockPropertyError("%s: Property %s value %s is not in valid iso time/date format" %
+                             (obj_inst.id, value.__repr__()))
 
 
 # Validator constructors
