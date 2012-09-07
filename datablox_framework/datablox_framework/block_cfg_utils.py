@@ -7,6 +7,7 @@ import os.path
 import json
 from collections import namedtuple
 import re
+import logging
 
 
 class BlockPropertyError(Exception):
@@ -124,3 +125,26 @@ def t_fixpath(name, path, obj_inst):
 
 def t_jsondump(name, value, obj_inst):
   return json.dumps(value)
+
+#
+# Some common properties that blocks might want to use
+#
+
+def _extra_debug_xformer(name, value, obj_inst):
+  if value==True:
+    if self.log_level>logging.DEBUG:
+      self.log_level==logging.DEBUG.
+      self.logger.setLevel(logging.DEBUG)
+  return value
+
+extra_debug_property = \
+    optional_prop('debug', default=False, validator=bool,
+                  transformer=_extra_debug_xformer,
+                  help="If True or if log level is ALL, then print extra debugging info (at some performance penalty). Will also ensure that log level for this block is at least DEBUG.")
+
+def extra_debug_enabled(block):
+  if block.debug or block.log_level<logging.DEBUG:
+    return True
+  else:
+    return False
+

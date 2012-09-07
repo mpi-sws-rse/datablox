@@ -41,7 +41,8 @@ PROPERTIES = [
                      "collection before running the map-reduce. The same scope " +
                      "substitutions are performed on the deletion query as on " +
                      "the query property. This property is " +
-                     "useful when you are rerunning a map-reduce on updated data.")
+                     "useful when you are rerunning a map-reduce on updated data."),
+  extra_debug_property
 ]
 
 class mongo_map_reduce(Block):
@@ -84,7 +85,7 @@ class mongo_map_reduce(Block):
     database = pymongo.database.Database(self.connection, self.database)
     self.input_collection_obj = pymongo.collection.Collection(database,
                                                               self.input_collection)
-    if self.pre_delete_matching_records_in_output:
+    if self.pre_delete_matching_records_in_output!=None:
       if isinstance(self.output_collection, dict):
         if not self.output_collection.has_key('reduce'):
           raise BlockPropertyError("%s: output_collection dict missing 'reduce' key" %
@@ -137,13 +138,19 @@ class mongo_map_reduce(Block):
     scope["key"] = key
     mf = self.Code(self.map_function, scope=scope)
     rf = self.Code(self.reduce_function, scope=scope)
-    if self.pre_delete_matching_records_in_output:
+    if self.pre_delete_matching_records_in_output!=None:
+      if extra_debug_enabled(self):
+        self.log(DEBUG, "%d rows in output collection before running pre-delete step" %
+                 self.output_collection_obj.count())
       remove_query = self._create_query(self.pre_delete_matching_records_in_output,
                                         scope)
       self.output_collection_obj.remove(remove_query)
       self.log(INFO,
                "Removed rows matching %s from %s before executing map-reduce" %
                (remove_query.__repr__(), self.oc_name))
+      if extra_debug_enabled(self):
+        self.log(DEBUG, "%d rows in output collection after running pre-delete step" %
+                 self.output_collection_obj.count())
     oc = self.input_collection_obj.map_reduce(mf,
                                               rf,
                                               self.output_collection,
@@ -160,13 +167,19 @@ class mongo_map_reduce(Block):
       scope = None
     mf = self.Code(self.map_function, scope=scope)
     rf = self.Code(self.reduce_function, scope=scope)
-    if self.pre_delete_matching_records_in_output:
+    if self.pre_delete_matching_records_in_output!=None:
+      if extra_debug_enabled(self):
+        self.log(DEBUG, "%d rows in output collection %s before running pre-delete step" %
+                 (self.output_collection_obj.count(), self.oc_name))
       remove_query = self._create_query(self.pre_delete_matching_records_in_output,
                                         scope)
       self.output_collection_obj.remove(remove_query)
       self.log(INFO,
                "Removed rows matching %s from %s before executing map-reduce" %
                (remove_query.__repr__(), self.oc_name))
+      if extra_debug_enabled(self):
+        self.log(DEBUG, "%d rows in output collection after running pre-delete step" %
+                 self.output_collection_obj.count())
     oc = self.input_collection_obj.map_reduce(mf,
                                               rf,
                                               self.output_collection,
