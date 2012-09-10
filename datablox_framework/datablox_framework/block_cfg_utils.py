@@ -132,9 +132,9 @@ def t_jsondump(name, value, obj_inst):
 
 def _extra_debug_xformer(name, value, obj_inst):
   if value==True:
-    if self.log_level>logging.DEBUG:
-      self.log_level==logging.DEBUG.
-      self.logger.setLevel(logging.DEBUG)
+    if obj_inst.log_level>logging.DEBUG:
+      obj_inst.log_level = logging.DEBUG
+      obj_inst.logger.setLevel(logging.DEBUG)
   return value
 
 extra_debug_property = \
