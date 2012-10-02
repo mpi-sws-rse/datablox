@@ -6,7 +6,8 @@
 import sys
 import os
 import os.path
-## import commands
+import urllib
+from contextlib import closing
 
 # fix path if necessary (if running from source or running as test)
 try:
@@ -18,6 +19,7 @@ except:
 
 import engage.drivers.service_manager as service_manager
 import engage.drivers.utils
+
 # Drivers compose *actions* to implement their methods.
 from engage.drivers.action import *
 
@@ -87,6 +89,15 @@ def make_context(resource_json, sudo_password_fn, dry_run=False):
                          "apache_solr.log"))
     return ctx
 
+@make_value_action
+def is_solr_alive(self, solr_url='http://localhost:8983/solr/select'):
+    try:
+        with closing(urllib.urlopen(solr_url)) as aiu:
+            aiu.read()
+        return True
+    except IOError:
+        return False
+
 
 class Manager(service_manager.Manager):
     REQUIRES_ROOT_ACCESS = False
@@ -126,6 +137,7 @@ class Manager(service_manager.Manager):
                    p.log_file,
                    p.pid_file,
                    cwd=os.path.dirname(p.startup_jar_file))
+        self.ctx.check_poll(10, 20, lambda r: r, is_solr_alive)
 
     def is_running(self):
         p = self.ctx.props
