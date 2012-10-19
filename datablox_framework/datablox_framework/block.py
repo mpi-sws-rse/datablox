@@ -264,6 +264,29 @@ class BlockUtils(object):
     # print "fetching local file at path", path
     with open(path, 'r') as f:
       return f.read()
+
+  @staticmethod
+  def get_url_or_decrypted_local_path(url, block_ip_address):
+    """Parse the url and figure out if the fileserver is local.
+    If so, decrypt the path and return it prefixed with file://.
+    Otherwise, just return the original url. In both cases, the return value
+    is a pair of the form (url/path, file_len).
+    """
+    p = urlparse(url)
+    query_dict = parse_qs(p.query)
+    assert query_dict.has_key("key"), "Url '%s' missing 'key' query parmameter" % url
+    assert query_dict.has_key("len"), "Url '%s' missing 'len' query parmameter" % url
+    expected_len = long(query_dict["len"][0])
+    if (p.hostname == BlockUtils.get_ipaddress()) or \
+       (p.hostname == block_ip_address):
+      enc_path = query_dict["key"][0]
+      global FILE_SERVER_KEY
+      if not FILE_SERVER_KEY:
+        with open(file_server_keypath, 'r') as f:
+          FILE_SERVER_KEY = f.read()
+      return ("file://" + decrypt_path(enc_path, FILE_SERVER_KEY), expected_len)
+    else:
+      return (url, expected_len)
     
   @staticmethod
   def fetch_file_at_url(url, block_ip_address, check_size=False):

@@ -604,7 +604,10 @@ class GroupHandler(BlockHandler):
       # if from_block.has_key("join_node"):
       #   from_block = from_block["join_node"]
       #   from_port = "output"
-      to_block = self.block_hash[to_id]
+      try:
+        to_block = self.block_hash[to_id]
+      except KeyError:
+        raise Exception("Topology file references invalid target in connection: %s" % to_id)
       from_block.connect_to(from_port, to_block, to_port)
   
   def start(self):
