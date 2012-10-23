@@ -21,6 +21,8 @@ PROPERTIES = [
                 help='A string containing the JavaScript map function'),
   required_prop('reduce_function', validator=str,
                 help='A string containing the JavaScript reduce function'),
+  optional_prop('num_sources', validator=int, default=1,
+                help="Number of input sources flowing into this block"),
   optional_prop('run_on_each_key', validator=bool, default=False,
                 help='If specified and True, run a map reduce on each incoming' +
                      ' key. Otherwise run a single map reduce at the end.'),
@@ -87,14 +89,18 @@ class mongo_map_reduce(Block):
                                                               self.input_collection)
     if self.pre_delete_matching_records_in_output!=None:
       if isinstance(self.output_collection, dict):
-        if not self.output_collection.has_key('reduce'):
-          raise BlockPropertyError("%s: output_collection dict missing 'reduce' key" %
+        if self.output_collection.has_key('merge'):
+          self.oc_name = self.output_collection['merge']
+        elif self.output_collection.has_key('reduce'):
+          self.oc_name = self.output_collection['reduce']
+        else:
+          raise BlockPropertyError("%s: output_collection dict missing 'reduce' or 'merge' key" %
                                    self.id)
-        self.oc_name = self.output_collection['reduce']
       else:
         self.oc_name = self.output_collection
       self.output_collection_obj = pymongo.collection.Collection(database,
                                                                  self.oc_name)
+    self.tokens_left = self.num_sources
     self.log(INFO, "Mongo-Map-Reduce: block loaded")
 
   def _create_query(self, query, scope):
@@ -189,22 +195,36 @@ class mongo_map_reduce(Block):
     self.log(INFO, "Successfully ran map reduce, output collection size was %d" % cnt)
     
     
-  def send_finished_token(self):
-    log = Log()
-    log.set_log({"token":[self.block_name]})
-    self.push("output", log)
-    
+  # Old semantics
+  ## def send_finished_token(self):
+  ##   log = Log()
+  ##   log.set_log({"token":[self.block_name]})
+  ##   self.push("output", log)
+
+  # Old semantics
+  ## def recv_push(self, port, log):
+  ##   if log.log.has_key("token"):
+  ##     self.log(INFO, "Got completion token %s" % log.log["token"][0])
+  ##     if not self.run_on_each_key:
+  ##       self.process_all()
+  ##     self.send_finished_token()
+  ##   else:
+  ##     assert log.log.has_key("key")
+  ##     if self.run_on_each_key:
+  ##       self.process_key(log.log["key"])
+  ##       self.push("output", log) # forward the key to the output
+
   def recv_push(self, port, log):
     if log.log.has_key("token"):
-      self.log(INFO, "Got completion token %s" % log.log["token"][0])
-      if not self.run_on_each_key:
-        self.process_all()
-      self.send_finished_token()
-    else:
-      assert log.log.has_key("key")
+      token = log.log["token"][0]
+      assert self.tokens_left > 0, "Got token %s when tokens_left = 0" % token
+      self.tokens_left -= 1
+      self.log(INFO, "Got token %s, %d left" % (token, self.tokens_left))
       if self.run_on_each_key:
-        self.process_key(log.log["key"])
-        self.push("output", log) # forward the key to the output
+        self.process_key(token)
+      elif self.tokens_left==0:
+        self.process_all()
+      self.push("output", copy.deepcopy(log))
 
   def on_shutdown(self):
     self.connection.disconnect()

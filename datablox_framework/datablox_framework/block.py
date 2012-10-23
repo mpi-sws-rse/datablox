@@ -53,7 +53,7 @@ class Log(object):
   def num_rows(self):
     if self.log=={}: return 0
     for k, v in self.log.items():
-      return len(v)
+      return len(v) # just return the first column we find, assuming all are the same length
     
   def filtered_log(self, filter_func):
     nl = Log()
