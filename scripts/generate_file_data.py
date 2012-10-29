@@ -53,7 +53,7 @@ def generate_words_from_file(filename):
     words = set()
     with open(filename, "r") as f:
         for line in f:
-            l = line.split(" ")
+            l = line.split()
             for word in l:
                 if word.endswith(".") or word.endswith(","):
                     word = word[0:len(word)-1]
@@ -129,6 +129,7 @@ def make_random_file(filepath, size, words, magic_text=None):
         
 def make_files(root_directory, num_files, words, pct_small, pct_txt,
                dry_run=False, dont_use_links=False, magic_text=None):
+    msg("Creating files...")
     num_dirs = get_num_dirs(num_files)
     file_digits = len(str(num_files))
     file_paths = {}
@@ -216,6 +217,8 @@ def main(argv):
                       DEFAULT_PCT_TEXT_FILES)
     parser.add_option("-m", "--magic-text", dest="magic_text", default=None,
                       help="If specified, include string in each file that is generated")
+    parser.add_option("-w", "--words", dest="words", default=False, action="store_true",
+                      help="If specified try to find the system words file (e.g. /usr/share/dict/words) and use that as a source of words")
     
     (options,args) = parser.parse_args(argv)
     if len(args) != 2:
@@ -246,6 +249,18 @@ def main(argv):
             parser.error("--pct-text-files should be an integer between 0 and 100")
     else:
         pct_text = DEFAULT_PCT_TEXT_FILES
+    if options.words:
+        words_file = None
+        candidate_word_files = ['/usr/share/dict/words', '/usr/dict/words']
+        for f in candidate_word_files:
+            if os.path.exists(f):
+                words_file = f
+                break
+        if not words_file:
+            parser.error("Could not find words file in the following places: %s. If on ubuntu, make sure you have the wordlist package installed" %
+                         ', '.join(candidate_word_files))
+    else:
+        words_file = None
     if os.path.exists(root_directory):
         if options.unattended:
             print "%s already exists, cannot continue due to --unattended option" % \
@@ -265,7 +280,10 @@ def main(argv):
     if options.dry_run:
         msg("Executing a dry run...")
     make_dirs(root_directory, num_files, options.dry_run)
-    words = generate_words(join(dirname(__file__), ".."))
+    if words_file:
+        words = generate_words_from_file(words_file)
+    else:
+        words = generate_words(join(dirname(__file__), ".."))
     if options.magic_text and options.magic_text in words:
         words.remove(options.magic_text)
     msg("%d words found" % len(words))

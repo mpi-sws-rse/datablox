@@ -46,7 +46,9 @@ class Log(object):
         self.log[k] = [v]
     else:
       #make sure we have the same columns
-      assert(set(row.keys())==set(self.log.keys()))
+      assert set(row.keys())==set(self.log.keys()), \
+             "attempting to add row with key set %s to message buffer with key set %s" % \
+             (sorted(row.keys()), sorted(self.log.keys()))
       for k, v in row.items():
         self.log[k].append(v)
 
