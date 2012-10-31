@@ -159,7 +159,9 @@
           { "key": {"name":"pycrypto",
                     "version":{"greater-than-or-equal":"2.3"}}},
           { "key": {"name":"fabric",
-                    "version":{"greater-than-or-equal":"1.4"}}}
+                    "version":{"greater-than-or-equal":"1.4"}}},
+          { "key": {"name":"engage_utils",
+                    "version":{"greater-than-or-equal":"1.0"}}}
       ]}
    },
    { "key": {"name":"datablox-caretaker", "version":"1.0"},
