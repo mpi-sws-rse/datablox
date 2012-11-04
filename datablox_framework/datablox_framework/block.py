@@ -216,6 +216,9 @@ class ErrorCheckingURLopener(urllib.FancyURLopener):
   def http_error_default(self, url, fp, errcode, errmsg, headers):
     raise URLOpenError(errcode, "Got error %d for url %s: '%s'" % (errcode, url, errmsg))
 
+class GenerateUrlError(Exception):
+  pass
+
 class BlockUtils(object):
   @staticmethod
   def get_ipaddress():
@@ -241,8 +244,8 @@ class BlockUtils(object):
     try:
       statinfo = os.stat(path)
     except Exception, e:
-      raise Exception("Unable to stat file at path %s: %s" %
-                      (path, e))
+      raise GenerateUrlError("Unable to stat file at path %s: %s" %
+                             (path, e))
     global FILE_SERVER_KEY
     if FILE_SERVER_KEY==None and key_for_testing==None:
       with open(file_server_keypath, 'r') as f:
