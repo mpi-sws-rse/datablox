@@ -74,6 +74,8 @@ def main(argv):
                     DEFAULT_POLL_INTERVAL)
   parser.add_option("-l", "--log-level", dest="log_level", default="INFO",
                     help="Log level: ERROR|WARN|INFO|DEBUG|ALL")
+  parser.add_option("-d", "--debug-blocks", dest="debug_blocks", default=None,
+                    help="Comma-separated list of blocks for which to enable debug-level logging")
   if using_engage:
     parser.add_option("--reuse-existing-installs", default=None,
                       action="store_true",
@@ -123,6 +125,10 @@ def main(argv):
       parser.error("--args-file option: %s" % e)
   else:
     block_args = None
+  if options.debug_blocks:
+    debug_block_list = options.debug_blocks.split(',')
+  else:
+    debug_block_list = []
       
     
   # The priorities for obtaining bloxpath are:
@@ -163,7 +169,8 @@ def main(argv):
     
   Master(bloxpath, args[0], args[1:], using_engage,
          _log_level=log_levels[options.log_level],
-         reuse_existing_installs=True,
+         _debug_block_list=debug_block_list,
+         reuse_existing_installs=reuse_existing_installs,
          poll_interval=options.poll_interval,
          block_args=block_args)
 

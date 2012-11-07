@@ -137,6 +137,7 @@ def get_single_item(d):
   return items[0]
 
 log_level = logging.INFO
+debug_block_list = None
 bloxpath = None
 global_config = None
 
@@ -235,7 +236,10 @@ class BlockHandler(object):
     config["name"] = self.name
     config["id"] = self.id
     config["args"] = self.args
-    config["log_level"] = log_level
+    config["log_level"] = logging.DEBUG \
+                            if (self.id in debug_block_list) or \
+                               (('main_inst.'+self.id) in debug_block_list) \
+                            else log_level
     config["master_port"] = get_url(self.ip_address, self.master_port)
     config["ports"] = self.create_port_config()
     if self.policy != None:
@@ -707,13 +711,16 @@ class DjmAddressManager(AddressManager):
 class Master(object):
   def __init__(self, _bloxpath, config_file, ip_addr_list,
                _using_engage, _log_level=logging.INFO,
+               _debug_block_list=[],
                reuse_existing_installs=True,
                poll_interval=DEFAULT_POLL_INTERVAL,
                block_args=None):
-    global global_config, bloxpath, using_engage, log_level
+    # Kind of yucky - using global variables for some key parameters
+    global global_config, bloxpath, using_engage, log_level, debug_block_list
     bloxpath = _bloxpath
     using_engage = _using_engage
     log_level = _log_level
+    debug_block_list = _debug_block_list
     self.poll_interval = poll_interval
     if using_engage:
       logger.info("Running with Engage deployment home at %s" % \

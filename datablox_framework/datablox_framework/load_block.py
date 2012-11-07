@@ -65,7 +65,7 @@ def start(blox_dir, configuration_file_name, poll_file_name, log_dir):
   inst.ip_address = config["ip_address"]
   inst.poll_file_name = poll_file_name
   inst.log_level = config["log_level"]
-  # intialize logging
+  # initialize logging
   inst.initialize_logging(log_directory=log_dir)
   inst.log(logging.DEBUG, config)
   try:

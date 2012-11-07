@@ -18,7 +18,6 @@ import base64
 import re
 
 from fileserver import file_server_keypath
-logger = logging.getLogger(__name__)
 # cache the key here so that we avoid having to read the keyfile for each file
 FILE_SERVER_KEY=None
 
@@ -191,12 +190,16 @@ class TooManyErrors(Exception):
         (self.block_id, self.block_name, self.num_errors, self.num_total_events)
 
 
-def check_if_error_threshold_reached(block, num_errors, num_total_events):
+DEFAULT_ERROR_THRESHOLD_EVENTS = 1000
+
+def check_if_error_threshold_reached(block, num_errors, num_total_events,
+                                     error_threshold_events=DEFAULT_ERROR_THRESHOLD_EVENTS):
   """Utility function to see if the block execution should be aborted due to 
   the percentage of errors exceeding the threshold. The block must have a
   max_error_pct member. Thows TooManyErrors if the threshold is exceeded.
   """
-  if num_total_events < 100: # we need a big enough sample size before doing the check
+  if num_total_events < DEFAULT_ERROR_THRESHOLD_EVENTS:
+    # we need a big enough sample size before doing the check
     return
   error_pct = float(num_errors)/float(num_total_events)
   if error_pct>(float(block.max_error_pct)/100.0):
@@ -233,7 +236,9 @@ class BlockUtils(object):
           ip = s.getsockname()[0]
       except socket.gaierror:
         ip = "127.0.0.1"
-      if ip[:4] == "127.": logger.warn("Could only find local ip-address!")
+      if ip[:4] == "127.":
+        logger = logging.getLogger(__name__)
+        logger.warn("Could only find local ip-address!")
       node_ipaddress = ip
       return ip
     else:
@@ -318,6 +323,7 @@ class BlockUtils(object):
       f = opener.open(url)
       successes += 1
       if (successes % 50)==0:
+        logger = logging.getLogger(__name__)
         logger.info("Fetched %d files successfully" % successes)
       data = f.read()
     if check_size:
@@ -849,8 +855,14 @@ class Block(threading.Thread):
     self.logger = logging.getLogger(self.id)
     self.logger.setLevel(self.log_level)
     if log_directory:
-      logfile = os.path.join(log_directory,
-                             "%s_%d.log" % (self.id, os.getpid()))
+      if self.id.startswith('main_inst.'):
+        logfile = os.path.join(log_directory,
+                               "%s_%d.log" % (self.id[len('main_inst.'):],
+                                              os.getpid()))
+      else:
+        logfile = os.path.join(log_directory,
+                               "%s_%d.log" % (self.id, os.getpid()))
+      self.logfile = logfile
       handler = logging.FileHandler(logfile, delay=True)
       handler.setLevel(self.log_level)
       sys.stdout.write("[%s] logging %s\n" % (self.id, logfile))
@@ -858,10 +870,22 @@ class Block(threading.Thread):
     else:
       handler = logging.StreamHandler(sys.__stdout__)
       handler.setLevel(self.log_level)
+      self.logfile = None
     handler.setFormatter(logging.Formatter("[%(asctime)s][" + self.id +
                                            "] %(message)s",
                                            "%H:%M:%S"))
-    self.logger.addHandler(handler)
+    rootlogger = logging.getLogger()
+    assert len(rootlogger.handlers)==0, \
+           "Root logger already has a handler: %s, there must be a logging call before log setup" % rootlogger.handlers[0].__repr__()
+    rootlogger.addHandler(handler)
+    rootlogger.setLevel(self.log_level)
+    loglvl_map = {logging.DEBUG:'DEBUG', logging.INFO:'INFO',
+                  logging.WARN:'WARN', logging.ERROR:'ERROR'}
+    if self.log_level in loglvl_map.keys():
+      self.logger.info("Log level is set to %d (%s)" %
+                       (self.log_level, loglvl_map[self.log_level]))
+    else:
+      self.logger.info("Log level is set to %d" % self.log_level)
     
   def log(self, log_level, log_msg):
     """Blocks should call this to provide consistent logging. The printed log
@@ -871,8 +895,6 @@ class Block(threading.Thread):
     This should not be called in the __init__() method, as logging is not
     initialized until just before on_load()
     """
-    ## print "[" + self.id + "] " + log_msg
-    ## sys.stdout.flush()
     self.logger.log(log_level, log_msg)
 
   def log_send(self, control, serialized_msg, port):
