@@ -236,9 +236,11 @@ class BlockHandler(object):
     config["name"] = self.name
     config["id"] = self.id
     config["args"] = self.args
+    id_wo_prefix = self.id[len('main_inst.'):] if self.id.startswith('main_inst.') \
+                   else self.id
     config["log_level"] = logging.DEBUG \
                             if (self.id in debug_block_list) or \
-                               (('main_inst.'+self.id) in debug_block_list) \
+                               (id_wo_prefix in debug_block_list) \
                             else log_level
     config["master_port"] = get_url(self.ip_address, self.master_port)
     config["ports"] = self.create_port_config()
