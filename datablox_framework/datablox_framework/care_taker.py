@@ -111,7 +111,7 @@ class CareTaker(object):
         assert len(block_load)==6, "block load data for %s wrong len: %s" % (block_id, block_load)
         pid = block_load[5]
         if block_load[0]=="ALIVE" and (not utils.is_process_alive(pid)):
-          logger.error("Process %d has died" % pid)
+          logger.error("Block %s, Process %d has died" % (block_id, pid))
           block_load[0] = "DEAD"
         loads[block_id] = block_load
       #TODO: try to re-read the file as the block could have been writing to it at this time

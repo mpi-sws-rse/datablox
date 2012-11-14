@@ -11,7 +11,7 @@ defunct_re = re.compile("<defunct>$")
 def is_process_alive(pid):
   if sys.platform=="linux2" and (not os.path.exists("/proc/%d" % pid)):
     return False
-  subproc = subprocess.Popen(["ps", "-p", pid.__str__()],
+  subproc = subprocess.Popen(["ps", "-p", pid.__str__(), '-o', 'pid,state'],
                              stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT)
@@ -20,8 +20,10 @@ def is_process_alive(pid):
   if len(result)==1:
     return False
   data = result[1]
-  # if on linux, we treat defucnt processes as dead
-  if sys.platform=="linux2" and defunct_re.search(data):
+  # tree defunct processes as dead
+  cols = data.split()
+  assert len(cols)==2, "Unexpected ps output row: %s" % data
+  if cols[1]=='Z':
     return False
   else:
     return True
