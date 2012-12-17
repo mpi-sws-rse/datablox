@@ -76,6 +76,8 @@ def main(argv):
                     help="Log level: ERROR|WARN|INFO|DEBUG|ALL")
   parser.add_option("-d", "--debug-blocks", dest="debug_blocks", default=None,
                     help="Comma-separated list of blocks for which to enable debug-level logging")
+  parser.add_option("--loads-file", dest="loads_file", default=None,
+                    help="If specified, write block load history to this file in csv format at end of run")
   if using_engage:
     parser.add_option("--reuse-existing-installs", default=None,
                       action="store_true",
@@ -172,7 +174,8 @@ def main(argv):
          _debug_block_list=debug_block_list,
          reuse_existing_installs=reuse_existing_installs,
          poll_interval=options.poll_interval,
-         block_args=block_args)
+         block_args=block_args,
+         loads_file=options.loads_file)
 
 def call_from_console_script():
     sys.exit(main(sys.argv[1:]))

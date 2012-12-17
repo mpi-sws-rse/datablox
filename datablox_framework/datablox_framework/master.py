@@ -10,6 +10,8 @@ import naming
 from block import *
 from shard import *
 
+import engage_utils.text_tables as text_tables
+
 try:
   import datablox_engage_adapter.file_locator
   using_engage = True
@@ -29,18 +31,77 @@ logger = logging.getLogger(__name__)
 # See issue #62 for details.
 POLL_TIMEOUT_MS = 10000
 
+def id_wo_prefix(block_id):
+  """Shorten a block id by removing the main_inst. prefix if present.
+  """
+  return block_id[len('main_inst.'):] if block_id.startswith('main_inst.') \
+         else block_id
+
+
 class ResourceManager(object):
   def __init__(self):
+    # requests made from src to dest, except for rows with the same src/dest index,
+    # which are used for requests served.
     self.block_loads = {}
     self.block_times = {}
     #this keeps track of timed out and shutdown blocks
     self.block_status = {}
     self.load_history = defaultdict(list)
     self.shards = {}
-  
+
+  def initialize_shard(self, id, name):
+    """ASK_SAI: Not sure what this is for -- the shard structure is initialized, but never used!
+    """
+    self.shards[id] = name
+    
   def poll_completed(self):
     print "Shards that can be parallelized:", self.shards
 
+  def initialize_block_stats(self, block_id):
+    self.block_loads[block_id] = {}
+    self.block_status[block_id] = BlockStatus.STARTUP
+    self.block_times[block_id] = 0
+
+  def is_block_running(self, block_id):
+    status = self.block_status[block_id]
+    return status in BlockStatus.alive_status_values
+
+  def any_blocks_running(self):
+    for status in self.block_status:
+      if status in BlockStatus.alive_status_values:
+        return True
+    return False
+
+  def set_block_status(self, block_id, status):
+    self.block_status[block_id] = status
+    
+  def update_requests_made(self, src_block, dest_block, request_cnt):
+    """Called by block handler"""
+    self.block_loads[src_block][dest_block] = request_cnt
+
+  def update_requests_served(self, block_id, total_served):
+    """Called by block handler. We store the requests served in the otherwise
+    unused self-request entry"""
+    self.block_loads[block_id][block_id] = -1 * total_served
+
+  def update_total_processing_time(self, block_id, processing_time):
+    """Called by block handler
+    """
+    self.block_times[block_id] = processing_time
+
+  def has_timeouts(self):
+    """Return True if there are are any blocks in the TIMEOUT
+    or DEAD state
+    """
+    for i, v in self.block_status.items():
+      if v == BlockStatus.TIMEOUT:
+        logger.info("%s has a timeout" % i)
+        return True
+      elif v == BlockStatus.DEAD:
+        logger.info("%s crashed" % i)
+        return True
+    return False
+    
   def write_loads(self, poll_start_time):
     # print "Block loads", self.block_loads
     loads = defaultdict(int)
@@ -51,16 +112,15 @@ class ResourceManager(object):
         loads[poller_id] += 0
       else:
         for block_id, load in d.items():
+          # ASK_SAI: Should we skip the case where poller_id == block_id,
+          # since that is used for requests served?
           loads[block_id] += load
-    # logger.info("loads: %r" % loads)
     time_per_req = {}
-    # print "Block times: %r" % self.block_times
     for i, t in self.block_times.items():
       try:
         time_per_req[i] = t/(-1 * self.block_loads[i][i])
       except (KeyError, ZeroDivisionError):
         time_per_req[i] = 0
-    # print "Time_per_req: %r" % time_per_req
     etas = [(l * time_per_req[i], i) for i, l in loads.items()]
     etas.sort()
     print "ETAs"
@@ -73,21 +133,16 @@ class ResourceManager(object):
     # with open("loads.json", 'w') as f:
     #   json.dump(dict([(e[1], e[0]) for e in etas]), f)
 
-  def write_final_perfstats(self):
+  def write_final_perfstats(self, loads_csv_file=None):
     logger.debug("Message counts:")
     for (s, dct) in self.block_loads.items():
       for (d, cnt) in dct.items():
         if s != d:
           logger.info("  %s => %s: %d msgs" % (s, d, cnt))
-    if using_engage:
-      loads_csv_file = os.path.join(engage_file_locator.get_log_directory(),
-                                    "loads.csv")
-    else:
-      loads_csv_file = "loads.csv"
+    if loads_csv_file==None:
+      return
     with open(loads_csv_file, 'wb') as f:
       w = csv.writer(f)
-      # for b, loads in self.load_history.items():
-      #   w.writerow([b] + loads)
       times = self.load_history["times"]
       del(self.load_history["times"])
       block_ids = self.load_history.keys()
@@ -98,8 +153,170 @@ class ResourceManager(object):
         row = [times[i]] + [v[i] for v in loads]
         w.writerow(row)
 
-    
-resource_manager = ResourceManager()
+class BlockPerfStats(object):
+  def __init__(self, block_id):
+    self.block_id = block_id
+    self.status = BlockStatus.STARTUP
+    self.total_requests_served = 0
+    self.period_requests_served = 0
+    self.total_processing_time = 0
+    self.period_processing_time = 0
+    self.average_loads = []
+    self.last_average_load = 0
+
+  def update_requests_served(self, total_served):
+    self.period_requests_served = total_served - self.total_requests_served
+    self.total_requests_served = total_served
+
+  def update_total_processing_time(self, processing_time):
+    self.period_processing_time = processing_time - self.total_processing_time
+    self.total_processing_time = processing_time
+
+  def add_load(self, duration):
+    if self.status==BlockStatus.ALIVE:
+      load = float(self.period_processing_time) / duration
+      self.average_loads.append(load)
+      self.last_average_load = load
+    elif self.status==BlockStatus.BLOCKED:
+      self.average_loads.append(1.0)
+      self.last_average_load = 1.0
+    else:
+      self.average_loads.append(-1.0)
+      self.last_average_load = -1.0
+
+  def time_per_req(self):
+    return 1000.0*self.total_processing_time/float(self.total_requests_served) \
+           if self.total_requests_served>0 else 0
+
+  def average_load(self, duration):
+    """Avg load over the course of the run"""
+    return self.total_processing_time / duration if duration > 0.0 else 0.0
+
+class LoadBasedResourceManager(object):
+  """An alternative to the ResourceManager class
+  which just estimates the load level for each block
+  over each timeframe.
+  """
+  def __init__(self):
+    self.block_stats = {} # indexed by block id
+    self.num_polls = 0
+    self.poll_times = []
+    self.stats_table = text_tables.Table([
+                         text_tables.RightPaddedCol('Block', 20),
+                         text_tables.RightPaddedCol('Status', 7),
+                         text_tables.AltValueCol(text_tables.PctCol('Load', 0),
+                                                 lambda v: v >= 0.0, 'N/A'),
+                         text_tables.IntCol('Recent Reqs', 5),
+                         text_tables.IntCol('Total Reqs', 9),
+                         text_tables.AltValueCol(text_tables.FloatCol('Time/req (ms)', 5, 1),
+                                                 lambda v: v != 0, 'N/A')
+                       ])
+    self.first_poll_start_time = -1
+
+  def initialize_shard(self, id, name):
+    pass # Don't care
+
+  def poll_completed(self):
+    pass # Don't care
+
+  def initialize_block_stats(self, block_id):
+    self.block_stats[block_id] = BlockPerfStats(block_id)
+
+  def is_block_running(self, block_id):
+    assert self.block_stats.has_key(block_id)
+    status = self.block_stats[block_id].status
+    return status in BlockStatus.alive_status_values
+
+  def any_blocks_running(self):
+    for stats in self.block_stats.values():
+      if stats.status in BlockStatus.alive_status_values:
+        return True
+    return False
+
+  def set_block_status(self, block_id, status):
+    assert self.block_stats.has_key(block_id)
+    self.block_stats[block_id].status = status
+
+  def update_requests_made(self, src_block, dest_block, request_cnt):
+    pass
+
+  def update_requests_served(self, block_id, total_served):
+    assert self.block_stats.has_key(block_id)
+    self.block_stats[block_id].update_requests_served(total_served)
+
+  def update_total_processing_time(self, block_id, processing_time):
+    assert self.block_stats.has_key(block_id)
+    self.block_stats[block_id].update_total_processing_time(processing_time)
+
+  def has_timeouts(self):
+    """Return True if there are are any blocks in the TIMEOUT
+    or DEAD state
+    """
+    for stats in self.block_stats.values():
+      if stats.status==BlockStatus.TIMEOUT:
+        logger.info("%s has a timeout" % stats.block_id)
+        return True
+      elif stats.status == BlockStatus.DEAD:
+        logger.info("%s crashed" % stats.block_id)
+        return True
+    return False
+
+  def write_loads(self, poll_start_time):
+    """Print out the current load data and update historical data.
+    """
+    current_time = time.time()
+    duration = current_time - poll_start_time
+    if self.first_poll_start_time==(-1):
+      self.first_poll_start_time = poll_start_time
+    self.num_polls += 1
+    self.poll_times.append(int(round(current_time)))
+    self.stats_table.clear_rows()
+    for stats in self.block_stats.values():
+      stats.add_load(duration)
+      self.stats_table.add_row([id_wo_prefix(stats.block_id),
+                                stats.status,
+                                stats.last_average_load,
+                                stats.period_requests_served,
+                                stats.total_requests_served,
+                                stats.time_per_req()])
+    self.stats_table.sort('Load', descending=True)
+    self.stats_table.write_to_stream(sys.stdout)
+                               
+  def write_final_perfstats(self, loads_csv_file=None):
+    duration = time.time() - self.first_poll_start_time
+    logger.info("Final Statistics")
+    logger.info("================")
+    logger.info("Total duration: %.0f seconds" % duration)
+    table = text_tables.Table([
+              text_tables.RightPaddedCol('Block', 20),
+              text_tables.AltValueCol(text_tables.PctCol('Load', 0),
+                                      lambda v: v >= 0.0, 'N/A'),              
+              text_tables.IntCol('Total Reqs', 9),
+              text_tables.AltValueCol(text_tables.FloatCol('Time/req (ms)', 5, 1),
+                                      lambda v: v != 0, 'N/A')
+            ])
+    for stats in self.block_stats.values():
+      table.add_row([id_wo_prefix(stats.block_id),
+                     stats.average_load(duration),
+                     stats.total_requests_served,
+                     stats.time_per_req()])
+    table.sort('Load', descending=True)
+    table.write_to_log(logger)
+    block_ids = [stats.block_id for stats in self.block_stats.values()]
+    block_ids.sort()
+    if loads_csv_file==None:
+      return
+    with open(loads_csv_file, 'wb') as f:
+      w = csv.writer(f)
+      w.writerow(["Time"] + [id_wo_prefix(block_id) for block_id in block_ids])
+      for i in range(self.num_polls):
+        w.writerow([self.poll_times[i]-self.poll_times[0],] +
+                   [round(self.block_stats[block_id].average_loads[i], 3) for block_id in block_ids])
+    logger.info("Wrote load history to %s" % loads_csv_file)
+
+
+#resource_manager = ResourceManager()
+resource_manager = LoadBasedResourceManager()
 
 BLOCK_SYNC_TIMEOUT_MS = 20000
 
@@ -169,7 +386,7 @@ def create_handler(block_record, address_manager, context, policy=None):
     if is_rpc(block_record["name"]):
       return RPCHandler(block_record, address_manager, context, policy)
     elif is_shard(block_record["name"]):
-      resource_manager.shards[block_record["id"]] = block_record["name"]
+      resource_manager.initialize_shard(block_record["id"], block_record["name"])
       return ShardHandler(block_record, address_manager, context, policy)
     else:
       return BlockHandler(block_record, address_manager, context, policy)
@@ -206,9 +423,7 @@ class BlockHandler(object):
     self.last_load = 0
     self.timeouts = 0
     self.last_poll_time = 0
-    resource_manager.block_loads[self.id] = {}
-    resource_manager.block_status[self.id] = "startup"
-    resource_manager.block_times[self.id] = 0
+    resource_manager.initialize_block_stats(self.id)
   
   #creates an output port if it does not exist
   def get_output_port_connections(self, from_port):
@@ -236,11 +451,10 @@ class BlockHandler(object):
     config["name"] = self.name
     config["id"] = self.id
     config["args"] = self.args
-    id_wo_prefix = self.id[len('main_inst.'):] if self.id.startswith('main_inst.') \
-                   else self.id
+    short_id = id_wo_prefix(self.id)
     config["log_level"] = logging.DEBUG \
                             if (self.id in debug_block_list) or \
-                               (id_wo_prefix in debug_block_list) \
+                               (short_id in debug_block_list) \
                             else log_level
     config["master_port"] = get_url(self.ip_address, self.master_port)
     config["ports"] = self.create_port_config()
@@ -294,7 +508,7 @@ class BlockHandler(object):
     res = timed_recv(syncclient, BLOCK_SYNC_TIMEOUT_MS)
     syncclient.close()
     if res != None:
-      resource_manager.block_status[self.id] = "alive"
+      resource_manager.set_block_status(self.id, BlockStatus.ALIVE)
       return True
     else:
       logger.error("Synchronization failed or timed out after %d ms" %
@@ -335,35 +549,32 @@ class BlockHandler(object):
       self.timeouts = 0
       status, requests_made, requests_served, processing_time, last_poll_time,pid = load
       self.last_poll_time = last_poll_time
-      resource_manager.block_times[self.id] = processing_time
-      # print self.id
-      # print requests_made
-      # print requests_served
-      # print processing_time
+      resource_manager.update_total_processing_time(self.id, processing_time)
       for p, r in requests_made.items():
         try:
           to_block, to_port = self.find_target(p)
-          resource_manager.block_loads[self.id][to_block.id] = r
+          resource_manager.update_requests_made(self.id, to_block.id, r)
         except KeyError:
           print "Could not find port %s in block %s" % (p, self.id)
           raise
       total_served = sum(requests_served.values())
       self.last_load = total_served
-      resource_manager.block_loads[self.id][self.id] = -1 * total_served
-      if status == "ALIVE":
-        resource_manager.block_status[self.id] = "alive"
-        # logger.info("%s has served %r (%r)" % (self.id, total_served, (total_served - self.last_load)))
-      elif status == "SHUTDOWN":
+      resource_manager.update_requests_served(self.id, total_served)
+      if status == BlockStatus.ALIVE:
+        resource_manager.set_block_status(self.id, BlockStatus.ALIVE)
+      elif status == BlockStatus.BLOCKED:
+        resource_manager.set_block_status(self.id, BlockStatus.BLOCKED)
+      elif status == BlockStatus.STOPPED:
         logger.info("%s has shutdown" % (self.id))
-        resource_manager.block_status[self.id] = "shutdown"
-      elif status == "DEAD":
+        resource_manager.set_block_status(self.id, BlockStatus.STOPPED)
+      elif status == BlockStatus.DEAD:
         logger.info("%s has crashed" % (self.id))
-        resource_manager.block_status[self.id] = "crashed"
+        resource_manager.set_block_status(self.id, BlockStatus.DEAD)
     else:
       logger.info("** Master: %s timed out" % self.id)
       self.timeouts += 1
       if self.timeouts > NUM_TIMEOUTS_BEFORE_DEAD:
-        resource_manager.block_status[self.id] = "timeout"
+        resource_manager.set_block_status(self.id, BlockStatus.TIMEOUT)
 
 class RPCHandler(BlockHandler):
   def __init__(self, block_record, address_manager, context, policy=None):
@@ -516,20 +727,20 @@ class ShardHandler(BlockHandler):
     running_blocks = []
     for bh in self.block_handlers:
       bh.update_load(loads)
-      if resource_manager.block_status[bh.id] == "alive":
+      if resource_manager.is_block_running(bh.id):
         running_blocks.append(bh)
     if self.join_handler:
       self.join_handler.update_load(loads)
     if not self.shard_shutdown:
       BlockHandler.update_load(self, loads)
-      if resource_manager.block_status[self.id] != "alive":
+      if not resource_manager.is_block_running(self.id):
         self.shard_shutdown = True
     self.block_handlers = running_blocks
     #the shard won't be shutdown unless all the blocks are done
     if self.block_handlers == [] and self.shard_shutdown:
-      resource_manager.block_status[self.id] = "shutdown"
+      resource_manager.set_block_status(self.id, BlockStatus.STOPPED)
     else:
-      resource_manager.block_status[self.id] = "alive"
+      resource_manager.set_block_status(self.id, BlockStatus.ALIVE)
 
     
 class GroupHandler(BlockHandler):
@@ -543,9 +754,7 @@ class GroupHandler(BlockHandler):
     self.context = context
     self.policies = group_record["policies"] if group_record.has_key("policies") else {}
     self.group_args = block_record["args"]
-    resource_manager.block_loads[self.id] = {}
-    resource_manager.block_status[self.id] = "startup"
-    resource_manager.block_times[self.id] = 0
+    resource_manager.initialize_block_stats(self.id)
     #substitute group-args to hold proper arguments
     block_records = copy.deepcopy(group_record["blocks"])
     for b in block_records:
@@ -631,16 +840,16 @@ class GroupHandler(BlockHandler):
   
   def poll_all_loads(self, loads):
     global resource_manager
-    resource_manager.block_status[self.id] = "alive"
+    resource_manager.set_block_status(self.id, BlockStatus.ALIVE)
     running = False
     for bh in self.block_hash.values():
       bh.update_load(loads)
-      if resource_manager.block_status[bh.id] == "alive":
+      if resource_manager.is_block_running(bh.id):
         running = True
       else:
         self.block_hash.pop(bh.id)
     if not running:
-      resource_manager.block_status[self.id] = "shutdown"
+      resource_manager.set_block_status(self.id, BlockStatus.STOPPED)
     
 class AddressManager(object):
   def __init__(self, ipaddress_list):
@@ -716,7 +925,8 @@ class Master(object):
                _debug_block_list=[],
                reuse_existing_installs=True,
                poll_interval=DEFAULT_POLL_INTERVAL,
-               block_args=None):
+               block_args=None,
+               loads_file=None):
     # Kind of yucky - using global variables for some key parameters
     global global_config, bloxpath, using_engage, log_level, debug_block_list
     bloxpath = _bloxpath
@@ -752,7 +962,11 @@ class Master(object):
         self.address_manager.djm_job.stop_job(successful=False,
                                               msg="Master run stopped due to exception %s" % e)
       raise
-    resource_manager.write_final_perfstats()
+    if loads_file and (not os.path.isabs(loads_file)) and using_engage:
+      # if not an abolute path, stick the loads file in the log directory
+      loads_file = os.path.join(engage_file_locator.get_log_directory(),
+                                loads_file)
+    resource_manager.write_final_perfstats(loads_file)
     if using_engage:
       self.address_manager.djm_job.stop_job(successful=True)
     return
@@ -831,19 +1045,11 @@ class Master(object):
     
   def running(self):
     global resource_manager
-    for v in resource_manager.block_status.values():
-      if v == "alive":
-        return True
+    return resource_manager.any_blocks_running()
 
   def has_timeouts(self):
     global resource_manager
-    for i, v in resource_manager.block_status.items():
-      if v == "timeout":
-        logger.info("%s has a timeout" % i)
-        return True
-      elif v == "crashed":
-        logger.info("%s crashed" % i)
-        return True
+    return resource_manager.has_timeouts()
     
   def run(self):
     logger.info("Run started")

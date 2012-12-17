@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 import naming
 import utils
+from block import BlockStatus
 
 try:
   import datablox_engage_adapter.file_locator
@@ -110,9 +111,18 @@ class CareTaker(object):
           block_load = json.loads(s)
         assert len(block_load)==6, "block load data for %s wrong len: %s" % (block_id, block_load)
         pid = block_load[5]
-        if block_load[0]=="ALIVE" and (not utils.is_process_alive(pid)):
+        if (block_load[0] in BlockStatus.alive_status_values) and (not utils.is_process_alive(pid)):
           logger.error("Block %s, Process %d has died" % (block_id, pid))
-          block_load[0] = "DEAD"
+          block_load[0] = BlockStatus.DEAD
+        elif block_load[0]==BlockStatus.BLOCKED:
+          # The block is blocked in a long-running operation and cannot update load statistics.
+          # We do the updates for the block so the master won't time it out. We know the
+          # associated process is still alive since the above check succeeded.
+          last_poll_time = block_load[4]
+          current_time = time.time()
+          block_load[3] += current_time - last_poll_time # total processing time
+          block_load[4] = current_time
+          logger.info("updating stats for blocked block %s: total processing_time = %s" % (block_id, total_processing_time)) # XXX
         loads[block_id] = block_load
       #TODO: try to re-read the file as the block could have been writing to it at this time
       except Exception, e:

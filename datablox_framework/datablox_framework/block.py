@@ -330,7 +330,22 @@ class BlockUtils(object):
       return (data, expected_len)
     else:
       return data
-  
+
+
+class BlockStatus:
+  """The runtime status values of a block. Some are set by the block,
+  and some are set at the master.
+  """
+  STARTUP='startup' # used by master before receiving first poll response
+  ALIVE='ALIVE' # reported by the block itself when it is active
+  BLOCKED='BLOCKED' # reported by the block when it is in a long-running operation
+  STOPPED='stopped' # status written when block has shut down
+  DEAD='DEAD' # reported by caretaker when process is not alive
+  TIMEOUT='TIMEOUT' # master uses this status if block hasn't responded to pings
+
+  alive_status_values = [STARTUP, BLOCKED, ALIVE]
+  error_status_value = [DEAD, TIMEOUT]
+
 class Block(threading.Thread):
   def __init__(self, master_url):
     threading.Thread.__init__(self)
@@ -553,13 +568,14 @@ class Block(threading.Thread):
 
     return (requests_made, requests_served)
   
-  def update_load(self):
+  def update_load(self, status=BlockStatus.ALIVE):
     self.last_poll_time = time.time()  
     rm, rs = self.get_load()
-    load = json.dumps(("ALIVE", rm, rs, self.total_processing_time, self.last_poll_time, os.getpid()))
+    load = json.dumps((status,
+                       rm, rs, self.total_processing_time, self.last_poll_time, os.getpid()))
     with open(self.poll_file_name, 'w') as f:
         f.write(load)
-    
+
   def process_master(self, control, data):
     assert(False)
     self.log(logging.WARN, " Warning ** could not understand master")
@@ -725,7 +741,7 @@ class Block(threading.Thread):
     self.log(logging.INFO, " waiting for master to poll to report shutdown")
     self.last_poll_time = time.time()
     rm, rs = self.get_load()
-    load = json.dumps(("SHUTDOWN", rm, rs, self.total_processing_time, self.last_poll_time, os.getpid()))
+    load = json.dumps((BlockStatus.STOPPED, rm, rs, self.total_processing_time, self.last_poll_time, os.getpid()))
     with open(self.poll_file_name, 'w') as f:
         f.write(load)
 
