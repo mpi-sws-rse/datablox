@@ -157,12 +157,14 @@ class mongo_map_reduce(Block):
       if extra_debug_enabled(self):
         self.log(DEBUG, "%d rows in output collection after running pre-delete step" %
                  self.output_collection_obj.count())
+    self.update_load(status=BlockStatus.BLOCKED)
     oc = self.input_collection_obj.map_reduce(mf,
                                               rf,
                                               self.output_collection,
                                               query=self._create_query(self.query,
                                                                        scope))
     cnt = oc.count()
+    self.update_load()
     self.log(INFO, "Successfully ran map reduce, output collection size was %d" % cnt)
 
   def process_all(self):
@@ -186,12 +188,14 @@ class mongo_map_reduce(Block):
       if extra_debug_enabled(self):
         self.log(DEBUG, "%d rows in output collection after running pre-delete step" %
                  self.output_collection_obj.count())
+    self.update_load(status=BlockStatus.BLOCKED)
     oc = self.input_collection_obj.map_reduce(mf,
                                               rf,
                                               self.output_collection,
                                               query=self._create_query(self.query,
                                                                        scope))
     cnt = oc.count()
+    self.update_load()
     self.log(INFO, "Successfully ran map reduce, output collection size was %d" % cnt)
     
     

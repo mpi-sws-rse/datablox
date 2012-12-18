@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 import naming
 import utils
-from block import BlockStatus
+from block import BlockStatus, LoadTuple
 
 try:
   import datablox_engage_adapter.file_locator
@@ -109,19 +109,21 @@ class CareTaker(object):
         with open(block_file, 'r') as f:
           s = f.read()
           block_load = json.loads(s)
-        assert len(block_load)==6, "block load data for %s wrong len: %s" % (block_id, block_load)
-        pid = block_load[5]
-        if (block_load[0] in BlockStatus.alive_status_values) and (not utils.is_process_alive(pid)):
+        assert len(block_load)==LoadTuple.TUPLE_LEN, \
+               "block load data for %s wrong len: %s" % (block_id, block_load)
+        pid = block_load[LoadTuple.BLOCK_PID]
+        if (block_load[LoadTuple.STATUS] in BlockStatus.alive_status_values) and\
+           (not utils.is_process_alive(pid)):
           logger.error("Block %s, Process %d has died" % (block_id, pid))
-          block_load[0] = BlockStatus.DEAD
-        elif block_load[0]==BlockStatus.BLOCKED:
+          block_load[LoadTuple.STATUS] = BlockStatus.DEAD
+        elif block_load[LoadTuple.STATUS]==BlockStatus.BLOCKED:
           # The block is blocked in a long-running operation and cannot update load statistics.
           # We do the updates for the block so the master won't time it out. We know the
           # associated process is still alive since the above check succeeded.
-          last_poll_time = block_load[4]
+          last_poll_time = block_load[LoadTuple.LAST_POLL_TIME]
           current_time = time.time()
-          block_load[3] += current_time - last_poll_time # total processing time
-          block_load[4] = current_time
+          block_load[LoadTuple.TOTAL_PROCESSING_TIME] += current_time - last_poll_time
+          block_load[LoadTuple.LAST_POLL_TIME] = current_time
           logger.info("updating stats for blocked block %s: total processing_time = %s" % (block_id, total_processing_time)) # XXX
         loads[block_id] = block_load
       #TODO: try to re-read the file as the block could have been writing to it at this time

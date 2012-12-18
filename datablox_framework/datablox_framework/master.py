@@ -84,7 +84,7 @@ class ResourceManager(object):
     unused self-request entry"""
     self.block_loads[block_id][block_id] = -1 * total_served
 
-  def update_total_processing_time(self, block_id, processing_time):
+  def update_total_times(self, block_id, processing_time, poll_time):
     """Called by block handler
     """
     self.block_times[block_id] = processing_time
@@ -159,8 +159,14 @@ class BlockPerfStats(object):
     self.status = BlockStatus.STARTUP
     self.total_requests_served = 0
     self.period_requests_served = 0
-    self.total_processing_time = 0
-    self.period_processing_time = 0
+    # requests made from other blocks to this one,
+    # indexed by source block id
+    self.requests_made_by_block = {}
+    self.total_requests_made = 0 # sum of all requests by block
+    self.total_processing_time = 0.0
+    self.period_processing_time = 0.0
+    self.total_poll_time = 0.0
+    self.period_poll_time = 0.0
     self.average_loads = []
     self.last_average_load = 0
 
@@ -168,13 +174,28 @@ class BlockPerfStats(object):
     self.period_requests_served = total_served - self.total_requests_served
     self.total_requests_served = total_served
 
-  def update_total_processing_time(self, processing_time):
+  def update_requests_made(self, src_block, cnt):
+    """The count is the running total from the source
+    block to this block. We update the total for the
+    source and then adjust the global total.
+    """
+    if not self.requests_made_by_block.has_key(src_block):
+      self.requests_made_by_block[src_block] = 0
+    old_reqs = self.requests_made_by_block[src_block]
+    self.requests_made_by_block[src_block] = cnt
+    self.total_requests_made += cnt - old_reqs
+
+  def update_total_times(self, processing_time, poll_time):
     self.period_processing_time = processing_time - self.total_processing_time
     self.total_processing_time = processing_time
+    self.period_poll_time = poll_time - self.total_poll_time
+    self.total_poll_time = poll_time
 
   def add_load(self, duration):
     if self.status==BlockStatus.ALIVE:
-      load = float(self.period_processing_time) / duration
+      ## load = float(self.period_processing_time) / duration
+      period_time = self.period_processing_time + self.period_poll_time
+      load = self.period_processing_time/period_time if period_time>0.0 else 0.0
       self.average_loads.append(load)
       self.last_average_load = load
     elif self.status==BlockStatus.BLOCKED:
@@ -184,6 +205,11 @@ class BlockPerfStats(object):
       self.average_loads.append(-1.0)
       self.last_average_load = -1.0
 
+  def queue_size(self):
+    return self.total_requests_made - self.total_requests_served \
+           if self.status in BlockStatus.alive_status_values \
+           else -1
+  
   def time_per_req(self):
     return 1000.0*self.total_processing_time/float(self.total_requests_served) \
            if self.total_requests_served>0 else 0
@@ -209,7 +235,10 @@ class LoadBasedResourceManager(object):
                          text_tables.IntCol('Recent Reqs', 5),
                          text_tables.IntCol('Total Reqs', 9),
                          text_tables.AltValueCol(text_tables.FloatCol('Time/req (ms)', 5, 1),
-                                                 lambda v: v != 0, 'N/A')
+                                                 lambda v: v != 0, 'N/A'),
+                         text_tables.AltValueCol(text_tables.IntCol('Queue Size',
+                                                                    8),
+                                                 lambda v: v >= 0, 'N/A')
                        ])
     self.first_poll_start_time = -1
 
@@ -238,15 +267,17 @@ class LoadBasedResourceManager(object):
     self.block_stats[block_id].status = status
 
   def update_requests_made(self, src_block, dest_block, request_cnt):
-    pass
+    assert self.block_stats.has_key(dest_block)
+    self.block_stats[dest_block].update_requests_made(src_block, request_cnt)
 
   def update_requests_served(self, block_id, total_served):
     assert self.block_stats.has_key(block_id)
     self.block_stats[block_id].update_requests_served(total_served)
 
-  def update_total_processing_time(self, block_id, processing_time):
+  def update_total_times(self, block_id, processing_time, poll_time):
     assert self.block_stats.has_key(block_id)
-    self.block_stats[block_id].update_total_processing_time(processing_time)
+    self.block_stats[block_id].update_total_times(processing_time,
+                                                  poll_time)
 
   def has_timeouts(self):
     """Return True if there are are any blocks in the TIMEOUT
@@ -278,7 +309,8 @@ class LoadBasedResourceManager(object):
                                 stats.last_average_load,
                                 stats.period_requests_served,
                                 stats.total_requests_served,
-                                stats.time_per_req()])
+                                stats.time_per_req(),
+                                stats.queue_size()])
     self.stats_table.sort('Load', descending=True)
     self.stats_table.write_to_stream(sys.stdout)
                                
@@ -545,11 +577,12 @@ class BlockHandler(object):
     global resource_manager
     load = loads.get(self.id)
     #we should get a fresh entry
-    if load != None and load[4] != self.last_poll_time:
+    if load != None and load[LoadTuple.LAST_POLL_TIME] != self.last_poll_time:
       self.timeouts = 0
-      status, requests_made, requests_served, processing_time, last_poll_time,pid = load
+      status, requests_made, requests_served, total_processing_time, total_poll_time, last_poll_time, pid = load
       self.last_poll_time = last_poll_time
-      resource_manager.update_total_processing_time(self.id, processing_time)
+      resource_manager.update_total_times(self.id, total_processing_time,
+                                          total_poll_time)
       for p, r in requests_made.items():
         try:
           to_block, to_port = self.find_target(p)

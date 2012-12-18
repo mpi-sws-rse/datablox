@@ -346,6 +346,21 @@ class BlockStatus:
   alive_status_values = [STARTUP, BLOCKED, ALIVE]
   error_status_value = [DEAD, TIMEOUT]
 
+class LoadTuple:
+  """We maintain block loads as a tuple of values, as that can easily
+  be converted back and forth between Python and JSON. Here, we define
+  the indices into the tuple and the total length
+  """
+  TUPLE_LEN = 7
+  STATUS = 0
+  REQUESTS_MADE = 1
+  REQUESTS_SERVED = 2
+  TOTAL_PROCESSING_TIME = 3
+  TOTAL_WAIT_TIME = 4
+  LAST_POLL_TIME = 5
+  BLOCK_PID = 6
+
+
 class Block(threading.Thread):
   def __init__(self, master_url):
     threading.Thread.__init__(self)
@@ -374,7 +389,8 @@ class Block(threading.Thread):
     self.poller = None
     self.alive = True
     self.task = None
-    self.total_processing_time = 0
+    self.total_processing_time = 0 # time spend in recv_push(), recv_query(), etc.
+    self.total_poll_time = 0 # time spent in poll()
     self.last_poll_time = time.time()
     self.buffer_limit = 500
     self.current_buffer_size = defaultdict(int)
@@ -512,7 +528,9 @@ class Block(threading.Thread):
       
       #no more pending tasks, now deal with data ports
       if self.task == None:
+        poll_start_time = time.time()
         socks = dict(self.poller.poll(500))
+        self.total_poll_time += time.time() - poll_start_time
         if socks != None and socks != {}:
           input_ports_with_data = [p for p in self.input_ports if p.socket in socks and socks[p.socket] == zmq.POLLIN]
           output_ports_with_data = [p for p in self.output_ports if self.get_one(p.sockets) in socks and socks[self.get_one(p.sockets)] == zmq.POLLIN]
@@ -572,7 +590,8 @@ class Block(threading.Thread):
     self.last_poll_time = time.time()  
     rm, rs = self.get_load()
     load = json.dumps((status,
-                       rm, rs, self.total_processing_time, self.last_poll_time, os.getpid()))
+                       rm, rs, self.total_processing_time, self.total_poll_time,
+                       self.last_poll_time, os.getpid()))
     with open(self.poll_file_name, 'w') as f:
         f.write(load)
 
@@ -741,7 +760,8 @@ class Block(threading.Thread):
     self.log(logging.INFO, " waiting for master to poll to report shutdown")
     self.last_poll_time = time.time()
     rm, rs = self.get_load()
-    load = json.dumps((BlockStatus.STOPPED, rm, rs, self.total_processing_time, self.last_poll_time, os.getpid()))
+    load = json.dumps((BlockStatus.STOPPED, rm, rs, self.total_processing_time,
+                       self.total_poll_time, self.last_poll_time, os.getpid()))
     with open(self.poll_file_name, 'w') as f:
         f.write(load)
 
