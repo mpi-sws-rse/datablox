@@ -154,6 +154,8 @@ class ResourceManager(object):
         w.writerow(row)
 
 class BlockPerfStats(object):
+  """Stats for a single block instance. Used in LoadBasedResourceManager
+  """
   def __init__(self, block_id):
     self.block_id = block_id
     self.status = BlockStatus.STARTUP
@@ -211,12 +213,18 @@ class BlockPerfStats(object):
            else -1
   
   def time_per_req(self):
-    return 1000.0*self.total_processing_time/float(self.total_requests_served) \
+    return self.total_processing_time/float(self.total_requests_served) \
            if self.total_requests_served>0 else 0
 
   def average_load(self, duration):
     """Avg load over the course of the run"""
     return self.total_processing_time / duration if duration > 0.0 else 0.0
+
+  def estimated_time_left(self):
+    """Time to clear backlog
+    """
+    return self.queue_size() * self.time_per_req() \
+           if self.status in BlockStatus.alive_status_values else -1
 
 class LoadBasedResourceManager(object):
   """An alternative to the ResourceManager class
@@ -238,7 +246,8 @@ class LoadBasedResourceManager(object):
                                                  lambda v: v != 0, 'N/A'),
                          text_tables.AltValueCol(text_tables.IntCol('Queue Size',
                                                                     8),
-                                                 lambda v: v >= 0, 'N/A')
+                                                 lambda v: v >= 0, 'N/A'),
+                         text_tables.TimeInterval('Time left')
                        ])
     self.first_poll_start_time = -1
 
@@ -309,8 +318,9 @@ class LoadBasedResourceManager(object):
                                 stats.last_average_load,
                                 stats.period_requests_served,
                                 stats.total_requests_served,
-                                stats.time_per_req(),
-                                stats.queue_size()])
+                                1000.0*stats.time_per_req(),
+                                stats.queue_size(),
+                                stats.estimated_time_left()])
     self.stats_table.sort('Load', descending=True)
     self.stats_table.write_to_stream(sys.stdout)
                                
