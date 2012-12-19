@@ -341,7 +341,7 @@ class LoadBasedResourceManager(object):
       table.add_row([id_wo_prefix(stats.block_id),
                      stats.average_load(duration),
                      stats.total_requests_served,
-                     stats.time_per_req()])
+                     1000.0*stats.time_per_req()])
     table.sort('Load', descending=True)
     table.write_to_log(logger)
     block_ids = [stats.block_id for stats in self.block_stats.values()]
