@@ -5,6 +5,7 @@ import os.path
 import sys
 from optparse import OptionParser
 import logging
+from logging.handlers import RotatingFileHandler
 
 from master import *
 
@@ -163,7 +164,10 @@ def main(argv):
     if not os.path.exists(log_dir):
       os.makedirs(log_dir)
     log_file = os.path.join(log_dir, "master.log")
-    handler = logging.FileHandler(log_file)
+    do_log_rollover = os.path.exists(log_file)
+    handler = RotatingFileHandler(log_file, backupCount=5)
+    if do_log_rollover: # we do a rollover each time the master is run
+      handler.doRollover()
     handler.setLevel(logging.DEBUG)
     root_logger.addHandler(handler)
   else:
