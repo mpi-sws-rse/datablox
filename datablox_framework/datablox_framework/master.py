@@ -153,6 +153,10 @@ class ResourceManager(object):
         row = [times[i]] + [v[i] for v in loads]
         w.writerow(row)
 
+# value used in BlockPerfStats to indicate that the value for
+# a statistic is not available or not applicable.
+INVALID_VALUE = 'N/A'
+
 class BlockPerfStats(object):
   """Stats for a single block instance. Used in LoadBasedResourceManager
   """
@@ -205,26 +209,30 @@ class BlockPerfStats(object):
       self.last_average_load = 1.0
     else:
       self.average_loads.append(-1.0)
-      self.last_average_load = -1.0
+      self.last_average_load = INVALID_VALUE
 
   def queue_size(self):
     return self.total_requests_made - self.total_requests_served \
            if self.status in BlockStatus.alive_status_values \
-           else -1
+           else INVALID_VALUE
   
   def time_per_req(self):
     return self.total_processing_time/float(self.total_requests_served) \
-           if self.total_requests_served>0 else 0
+           if self.total_requests_served>0 else INVALID_VALUE
 
   def average_load(self, duration):
     """Avg load over the course of the run"""
-    return self.total_processing_time / duration if duration > 0.0 else 0.0
+    return self.total_processing_time / duration if duration > 0.0 else INVALID_VALUE
 
   def estimated_time_left(self):
     """Time to clear backlog
     """
-    return self.queue_size() * self.time_per_req() \
-           if self.status in BlockStatus.alive_status_values else -1
+    qs = self.queue_size()
+    tpr = self.time_per_req()
+    return qs * tpr \
+           if (self.status in BlockStatus.alive_status_values) and \
+              qs!=INVALID_VALUE and tpr!=INVALID_VALUE and qs>=0 and tpr>0 \
+           else INVALID_VALUE
 
 class LoadBasedResourceManager(object):
   """An alternative to the ResourceManager class
@@ -236,20 +244,16 @@ class LoadBasedResourceManager(object):
     self.num_polls = 0
     self.poll_times = []
     self.stats_table = text_tables.Table([
-                         text_tables.RightPaddedCol('Block', 20),
-                         text_tables.RightPaddedCol('Status', 7),
-                         text_tables.AltValueCol(text_tables.PctCol('Load', 0),
-                                                 lambda v: v >= 0.0, 'N/A'),
+                         text_tables.LeftAlignedCol('Block', 20),
+                         text_tables.LeftAlignedCol('Status', 7),
+                         text_tables.PctCol('Load', 0),
                          text_tables.IntCol('Recent Reqs', 5),
                          text_tables.IntCol('Total Reqs', 9),
-                         text_tables.AltValueCol(text_tables.FloatCol('Time/req (ms)', 5, 1),
-                                                 lambda v: v != 0, 'N/A'),
-                         text_tables.AltValueCol(text_tables.IntCol('Queue Size',
-                                                                    8),
-                                                 lambda v: v >= 0, 'N/A'),
+                         text_tables.FloatCol('Time/req (ms)', 5, 1),
+                         text_tables.IntCol('Queue Size', 8),
                          text_tables.TimeInterval('Time left')
                        ])
-    self.first_poll_start_time = -1
+    self.first_poll_start_time = INVALID_VALUE
 
   def initialize_shard(self, id, name):
     pass # Don't care
@@ -306,19 +310,22 @@ class LoadBasedResourceManager(object):
     """
     current_time = time.time()
     duration = current_time - poll_start_time
-    if self.first_poll_start_time==(-1):
+    if self.first_poll_start_time==INVALID_VALUE:
       self.first_poll_start_time = poll_start_time
     self.num_polls += 1
     self.poll_times.append(int(round(current_time)))
     self.stats_table.clear_rows()
     for stats in self.block_stats.values():
       stats.add_load(duration)
+      tpr = stats.time_per_req()
       self.stats_table.add_row([id_wo_prefix(stats.block_id),
                                 stats.status,
                                 stats.last_average_load,
-                                stats.period_requests_served,
+                                stats.period_requests_served \
+                                  if stats.status in BlockStatus.alive_status_values \
+                                  else INVALID_VALUE,
                                 stats.total_requests_served,
-                                1000.0*stats.time_per_req(),
+                                1000.0*tpr if tpr!=INVALID_VALUE else INVALID_VALUE,
                                 stats.queue_size(),
                                 stats.estimated_time_left()])
     self.stats_table.sort('Load', descending=True)
@@ -330,18 +337,17 @@ class LoadBasedResourceManager(object):
     logger.info("================")
     logger.info("Total duration: %.0f seconds" % duration)
     table = text_tables.Table([
-              text_tables.RightPaddedCol('Block', 20),
-              text_tables.AltValueCol(text_tables.PctCol('Load', 0),
-                                      lambda v: v >= 0.0, 'N/A'),              
+              text_tables.LeftAlignedCol('Block', 20),
+              text_tables.PctCol('Load', 0),
               text_tables.IntCol('Total Reqs', 9),
-              text_tables.AltValueCol(text_tables.FloatCol('Time/req (ms)', 5, 1),
-                                      lambda v: v != 0, 'N/A')
+              text_tables.FloatCol('Time/req (ms)', 5, 1)
             ])
     for stats in self.block_stats.values():
+      tpr = stats.time_per_req()
       table.add_row([id_wo_prefix(stats.block_id),
                      stats.average_load(duration),
                      stats.total_requests_served,
-                     1000.0*stats.time_per_req()])
+                     1000.0*tpr if tpr!=INVALID_VALUE else INVALID_VALUE])
     table.sort('Load', descending=True)
     table.write_to_log(logger)
     block_ids = [stats.block_id for stats in self.block_stats.values()]
