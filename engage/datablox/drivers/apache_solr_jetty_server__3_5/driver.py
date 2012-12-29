@@ -133,7 +133,7 @@ class Manager(service_manager.Manager):
         p = self.ctx.props
         command_exe = p.input_ports.jvm.java_exe
         self.ctx.r(start_server,
-                   [command_exe, "-jar", p.startup_jar_file],
+                   [command_exe, '-d64', '-server', "-jar", p.startup_jar_file],
                    p.log_file,
                    p.pid_file,
                    cwd=os.path.dirname(p.startup_jar_file))
