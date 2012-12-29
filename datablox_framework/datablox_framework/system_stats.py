@@ -41,6 +41,9 @@ class SystemStatsTaker(object):
             logger.exception(e)
             self.psutil = None
 
+    def stats_available(self):
+        return self.psutil != None
+
     def take_snapshot(self):
         """Return the snapshot in JSON-friendly form, or None if psutil
         is not available.

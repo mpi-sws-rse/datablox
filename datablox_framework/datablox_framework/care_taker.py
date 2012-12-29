@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 import naming
 import utils
 from block import BlockStatus, LoadTuple
+from system_stats import SystemStatsTaker, HOSTNAME
 
 try:
   import datablox_engage_adapter.file_locator
@@ -37,6 +38,7 @@ class CareTaker(object):
     self.config_dir = None
     self.log_dir = None
     self.file_num = 0
+    self.stats_taker = SystemStatsTaker()
     self.setup(argv)
 
   def stop_all(self):
@@ -101,7 +103,7 @@ class CareTaker(object):
       return False
     return True
 
-  def collect_poll_data(self):
+  def collect_poll_data(self, get_stats):
     loads = {}
     for block_id, block_file in self.processes.values():
       try:
@@ -130,7 +132,10 @@ class CareTaker(object):
       except Exception, e:
         print e
         continue
-    return loads
+    if get_stats and self.stats_taker.stats_available():
+      return (HOSTNAME, loads, self.stats_taker.take_snapshot())
+    else:
+      return (HOSTNAME, loads, None)
     
   def setup(self, argv):
     # setup logging
@@ -205,7 +210,7 @@ class CareTaker(object):
                        (data["id"], res))
           self.socket.send(json.dumps(res))
         elif control == "POLL":
-          res = self.collect_poll_data()
+          res = self.collect_poll_data(get_stats=data['get_stats'])
           self.socket.send(json.dumps(res))
         elif control == "STOP ALL":
           self.stop_all()

@@ -11,6 +11,7 @@ from block import *
 from shard import *
 
 import engage_utils.text_tables as text_tables
+from system_stats import SystemStats
 
 try:
   import datablox_engage_adapter.file_locator
@@ -589,7 +590,7 @@ class BlockHandler(object):
     assert(len(t)==1)
     return t[0]
     
-  def update_load(self, loads):
+  def update_load(self, loads, update_stats):
     global resource_manager
     load = loads.get(self.id)
     #we should get a fresh entry
@@ -597,18 +598,21 @@ class BlockHandler(object):
       self.timeouts = 0
       status, requests_made, requests_served, total_processing_time, total_poll_time, last_poll_time, pid = load
       self.last_poll_time = last_poll_time
-      resource_manager.update_total_times(self.id, total_processing_time,
-                                          total_poll_time)
-      for p, r in requests_made.items():
-        try:
-          to_block, to_port = self.find_target(p)
-          resource_manager.update_requests_made(self.id, to_block.id, r)
-        except KeyError:
-          print "Could not find port %s in block %s" % (p, self.id)
-          raise
-      total_served = sum(requests_served.values())
-      self.last_load = total_served
-      resource_manager.update_requests_served(self.id, total_served)
+      if update_stats or status==BlockStatus.STOPPED:
+        # We update the stats only when requested or if the block has stopped
+        # and the the poll time is different from the last poll.
+        resource_manager.update_total_times(self.id, total_processing_time,
+                                            total_poll_time)
+        for p, r in requests_made.items():
+          try:
+            to_block, to_port = self.find_target(p)
+            resource_manager.update_requests_made(self.id, to_block.id, r)
+          except KeyError:
+            print "Could not find port %s in block %s" % (p, self.id)
+            raise
+        total_served = sum(requests_served.values())
+        self.last_load = total_served
+        resource_manager.update_requests_served(self.id, total_served)
       if status == BlockStatus.ALIVE:
         resource_manager.set_block_status(self.id, BlockStatus.ALIVE)
       elif status == BlockStatus.BLOCKED:
@@ -651,7 +655,7 @@ class RPCHandler(BlockHandler):
       self.webserver_process.terminate()
 
   #the webservice does update its loads, but it only updates them on new requests
-  def update_load(self, loads):
+  def update_load(self, loads, update_stats):
     alive = True
     if self.webserver_process.poll() == None:
       logger.info("RPC block is working")
@@ -663,14 +667,14 @@ class RPCHandler(BlockHandler):
         load = json.loads(f.read())
     except IOError:
       print "Could not find web service file"
-      load = ["ALIVE", {}, {}, 0, 0, self.webserver_process.pid]
+      load = [BlockStatus.ALIVE, {}, {}, 0, 0, self.webserver_process.pid]
     if alive:
-      load[0] = "ALIVE"
+      load[0] = BlockStatus.ALIVE
     else:
-      load[0] = "SHUTDOWN"
+      load[0] = BlockStatus.STOPPED
     load[4] = time.time()
     loads[self.id] = load
-    BlockHandler.update_load(self, loads)
+    BlockHandler.update_load(self, loads, update_stats)
   
 class DynamicJoinHandler(BlockHandler):
   def __init__(self, block_record, address_manager, context, policy=None):
@@ -771,17 +775,17 @@ class ShardHandler(BlockHandler):
       bh.stop()
     BlockHandler.stop(self)
       
-  def update_load(self, loads):
+  def update_load(self, loads, update_stats):
     global resource_manager
     running_blocks = []
     for bh in self.block_handlers:
-      bh.update_load(loads)
+      bh.update_load(loads, update_stats=update_stats)
       if resource_manager.is_block_running(bh.id):
         running_blocks.append(bh)
     if self.join_handler:
-      self.join_handler.update_load(loads)
+      self.join_handler.update_load(loads, update_stats=update_stats)
     if not self.shard_shutdown:
-      BlockHandler.update_load(self, loads)
+      BlockHandler.update_load(self, loads, update_stats=update_stats)
       if not resource_manager.is_block_running(self.id):
         self.shard_shutdown = True
     self.block_handlers = running_blocks
@@ -884,15 +888,15 @@ class GroupHandler(BlockHandler):
     for bh in self.block_hash.values():
       bh.stop()
 
-  def update_load(self, loads):
-    self.poll_all_loads(loads)
+  def update_load(self, loads, update_stats):
+    self.poll_all_loads(loads, update_stats=update_stats)
   
-  def poll_all_loads(self, loads):
+  def poll_all_loads(self, loads, update_stats):
     global resource_manager
     resource_manager.set_block_status(self.id, BlockStatus.ALIVE)
     running = False
     for bh in self.block_hash.values():
-      bh.update_load(loads)
+      bh.update_load(loads, update_stats=update_stats)
       if resource_manager.is_block_running(bh.id):
         running = True
       else:
@@ -999,6 +1003,9 @@ class Master(object):
     #can fill this with command line args
     main_block_rec = {"id": "main_inst", "args": {}}
     self.main_block_handler = GroupHandler(main_block_rec, get_group("main"), self.address_manager, self.context)
+
+    self.server_stats = {} # map from server hostname to SystemStats for that server
+    
     self.start_time = time.time()
     if not self.main_block_handler.start():
       self.stop_all("Master: Could not start all blocks. Ending the run")
@@ -1075,19 +1082,38 @@ class Master(object):
                                               msg=msg)
     sys.exit(1)
 
-  def poll_all_nodes(self):
+  def poll_all_nodes(self, get_stats=True):
     #each node returns a dict with block id and load status
     #we want to merge all of them together into one dict
     #so collect all the items as pairs and then create a final dict
     load_items = []
-    message = json.dumps(("POLL", {}))
-    dicts = self.send_all_nodes(message)
-    for d in dicts:
-      load_items.extend(d.items())
+    message = json.dumps(("POLL", {'get_stats':get_stats}))
+    results = self.send_all_nodes(message)
+    for (node_host, node_loads, node_stats) in results:
+      load_items.extend(node_loads.items())
+      if node_stats!=None:
+        if not self.server_stats.has_key(node_host):
+          self.server_stats[node_host] = SystemStats(node_host)
+        self.server_stats[node_host].add_snapshot(node_stats)
     loads = dict(load_items)
     # print loads
     return loads
-    
+
+  def print_server_stats(self):
+    nodes = self.server_stats.keys()
+    if len(nodes)==0:
+      return
+    nodes.sort()
+    ctbl = SystemStats.create_cpu_stats_table()
+    mtbl = SystemStats.create_memory_stats_table()
+    for node in nodes:
+      self.server_stats[node].add_rows_to_cpu_stats_table(ctbl)
+      self.server_stats[node].add_row_to_memory_stats_table(mtbl)
+    print
+    ctbl.write_to_stream(sys.stdout)
+    print
+    mtbl.write_to_stream(sys.stdout)
+
   def report_end(self):
     message = json.dumps(("END RUN", {}))
     self.send_all_nodes(message)
@@ -1102,12 +1128,19 @@ class Master(object):
     
   def run(self):
     logger.info("Run started")
+    poll_no = 0
+    STATS_INTERVAL = 2
     try:
       while True:
         time.sleep(self.poll_interval)
-        loads = self.poll_all_nodes()
-        self.main_block_handler.update_load(loads)
-        resource_manager.write_loads(self.start_time)
+        get_stats_on_this_poll = (poll_no % STATS_INTERVAL)==0
+        poll_no += 1
+        loads = self.poll_all_nodes(get_stats=get_stats_on_this_poll)
+        self.main_block_handler.update_load(loads, update_stats=get_stats_on_this_poll)
+        if get_stats_on_this_poll:
+          resource_manager.write_loads(self.start_time)
+          self.print_server_stats()
+          print
         if self.has_timeouts():
           logger.info("Master: topology has timeouts or crashes, killing all blocks and exiting")
           self.stop_all("Quitting topology due to remaining blocks timing out")
