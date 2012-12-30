@@ -73,12 +73,19 @@ def main(argv):
                     default=DEFAULT_POLL_INTERVAL,
                     help="Time in seconds between polls of the caretakers, defaults to %d" %
                     DEFAULT_POLL_INTERVAL)
+  parser.add_option('--stats-multiple', dest='stats_multiple', type="int",
+                    default=DEFAULT_STATS_MULTIPLE,
+                    help="Number of polls between stats gathering, defaults to %d" %
+                    DEFAULT_STATS_MULTIPLE)
   parser.add_option("-l", "--log-level", dest="log_level", default="INFO",
                     help="Log level: ERROR|WARN|INFO|DEBUG|ALL")
   parser.add_option("-d", "--debug-blocks", dest="debug_blocks", default=None,
                     help="Comma-separated list of blocks for which to enable debug-level logging")
   parser.add_option("--loads-file", dest="loads_file", default=None,
                     help="If specified, write block load history to this file in csv format at end of run")
+  parser.add_option('--log-stats-hist', dest='log_stats_hist', default=False,
+                    action="store_true",
+                    help="If specified, save gathered performance statistics to the log file")
   if using_engage:
     parser.add_option("--reuse-existing-installs", default=None,
                       action="store_true",
@@ -178,8 +185,10 @@ def main(argv):
          _debug_block_list=debug_block_list,
          reuse_existing_installs=reuse_existing_installs,
          poll_interval=options.poll_interval,
+         stats_multiple=options.stats_multiple,
          block_args=block_args,
-         loads_file=options.loads_file)
+         loads_file=options.loads_file,
+         log_stats_hist=options.log_stats_hist)
 
 def call_from_console_script():
     sys.exit(main(sys.argv[1:]))

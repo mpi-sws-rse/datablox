@@ -5,6 +5,7 @@ import copy
 import subprocess
 import logging
 import csv
+import datetime
 
 import naming
 from block import *
@@ -103,7 +104,7 @@ class ResourceManager(object):
         return True
     return False
     
-  def write_loads(self, poll_start_time):
+  def write_loads(self, overall_start_time, log_stats_hist):
     # print "Block loads", self.block_loads
     loads = defaultdict(int)
     for poller_id, d in self.block_loads.items():
@@ -128,13 +129,14 @@ class ResourceManager(object):
     for e in etas:
       print "%r -> %.3f (%.3f x %r)" % (e[1], e[0], time_per_req[e[1]], loads[e[1]])
       self.load_history[e[1]].append(e[0])
-    duration = time.time() - poll_start_time
+    duration = time.time() - overall_start_time
     #writing the time stamps of the polls in the same dictionary
     self.load_history["times"].append(duration)
     # with open("loads.json", 'w') as f:
     #   json.dump(dict([(e[1], e[0]) for e in etas]), f)
 
-  def write_final_perfstats(self, loads_csv_file=None):
+  def write_final_perfstats(self, overal_start_time, run_start_time,
+                            loads_csv_file=None):
     logger.debug("Message counts:")
     for (s, dct) in self.block_loads.items():
       for (d, cnt) in dct.items():
@@ -198,9 +200,8 @@ class BlockPerfStats(object):
     self.period_poll_time = poll_time - self.total_poll_time
     self.total_poll_time = poll_time
 
-  def add_load(self, duration):
+  def add_load(self, time_into_run):
     if self.status==BlockStatus.ALIVE:
-      ## load = float(self.period_processing_time) / duration
       period_time = self.period_processing_time + self.period_poll_time
       load = self.period_processing_time/period_time if period_time>0.0 else 0.0
       self.average_loads.append(load)
@@ -306,18 +307,18 @@ class LoadBasedResourceManager(object):
         return True
     return False
 
-  def write_loads(self, poll_start_time):
+  def write_loads(self, overall_start_time, write_stats_hist):
     """Print out the current load data and update historical data.
     """
     current_time = time.time()
-    duration = current_time - poll_start_time
+    time_into_run = current_time - overall_start_time
     if self.first_poll_start_time==INVALID_VALUE:
-      self.first_poll_start_time = poll_start_time
+      self.first_poll_start_time = int(round(current_time))
     self.num_polls += 1
     self.poll_times.append(int(round(current_time)))
     self.stats_table.clear_rows()
     for stats in self.block_stats.values():
-      stats.add_load(duration)
+      stats.add_load(time_into_run)
       tpr = stats.time_per_req()
       self.stats_table.add_row([id_wo_prefix(stats.block_id),
                                 stats.status,
@@ -330,13 +331,24 @@ class LoadBasedResourceManager(object):
                                 stats.queue_size(),
                                 stats.estimated_time_left()])
     self.stats_table.sort('Load', descending=True)
-    self.stats_table.write_to_stream(sys.stdout)
+    if write_stats_hist:
+      self.stats_table.write_to_log(logger)
+    else:
+      self.stats_table.write_to_stream(sys.stdout)
                                
-  def write_final_perfstats(self, loads_csv_file=None):
-    duration = time.time() - self.first_poll_start_time
+  def write_final_perfstats(self, overall_start_time, run_start_time,
+                            loads_csv_file=None):
+    current_time = time.time()
+    total_duration = current_time - overall_start_time # time for full run, including startup
+    run_duration = current_time - run_start_time # time for actual run, after startup
     logger.info("Final Statistics")
     logger.info("================")
-    logger.info("Total duration: %.0f seconds" % duration)
+    table = text_tables.Table([text_tables.TimeInterval('Total time'),
+                               text_tables.TimeInterval('Startup time'),
+                               text_tables.TimeInterval('Execution time')])
+    table.add_row([total_duration, total_duration - run_duration,
+                   run_duration])
+    table.write_to_log(logger)
     table = text_tables.Table([
               text_tables.LeftAlignedCol('Block', 20),
               text_tables.PctCol('Load', 0),
@@ -346,7 +358,7 @@ class LoadBasedResourceManager(object):
     for stats in self.block_stats.values():
       tpr = stats.time_per_req()
       table.add_row([id_wo_prefix(stats.block_id),
-                     stats.average_load(duration),
+                     stats.average_load(run_duration),
                      stats.total_requests_served,
                      1000.0*tpr if tpr!=INVALID_VALUE else INVALID_VALUE])
     table.sort('Load', descending=True)
@@ -369,8 +381,10 @@ resource_manager = LoadBasedResourceManager()
 
 BLOCK_SYNC_TIMEOUT_MS = 20000
 
-# time between polls of the caretakers. Can override via a command line parameter
-DEFAULT_POLL_INTERVAL = 4
+# time between polls of the caretakers (in seconds). Can override via a command line parameter
+DEFAULT_POLL_INTERVAL = 30
+# number of polls between stats gathering
+DEFAULT_STATS_MULTIPLE = 5
 
 # Number of times that a poll should result in a timeout before we consider
 # the associated block as dead.
@@ -978,8 +992,10 @@ class Master(object):
                _debug_block_list=[],
                reuse_existing_installs=True,
                poll_interval=DEFAULT_POLL_INTERVAL,
+               stats_multiple=DEFAULT_STATS_MULTIPLE,
                block_args=None,
-               loads_file=None):
+               loads_file=None,
+               log_stats_hist=False):
     # Kind of yucky - using global variables for some key parameters
     global global_config, bloxpath, using_engage, log_level, debug_block_list
     bloxpath = _bloxpath
@@ -987,6 +1003,8 @@ class Master(object):
     log_level = _log_level
     debug_block_list = _debug_block_list
     self.poll_interval = poll_interval
+    self.stats_multiple = stats_multiple
+    self.log_stats_hist = log_stats_hist
     if using_engage:
       logger.info("Running with Engage deployment home at %s" % \
                   engage_file_locator.get_dh())
@@ -1005,11 +1023,13 @@ class Master(object):
     self.main_block_handler = GroupHandler(main_block_rec, get_group("main"), self.address_manager, self.context)
 
     self.server_stats = {} # map from server hostname to SystemStats for that server
-    
+
     self.start_time = time.time()
+    logger.info("Starting blocks at %s" % time.ctime(self.start_time))
     if not self.main_block_handler.start():
       self.stop_all("Master: Could not start all blocks. Ending the run")
 
+    self.run_start_time = time.time()
     try:
       self.run()
     except Exception, e:
@@ -1022,7 +1042,8 @@ class Master(object):
       # if not an abolute path, stick the loads file in the log directory
       loads_file = os.path.join(engage_file_locator.get_log_directory(),
                                 loads_file)
-    resource_manager.write_final_perfstats(loads_file)
+    resource_manager.write_final_perfstats(self.start_time, self.run_start_time,
+                                           loads_file)
     if using_engage:
       self.address_manager.djm_job.stop_job(successful=True)
     return
@@ -1099,7 +1120,7 @@ class Master(object):
     # print loads
     return loads
 
-  def print_server_stats(self):
+  def print_server_stats(self, log_stats_hist):
     nodes = self.server_stats.keys()
     if len(nodes)==0:
       return
@@ -1109,10 +1130,16 @@ class Master(object):
     for node in nodes:
       self.server_stats[node].add_rows_to_cpu_stats_table(ctbl)
       self.server_stats[node].add_row_to_memory_stats_table(mtbl)
-    print
-    ctbl.write_to_stream(sys.stdout)
-    print
-    mtbl.write_to_stream(sys.stdout)
+    if log_stats_hist:
+      ctbl.write_to_log(logger)
+      logger.info("")
+      mtbl.write_to_log(logger)
+      logger.info("")
+    else:
+      print
+      ctbl.write_to_stream(sys.stdout)
+      print
+      mtbl.write_to_stream(sys.stdout)
 
   def report_end(self):
     message = json.dumps(("END RUN", {}))
@@ -1127,20 +1154,28 @@ class Master(object):
     return resource_manager.has_timeouts()
     
   def run(self):
-    logger.info("Run started")
+    logger.info("Run started at %s" % time.ctime(self.run_start_time))
     poll_no = 0
-    STATS_INTERVAL = 2
     try:
       while True:
         time.sleep(self.poll_interval)
-        get_stats_on_this_poll = (poll_no % STATS_INTERVAL)==0
+        get_stats_on_this_poll = (poll_no % self.stats_multiple)==0
         poll_no += 1
         loads = self.poll_all_nodes(get_stats=get_stats_on_this_poll)
         self.main_block_handler.update_load(loads, update_stats=get_stats_on_this_poll)
         if get_stats_on_this_poll:
-          resource_manager.write_loads(self.start_time)
-          self.print_server_stats()
-          print
+          ptime = time.time()
+          ptime_diff = datetime.timedelta(seconds=int(ptime-self.run_start_time))
+          if self.log_stats_hist:
+            logger.info("")
+            logger.info("Statistics gathered at %s (%s into run)" %
+                        (time.ctime(ptime), ptime_diff))
+          else:
+            print
+            print "Statistics gathered at %s (%s into run)" % \
+                  (time.ctime(time.time()), ptime_diff)
+          resource_manager.write_loads(self.start_time, self.log_stats_hist)
+          self.print_server_stats(self.log_stats_hist)
         if self.has_timeouts():
           logger.info("Master: topology has timeouts or crashes, killing all blocks and exiting")
           self.stop_all("Quitting topology due to remaining blocks timing out")
