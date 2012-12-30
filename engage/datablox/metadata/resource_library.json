@@ -70,6 +70,15 @@
       }
     ]
   },
+  { "key":{"name":"psutil", "version":"0.6"},
+    "mgr_module_name":"engage.drivers.genforma.pip",
+    "packages": [
+      { "type": "Reference",
+        "package_class": "PipLink",
+        "location": "psutil"
+      }
+    ]
+  },
   { "key":{"name":"BeautifulSoup", "version":"3"},
     "mgr_module_name":"engage.drivers.genforma.pip",
     "packages": [

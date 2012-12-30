@@ -34,6 +34,40 @@
           }
       ]}
    },
+   { "key": {"name":"psutil", "version":"0.6"},
+     "display_name": "psutil (Process Status Utilities)",
+     "input_ports": {
+        "python": {
+          "home" : "path"
+        },
+	"pip": { "pipbin": "path" }
+     },
+    "output_ports" : {
+      "pkg_info": {
+        "provides_pkg": {"type":"string", "fixed-value":"psutil"},
+        "test_module": {"type":"string",
+                        "fixed-value":"psutil"}
+      }
+    },
+    "inside": {
+       "one-of": [
+          { "key": {"name": "ubuntu-linux", "version":"11.10"}},
+          { "key": {"name": "ubuntu-linux", "version":"10.04"}},
+          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
+                                                 "less-than":"10.7"}}}
+        ]
+     },
+     "environment": {
+        "all-of": [
+          { "key": {"name":"python",
+                    "version":{"greater-than-or-equal":"2.6"}},
+            "port_mapping": {"python":"python"}
+          },
+          { "key": {"name":"pip", "version":"any"},
+            "port_mapping": {"pip":"pip"}
+          }
+      ]}
+   },
    { "key": {"name":"fabric", "version":"1.4"},
      "display_name": "Fabric",
      "input_ports": {
@@ -206,7 +240,8 @@
           { "key": {"name":"datablox-framework", "version":"1.0"},
                     "version":{"greater-than-or-equal":""},
             "port_mapping": {"datablox_framework":"datablox_framework"}},
-          {"key":{"name":"datablox-engage-adapter", "version":"1.0"}}
+          {"key":{"name":"datablox-engage-adapter", "version":"1.0"}},
+          {"key":{"name":"psutil", "version":"0.6"}}
         ]
     }
   },
