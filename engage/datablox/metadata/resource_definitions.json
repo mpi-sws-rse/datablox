@@ -18,7 +18,7 @@
     "inside": {
        "one-of": [
           { "key": {"name": "ubuntu-linux", "version":"11.10"}},
-          { "key": {"name": "ubuntu-linux", "version":"10.04"}},
+          { "key": {"name": "ubuntu-linux", "version":"12.04"}},
           { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
                                                  "less-than":"10.7"}}}
         ]
@@ -52,7 +52,7 @@
     "inside": {
        "one-of": [
           { "key": {"name": "ubuntu-linux", "version":"11.10"}},
-          { "key": {"name": "ubuntu-linux", "version":"10.04"}},
+          { "key": {"name": "ubuntu-linux", "version":"12.04"}},
           { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
                                                  "less-than":"10.7"}}}
         ]
@@ -86,7 +86,7 @@
     "inside": {
        "one-of": [
           { "key": {"name": "ubuntu-linux", "version":"11.10"}},
-          { "key": {"name": "ubuntu-linux", "version":"10.04"}},
+          { "key": {"name": "ubuntu-linux", "version":"12.04"}},
           { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
                                                  "less-than":"10.7"}}}
         ]
@@ -124,7 +124,7 @@
        "one-of": [
           { "key": {"name": "ubuntu-linux", "version":"11.10"},
             "port_mapping":{"host":"host"}},
-          { "key": {"name": "ubuntu-linux", "version":"10.04"},
+          { "key": {"name": "ubuntu-linux", "version":"12.04"},
             "port_mapping":{"host":"host"}},
           { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
                                                  "less-than":"10.7"}},
@@ -171,7 +171,7 @@
         "one-of": [
           { "key": {"name": "ubuntu-linux", "version":"11.10"},
             "port_mapping": {"host":"host"}},
-          { "key": {"name": "ubuntu-linux", "version":"10.04"},
+          { "key": {"name": "ubuntu-linux", "version":"12.04"},
             "port_mapping": {"host":"host"}},
           { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
                                                  "less-than":"10.7"}},
@@ -228,7 +228,7 @@
         "one-of": [
           { "key": {"name": "ubuntu-linux", "version":"11.10"},
             "port_mapping": {"host":"host"}},
-          { "key": {"name": "ubuntu-linux", "version":"10.04"},
+          { "key": {"name": "ubuntu-linux", "version":"12.04"},
             "port_mapping": {"host":"host"}},
           { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
                                                  "less-than":"10.7"}},
@@ -277,7 +277,7 @@
         "one-of": [
           { "key": {"name": "ubuntu-linux", "version":"11.10"},
             "port_mapping": {"host":"host"}},
-          { "key": {"name": "ubuntu-linux", "version":"10.04"},
+          { "key": {"name": "ubuntu-linux", "version":"12.04"},
             "port_mapping": {"host":"host"}},
           { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
                                                  "less-than":"10.7"}},
@@ -313,7 +313,7 @@
     "inside": {
        "one-of": [
           { "key": {"name": "ubuntu-linux", "version":"11.10"}},
-          { "key": {"name": "ubuntu-linux", "version":"10.04"}},
+          { "key": {"name": "ubuntu-linux", "version":"12.04"}},
           { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
                                                  "less-than":"10.7"}}}
         ]
@@ -344,7 +344,7 @@
     "inside": {
        "one-of": [
           { "key": {"name": "ubuntu-linux", "version":"11.10"}},
-          { "key": {"name": "ubuntu-linux", "version":"10.04"}},
+          { "key": {"name": "ubuntu-linux", "version":"12.04"}},
           { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
                                                  "less-than":"10.7"}}}
         ]
@@ -374,7 +374,7 @@
        "one-of": [
           { "key": {"name": "ubuntu-linux", "version":"11.10"},
             "port_mapping": {"host":"host"}},
-          { "key": {"name": "ubuntu-linux", "version":"10.04"},
+          { "key": {"name": "ubuntu-linux", "version":"12.04"},
             "port_mapping": {"host":"host"}},
           { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
                                                  "less-than":"10.7"}},
@@ -407,7 +407,7 @@
         "one-of": [
           { "key": {"name": "ubuntu-linux", "version":"11.10"},
             "port_mapping": {"host":"host"}},
-          { "key": {"name": "ubuntu-linux", "version":"10.04"},
+          { "key": {"name": "ubuntu-linux", "version":"12.04"},
             "port_mapping": {"host":"host"}},
           { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
                                                  "less-than":"10.7"}},
@@ -443,7 +443,7 @@
     "inside": {
        "one-of": [
           { "key": {"name": "ubuntu-linux", "version":"11.10"}},
-          { "key": {"name": "ubuntu-linux", "version":"10.04"}},
+          { "key": {"name": "ubuntu-linux", "version":"12.04"}},
           { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
                                                  "less-than":"10.7"}}}
         ]
@@ -482,7 +482,7 @@
     "inside": {
        "one-of": [
           { "key": {"name": "ubuntu-linux", "version":"11.10"}},
-          { "key": {"name": "ubuntu-linux", "version":"10.04"}},
+          { "key": {"name": "ubuntu-linux", "version":"12.04"}},
           { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
                                                  "less-than":"10.7"}}}
         ]
@@ -516,7 +516,7 @@
     "inside": {
        "one-of": [
           { "key": {"name": "ubuntu-linux", "version":"11.10"}},
-          { "key": {"name": "ubuntu-linux", "version":"10.04"}},
+          { "key": {"name": "ubuntu-linux", "version":"12.04"}},
           { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
                                                  "less-than":"10.7"}}}
         ]
