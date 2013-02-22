@@ -1,0 +1,10 @@
+
+[
+  { "type": "Archive",
+    "package_class": "GzippedTarArchive",
+    "location":["http://mirrors.ibiblio.org/apache/lucene/solr/4.1.0/solr-4.1.0.tgz",
+                "http://www.eu.apache.org/dist/lucene/solr/4.1.0/solr-4.1.0.tgz"],
+    "filename": "solr-4.1.0.tgz",
+    "downloader": "HTTPDownloader"
+  }
+]

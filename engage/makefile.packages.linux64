@@ -1,9 +1,12 @@
-all: apache-solr-3.6.1.tgz mongodb-linux-x86_64-2.0.2.tgz
+all: solr-4.1.0.tgz mongodb-linux-x86_64-2.0.2.tgz
 
-test: mongodb-linux-x86_64-2.0.2.tgz apache-solr-3.6.1.tgz
+test: mongodb-linux-x86_64-2.0.2.tgz solr-4.1.0.tgz
 
 apache-solr-3.6.1.tgz:
 	wget -O apache-solr-3.6.1.tgz http://mirrors.ibiblio.org/apache/lucene/solr/3.6.1/apache-solr-3.6.1.tgz
+
+solr-4.1.0.tgz:
+	wget -O solr-4.1.0.tgz http://mirrors.ibiblio.org/apache/lucene/solr/4.1.0/solr-4.1.0.tgz
 
 mongodb-linux-x86_64-2.0.2.tgz:
 	wget -O mongodb-linux-x86_64-2.0.2.tgz http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.0.2.tgz

@@ -27,7 +27,7 @@
         {"key": {"name":"datablox-framework", "version":"1.0"},
          "port_mapping": {"datablox_framework":"datablox_framework"}},
         {"key":{"name":"sunburnt", "version":"0.5"}},
-        { "key": {"name":"apache-solr-jetty-server", "version":"3.5"}}
+        { "key": {"name":"apache-solr-jetty-server", "version":"4.1"}}
        ]
     }
   }

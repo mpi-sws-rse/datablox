@@ -382,6 +382,48 @@
         ]
      }
   },
+  { "key": {"name":"apache-solr-jetty-server", "version":"4.1"},
+    "display_name": "Apache Solr running with the included Jetty server",
+    "input_ports": {
+      "host": {
+        "genforma_home": "path",
+        "log_directory": "path"
+      },
+      "jvm": {
+        "java_exe": "path"
+      },
+      "schema_file": {
+        "file_path": "path"
+      }
+   },
+   "output_ports": {
+     "solr": {
+       "home": {
+         "type":"path",
+         "fixed-value":"${input_ports.host.genforma_home}/solr"}
+       }
+    },
+     "inside": {
+        "one-of": [
+          { "key": {"name": "ubuntu-linux", "version":"11.10"},
+            "port_mapping": {"host":"host"}},
+          { "key": {"name": "ubuntu-linux", "version":"12.04"},
+            "port_mapping": {"host":"host"}},
+          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
+                                                 "less-than":"10.7"}},
+            "port_mapping": {"host":"host"}}
+        ]
+     },
+     "environment": {
+       "all-of": [
+         { "key": {"name":"java-virtual-machine-abstract",
+                   "version":{"greater-than-or-equal":"1.6"}},
+          "port_mapping": {"jvm":"jvm"}},
+         { "key": {"name":"solr-block-schema-file", "version":"1.0"},
+           "port_mapping": {"schema_file":"file_info"}}
+       ]
+     }
+  },
   { "key": {"name":"apache-solr-jetty-server", "version":"3.5"},
     "display_name": "Apache Solr running with the included Jetty server",
     "input_ports": {
