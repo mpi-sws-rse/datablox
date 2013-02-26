@@ -91,9 +91,13 @@
   { "key":{"name":"fabric", "version":"1.4"},
     "mgr_module_name":"engage.drivers.genforma.pip",
     "packages": [
+      { "type": "Archive",
+        "package_class": "ZipArchive",
+        "location": "fabric-1.4-host-aliasing-fork.zip"
+      },
       { "type": "Reference",
         "package_class": "PipLink",
-        "location": "https://github.com/mpi-sws-rse/fabric/tarball/master"
+        "location": "https://github.com/mpi-sws-rse/fabric/archive/master.zip"
       }
     ]
   }

@@ -481,7 +481,7 @@ class Block(threading.Thread):
   #this is set in load_block    
   def bind_query_port(self, port):
     port.socket = self.context.socket(zmq.PULL)
-    port.socket.setsockopt(zmq.HWM, self.queue_size)
+    port.socket.set_hwm(self.queue_size) # api changed in more recent pyzmq
     port.socket.bind(port.port_url)
   
   def bind_rep_port(self, port):
@@ -495,7 +495,7 @@ class Block(threading.Thread):
     port.sockets = []
     for port_url in port.port_urls:
       socket = self.context.socket(zmq.PUSH)
-      socket.setsockopt(zmq.HWM, self.queue_size)
+      socket.set_hwm(self.queue_size)
       socket.connect(port_url)
       port.sockets.append(socket)
   
