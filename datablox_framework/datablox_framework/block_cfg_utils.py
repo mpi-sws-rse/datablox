@@ -101,7 +101,7 @@ def v_iso_timestamp(name, value, obj_inst):
   if (not isinstance(value, str) and not isinstance(value, unicode)) or \
      timestamp_re.match(value)==None:
     raise BlockPropertyError("%s: Property %s value %s is not in valid iso time/date format" %
-                             (obj_inst.id, value.__repr__()))
+                             (name, obj_inst.id, value.__repr__()))
 
 
 # Validator constructors
