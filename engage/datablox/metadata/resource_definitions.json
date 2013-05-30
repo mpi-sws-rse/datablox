@@ -34,7 +34,7 @@
           }
       ]}
    },
-   { "key": {"name":"psutil", "version":"0.6"},
+   { "key": {"name":"psutil", "version":"0.7"},
      "display_name": "psutil (Process Status Utilities)",
      "input_ports": {
         "python": {
@@ -241,7 +241,7 @@
                     "version":{"greater-than-or-equal":""},
             "port_mapping": {"datablox_framework":"datablox_framework"}},
           {"key":{"name":"datablox-engage-adapter", "version":"1.0"}},
-          {"key":{"name":"psutil", "version":"0.6"}}
+          {"key":{"name":"psutil", "version":{"greater-than-or-equal":"0.6"}}}
         ]
     }
   },

@@ -6,6 +6,7 @@ import sys
 from optparse import OptionParser
 import logging
 from logging.handlers import RotatingFileHandler
+logger = logging.getLogger(__name__)
 
 from master import *
 
@@ -23,6 +24,23 @@ if using_engage:
 else:
   engage_file_locator = None
 
+# error definitions
+from engage_utils.user_error import UserError, ErrorInfo, convert_exc_to_user_error
+import gettext
+_ = gettext.gettext
+AREA_DATABLOX = "Datablox Framework"
+errors = {}
+def define_error(error_code, msg):
+  global errors
+  error_info = ErrorInfo(AREA_DATABLOX, __name__, error_code, msg)
+  errors[error_code] = error_info
+
+ERR_UNEXPECTED_EXC = 1
+
+define_error(ERR_UNEXPECTED_EXC,
+             _("Aborting run due to unexpected error."))
+
+error_file = None # if set by command line option, we'll write fatal errors to this file
 
 def build_args(flat_args):
   """Given flattened arguments provided by the user
@@ -57,6 +75,8 @@ log_levels = {
   "ALL": 1
 }
 
+running_from_command_line = False
+
 def main(argv):
   if using_engage:
     usage = "%prog [options] config_file node_name_1 node_name_2 ..."
@@ -86,6 +106,8 @@ def main(argv):
   parser.add_option('--log-stats-hist', dest='log_stats_hist', default=False,
                     action="store_true",
                     help="If specified, save gathered performance statistics to the log file")
+  parser.add_option('--error_file', dest='error_file', default=None,
+                    help="If specified, write fatal errors to this file in JSON form")
   if using_engage:
     parser.add_option("--reuse-existing-installs", default=None,
                       action="store_true",
@@ -139,8 +161,13 @@ def main(argv):
     debug_block_list = options.debug_blocks.split(',')
   else:
     debug_block_list = []
+  if options.error_file:
+    options.error_file = os.path.abspath(os.path.expanduser(options.error_file))
+    if not os.path.exists(os.path.dirname(options.error_file)):
+      parser.error("Parent directory of error file %s does not exist" % options.error_file)
+    global error_file
+    error_file = options.error_file
       
-    
   # The priorities for obtaining bloxpath are:
   # 1. Command line option
   # 2. If engage is installed, use file locator to get bloxpath
@@ -165,18 +192,22 @@ def main(argv):
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(log_levels[options.log_level])
     root_logger.addHandler(console_handler)
+    root_logger.log(logging.INFO, "Datablox added console handler to root logger")
   if using_engage:
     root_logger.setLevel(min(root_logger.level, logging.DEBUG))
-    log_dir = engage_file_locator.get_log_directory()
-    if not os.path.exists(log_dir):
-      os.makedirs(log_dir)
-    log_file = os.path.join(log_dir, "master.log")
-    do_log_rollover = os.path.exists(log_file)
-    handler = RotatingFileHandler(log_file, backupCount=5)
-    if do_log_rollover: # we do a rollover each time the master is run
-      handler.doRollover()
-    handler.setLevel(logging.DEBUG)
-    root_logger.addHandler(handler)
+    if running_from_command_line:
+      # we only create the master.log logfile if we are running directly in the command
+      # line. If we are called as a library, we let the caller setup the logfile
+      log_dir = engage_file_locator.get_log_directory()
+      if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+      log_file = os.path.join(log_dir, "master.log")
+      do_log_rollover = os.path.exists(log_file)
+      handler = RotatingFileHandler(log_file, backupCount=5)
+      if do_log_rollover: # we do a rollover each time the master is run
+        handler.doRollover()
+      handler.setLevel(logging.DEBUG)
+      root_logger.addHandler(handler)
   else:
     root_logger.setLevel(min(root_logger.level, log_levels[options.log_level]))
     
@@ -189,9 +220,29 @@ def main(argv):
          block_args=block_args,
          loads_file=options.loads_file,
          log_stats_hist=options.log_stats_hist)
+  return 0
+
 
 def call_from_console_script():
-    sys.exit(main(sys.argv[1:]))
-
+  global error_file, running_from_command_line
+  running_from_command_line = True
+  try:
+    rc = main(sys.argv[1:])
+  except UserError, e:
+    rc = 1
+    user_error.write_error_to_log(logger)
+    if error_file and not os.path.exists(error_file):
+      e.write_error_to_file(error_file)
+  except:
+    rc = 1
+    (ec, ev, et) = sys.exc_info()
+    logger.exception("Unexpected exception: %s(%s)" %  (ec.__name__, ev))
+    user_error = convert_exc_to_user_error(sys.exc_info(),
+                                           errors[ERR_UNEXPECTED_EXC])
+    user_error.write_error_to_log(logger)
+    if error_file and not os.path.exists(error_file):
+      user_error.write_error_to_file(error_file)
+  sys.exit(rc)
+  
 if __name__ == "__main__":
-  main(sys.argv[1:])
+  call_from_console_script()

@@ -29,6 +29,28 @@ else:
 
 logger = logging.getLogger(__name__)
 
+# error definitions
+from engage_utils.user_error import UserError, ErrorInfo, convert_exc_to_user_error
+import gettext
+_ = gettext.gettext
+AREA_DATABLOX = "Datablox Framework"
+errors = {}
+def define_error(error_code, msg):
+  global errors
+  error_info = ErrorInfo(AREA_DATABLOX, __name__, error_code, msg)
+  errors[error_code] = error_info
+
+ERR_BLOCK_START = 1
+ERR_BLOCK_TIMEOUT = 2
+ERR_BLOCK_INTERRUPT = 3
+
+define_error(ERR_BLOCK_START, _("Master could not start block %(block)s. Ending the run."))
+define_error(ERR_BLOCK_TIMEOUT,
+             _('Datablox topology has timeouts or crashes, aborted run. Failed blocks were: %(blocks)s'))
+define_error(ERR_BLOCK_INTERRUPT,
+             _("Aborted Datablox run due to keyboard interrupt."))
+
+
 # The timeout for polling a remote block, in milliseconds.
 # See issue #62 for details.
 POLL_TIMEOUT_MS = 10000
@@ -103,6 +125,12 @@ class ResourceManager(object):
         logger.info("%s crashed" % i)
         return True
     return False
+
+  def get_timeout_block_ids(self):
+    return [
+      i for i, v in filter(lambda i, v: v==BlockStatus.TIMEOUT or v==BlockStatus.DEAD,
+                           self.block_status.items())
+    ]
     
   def write_loads(self, overall_start_time, log_stats_hist):
     # print "Block loads", self.block_loads
@@ -376,8 +404,7 @@ class LoadBasedResourceManager(object):
     logger.info("Wrote load history to %s" % loads_csv_file)
 
 
-#resource_manager = ResourceManager()
-resource_manager = LoadBasedResourceManager()
+resource_manager = None
 
 BLOCK_SYNC_TIMEOUT_MS = 20000
 
@@ -467,7 +494,12 @@ class Connection(object):
   
   def __repr__(self):
     return "connection_type " + self.connection_type + " connection_urls " + str(self.connection_urls)
-    
+
+class BlockStartError(Exception):
+  def __init__(self, block_id):
+    Exception.__init__(self, "Unable to start block %s" % block_id)
+    self.block_id = block_id
+
 class BlockHandler(object):
   def __init__(self, block_record, address_manager, context, policy=None):
     global resource_manager
@@ -567,7 +599,6 @@ class BlockHandler(object):
     logger.info("syncing with block %s (%s) at url %s" % (self.id, self.name, url))
     syncclient.send('')
     # wait for synchronization reply
-    # TODO: hardcoded wait for 20 seconds
     res = timed_recv(syncclient, BLOCK_SYNC_TIMEOUT_MS)
     syncclient.close()
     if res != None:
@@ -893,10 +924,11 @@ class GroupHandler(BlockHandler):
       from_block.connect_to(from_port, to_block, to_port)
   
   def start(self):
-    res = True
-    for bh in self.block_hash.values():
-      res = res and bh.start()
-    return res
+    for (block_id, bh) in self.block_hash.items():
+      res = bh.start()
+      if not res:
+        raise BlockStartError(block_id)
+
   
   def stop(self):
     for bh in self.block_hash.values():
@@ -997,7 +1029,7 @@ class Master(object):
                loads_file=None,
                log_stats_hist=False):
     # Kind of yucky - using global variables for some key parameters
-    global global_config, bloxpath, using_engage, log_level, debug_block_list
+    global global_config, bloxpath, using_engage, log_level, debug_block_list, resource_manager
     bloxpath = _bloxpath
     using_engage = _using_engage
     log_level = _log_level
@@ -1005,6 +1037,7 @@ class Master(object):
     self.poll_interval = poll_interval
     self.stats_multiple = stats_multiple
     self.log_stats_hist = log_stats_hist
+    resource_manager = LoadBasedResourceManager()
     if using_engage:
       logger.info("Running with Engage deployment home at %s" % \
                   engage_file_locator.get_dh())
@@ -1026,8 +1059,11 @@ class Master(object):
 
     self.start_time = time.time()
     logger.info("Starting blocks at %s" % time.ctime(self.start_time))
-    if not self.main_block_handler.start():
-      self.stop_all("Master: Could not start all blocks. Ending the run")
+    try:
+      self.main_block_handler.start()
+    except BlockStartError, e:
+      self.stop_all("Unable to start block %s, aborting run" % e.block_id)
+      raise UserErrors(errors[ERR_BLOCK_START], msg_args={'block':e.block_id})
 
     self.run_start_time = time.time()
     try:
@@ -1095,13 +1131,13 @@ class Master(object):
       logger.info("Master: trying to stop all blocks")
       message = json.dumps(("STOP ALL", {}))
       self.send_all_nodes(message)
-      logger.info("done, quitting")
+      logger.info("Sent stop message, destroying zmq context")
       self.context.destroy()
+      logger.info("Zmq context destroyed")
     finally:
       if using_engage:
         self.address_manager.djm_job.stop_job(successful=False,
                                               msg=msg)
-    sys.exit(1)
 
   def poll_all_nodes(self, get_stats=True):
     #each node returns a dict with block id and load status
@@ -1152,6 +1188,10 @@ class Master(object):
   def has_timeouts(self):
     global resource_manager
     return resource_manager.has_timeouts()
+
+  def get_timeout_block_ids(self):
+    return resource_manager.get_timeout_block_ids()
+                            
     
   def run(self):
     logger.info("Run started at %s" % time.ctime(self.run_start_time))
@@ -1176,14 +1216,16 @@ class Master(object):
                   (time.ctime(time.time()), ptime_diff)
           resource_manager.write_loads(self.start_time, self.log_stats_hist)
           self.print_server_stats(self.log_stats_hist)
+          sys.stdout.flush()
         if self.has_timeouts():
-          logger.info("Master: topology has timeouts or crashes, killing all blocks and exiting")
-          self.stop_all("Quitting topology due to remaining blocks timing out")
-          return
+          self.stop_all("Master: topology has timeouts or crashes, killing all blocks and exiting")
+          raise UserError(errors[ERR_BLOCK_TIMEOUT],
+                          msg_args={'blocks':', '.join(self.get_timeout_block_ids())})
         elif not self.running():
           logger.info("Master: no more running nodes, quitting")
           self.report_end()
-          return
+          return 0
     except KeyboardInterrupt:
-      self.stop_all("Got a keyboard interrupt") # does not return
+      self.stop_all("Got a keyboard interrupt")
+      raise UserError(errors[ERR_BLOCK_INTERRUPT])
       
