@@ -43,12 +43,14 @@ def define_error(error_code, msg):
 ERR_BLOCK_START = 1
 ERR_BLOCK_TIMEOUT = 2
 ERR_BLOCK_INTERRUPT = 3
+ERR_EXCEPTION = 4
 
 define_error(ERR_BLOCK_START, _("Master could not start block %(block)s. Ending the run."))
 define_error(ERR_BLOCK_TIMEOUT,
              _('Datablox topology has timeouts or crashes, aborted run. Failed blocks were: %(blocks)s'))
 define_error(ERR_BLOCK_INTERRUPT,
              _("Aborted Datablox run due to keyboard interrupt."))
+define_error(ERR_EXCEPTION, _("Datablox master stopping run due to unexpected exception '%(exc)s'"))
 
 
 # The timeout for polling a remote block, in milliseconds.
@@ -334,6 +336,12 @@ class LoadBasedResourceManager(object):
         logger.info("%s crashed" % stats.block_id)
         return True
     return False
+
+  def get_timeout_block_ids(self):
+    return [
+      s.block_id for s in filter(lambda s: s.status==BlockStatus.TIMEOUT or s.status==BlockStatus.DEAD,
+                                 self.block_stats.values())
+    ]
 
   def write_loads(self, overall_start_time, write_stats_hist):
     """Print out the current load data and update historical data.
@@ -998,6 +1006,7 @@ class DjmAddressManager(AddressManager):
     AddressManager.__init__(self,
                             [node["name"] for node in djm_job.nodes])
     self.djm_job = djm_job
+    self.job_stopped = False
 
   def select_ipaddress(self):
     node_name = AddressManager.select_ipaddress(self)
@@ -1017,7 +1026,7 @@ class DjmAddressManager(AddressManager):
 
   def get_all_ipaddresses(self):
     return [node["datablox_ip_address"] for node in self.djm_job.nodes]
-    
+
 class Master(object):
   def __init__(self, _bloxpath, config_file, ip_addr_list,
                _using_engage, _log_level=logging.INFO,
@@ -1068,12 +1077,16 @@ class Master(object):
     self.run_start_time = time.time()
     try:
       self.run()
+    except UserError:
+      raise # already did the handling for this in the run() method
     except Exception, e:
       logger.exception("Master run aborted due to exception %s" % e)
+      exc_info = sys.exc_info()
       if using_engage:
         self.address_manager.djm_job.stop_job(successful=False,
                                               msg="Master run stopped due to exception %s" % e)
-      raise
+      raise convert_exc_to_user_error(exc_info, errors[ERR_EXCEPTION],
+                                      msg_args={'exc':str(e)})
     if loads_file and (not os.path.isabs(loads_file)) and using_engage:
       # if not an abolute path, stick the loads file in the log directory
       loads_file = os.path.join(engage_file_locator.get_log_directory(),

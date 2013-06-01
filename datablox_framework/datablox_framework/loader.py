@@ -230,7 +230,7 @@ def call_from_console_script():
     rc = main(sys.argv[1:])
   except UserError, e:
     rc = 1
-    user_error.write_error_to_log(logger)
+    e.write_error_to_log(logger)
     if error_file and not os.path.exists(error_file):
       e.write_error_to_file(error_file)
   except:
