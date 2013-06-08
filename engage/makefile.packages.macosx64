@@ -1,6 +1,6 @@
-all: solr-4.1.0.tgz mongodb-osx-x86_64-2.0.2.tgz
+all: solr-4.1.0.tgz mongodb-osx-x86_64-2.4.4.tgz
+test: solr-4.1.0.tgz mongodb-osx-x86_64-2.4.4.tgz
 
-test: mongodb-osx-x86_64-2.0.2.tgz solr-4.1.0.tgz
 
 apache-solr-3.6.1.tgz:
 	wget -O apache-solr-3.6.1.tgz http://mirrors.ibiblio.org/apache/lucene/solr/3.6.1/apache-solr-3.6.1.tgz
@@ -10,5 +10,7 @@ solr-4.1.0.tgz:
 
 mongodb-osx-x86_64-2.0.2.tgz:
 	wget -O mongodb-osx-x86_64-2.0.2.tgz http://fastdl.mongodb.org/osx/mongodb-osx-x86_64-2.0.2.tgz
+mongodb-osx-x86_64-2.4.4.tgz:
+	wget -O mongodb-osx-x86_64-2.4.4.tgz http://downloads.mongodb.org/osx/mongodb-osx-x86_64-2.4.4.tgz
 
 .PHONY: all test

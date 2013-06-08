@@ -1,4 +1,33 @@
 """Utilties for processing block configuration properties
+
+Here's some example code:
+
+# properties declared at the top of the block file
+PROPERTIES = [
+    required_prop('collection', validator=unicode,
+                  help="Name of collection to dump"),
+    required_prop('mongodb_home_path', validator=v_dir_exists,
+                  transformer=t_fixpath,
+                  help="Directory where mongodb is installed"),
+    required_prop('crawl_id', validator=int,
+                  help="Row id of crawl record in django"),
+    required_prop('dump_directory', validator=v_dir_exists,
+                  transformer=lambda name, base_dumpdir, block_inst:
+                              join(abspath(expanduser(base_dumpdir)),
+                                   "crawl_%d" % block_inst.crawl_id),
+                  help="Directory under which crawl-specific dumps will be placed."),
+    optional_prop('query', default=None, validator=dict,
+                  help="If specified, query parameter to filter rows to be dumped"),
+    optional_prop('delete_data_after_dump', default=False, validator=bool,
+                  help="If True, deletes the exported records from the collection")
+]    
+
+class my_block(Block):
+  def on_load(self, config):
+    self.config = config
+    process_config(PROPERTIES, config, self)
+    ...
+    logger.info('query is %s' % self.query) # config properties are now attributes on block instance
 """
 
 # -*- py-indent-offset:2 -*-

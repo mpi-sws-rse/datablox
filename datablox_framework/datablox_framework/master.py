@@ -1072,7 +1072,7 @@ class Master(object):
       self.main_block_handler.start()
     except BlockStartError, e:
       self.stop_all("Unable to start block %s, aborting run" % e.block_id)
-      raise UserErrors(errors[ERR_BLOCK_START], msg_args={'block':e.block_id})
+      raise UserError(errors[ERR_BLOCK_START], msg_args={'block':e.block_id})
 
     self.run_start_time = time.time()
     try:
