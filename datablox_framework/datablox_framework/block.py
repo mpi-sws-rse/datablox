@@ -16,6 +16,7 @@ import socket
 from Crypto.Cipher import DES
 import base64
 import re
+import contextlib
 
 from fileserver import file_server_keypath
 # cache the key here so that we avoid having to read the keyfile for each file
@@ -346,6 +347,17 @@ class BlockStatus:
   alive_status_values = [STARTUP, BLOCKED, ALIVE]
   error_status_value = [DEAD, TIMEOUT]
 
+@contextlib.contextmanager
+def run_as_blocked(block):
+  """Wrap some statements within a block between calls to update_load(),
+  where we set the status to BLOCKED, run the statements, and then reset the
+  status to ALIVE. This is useful when calling a long-running operation (e.g.
+  a database aggregation).
+  """
+  block.update_load(status=BlockStatus.BLOCKED)
+  yield
+  block.update_load(status=BlockStatus.ALIVE)
+
 class LoadTuple:
   """We maintain block loads as a tuple of values, as that can easily
   be converted back and forth between Python and JSON. Here, we define
@@ -392,6 +404,7 @@ class Block(threading.Thread):
     self.total_processing_time = 0 # time spend in recv_push(), recv_query(), etc.
     self.total_poll_time = 0 # time spent in poll()
     self.last_poll_time = time.time()
+    self.last_load_status = None
     self.buffer_limit = 500
     self.current_buffer_size = defaultdict(int)
     self.buffered_pushes = defaultdict(list)
@@ -594,6 +607,9 @@ class Block(threading.Thread):
                        self.last_poll_time, os.getpid()))
     with open(self.poll_file_name, 'w') as f:
         f.write(load)
+    if self.last_load_status!=status:
+      self.logger.info("update_load(%s)" %status)
+      self.last_load_status = status
 
   def process_master(self, control, data):
     assert(False)

@@ -8,6 +8,7 @@ import signal
 from optparse import OptionParser
 from fileserver import file_server_keypath
 import string
+import time
 import logging
 
 logger = logging.getLogger(__name__)
@@ -126,11 +127,13 @@ class CareTaker(object):
           current_time = time.time()
           block_load[LoadTuple.TOTAL_PROCESSING_TIME] += current_time - last_poll_time
           block_load[LoadTuple.LAST_POLL_TIME] = current_time
-          logger.info("updating stats for blocked block %s: total processing_time = %s" % (block_id, total_processing_time)) # XXX
+          logger.info("Block %s reported as BLOCKED, updating stats: total processing_time = %s" % (block_id, block_load[LoadTuple.TOTAL_PROCESSING_TIME]))
+        else:
+          logger.debug("Block %s reported as ALIVE" % block_id)
         loads[block_id] = block_load
       #TODO: try to re-read the file as the block could have been writing to it at this time
       except Exception, e:
-        print e
+        logger.error("got error when attempting to read block file %s: %s" % (block_file, e))
         continue
     if get_stats and self.stats_taker.stats_available():
       return (HOSTNAME, loads, self.stats_taker.take_snapshot())
