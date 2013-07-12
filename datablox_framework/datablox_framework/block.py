@@ -372,6 +372,14 @@ class LoadTuple:
   LAST_POLL_TIME = 5
   BLOCK_PID = 6
 
+JsonEncoder = None
+
+def register_json_encoder(encoder, overwrite_existing=False):
+  global JsonEncoder
+  if JsonEncoder and encoder!=JsonEncoder and (not overwrite_existing):
+    raise Exception("Attempt to register multiple JSON encoders")
+  JsonEncoder = encoder
+
 
 class Block(threading.Thread):
   def __init__(self, master_url):
@@ -716,7 +724,7 @@ class Block(threading.Thread):
     
   def send(self, control, message, port):
     message = (control, message)
-    json_log = json.dumps(message)
+    json_log = json.dumps(message, cls=JsonEncoder)
     self.log_send(control, json_log, port)
     if hasattr(port, "sockets"):
       for socket in port.sockets:
@@ -872,7 +880,7 @@ class Block(threading.Thread):
   
   def return_query_res(self, port_name, log):
     port = self.find_port(port_name)
-    log_data = json.dumps(log.log)
+    log_data = json.dumps(log.log, cls=JsonEncoder)
     self.log_send('return_query_res', log_data, port)
     port.socket.send(log_data)
     
