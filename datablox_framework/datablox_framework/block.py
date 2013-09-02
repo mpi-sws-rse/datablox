@@ -617,6 +617,7 @@ class Block(threading.Thread):
         f.write(load)
     if self.last_load_status!=status:
       self.logger.info("update_load(%s)" %status)
+      self.log_handler.flush() # make sure we really see this in the logfile
       self.last_load_status = status
 
   def process_master(self, control, data):
@@ -911,6 +912,7 @@ class Block(threading.Thread):
   def initialize_logging(self, log_directory=None):
     """This should be called by load_block.py after the block object has
     been constructed, but before on_load() is called.
+    Sets up self.logger and self.log_handler
     """
     self.logger = logging.getLogger(self.id)
     self.logger.setLevel(self.log_level)
@@ -923,21 +925,21 @@ class Block(threading.Thread):
         logfile = os.path.join(log_directory,
                                "%s_%d.log" % (self.id, os.getpid()))
       self.logfile = logfile
-      handler = logging.FileHandler(logfile, delay=True)
-      handler.setLevel(self.log_level)
+      self.log_handler = logging.FileHandler(logfile, delay=True)
+      self.log_handler.setLevel(self.log_level)
       sys.stdout.write("[%s] logging %s\n" % (self.id, logfile))
       sys.stdout.flush()
     else:
-      handler = logging.StreamHandler(sys.__stdout__)
-      handler.setLevel(self.log_level)
+      self.log_handler = logging.StreamHandler(sys.__stdout__)
+      self.log_handler.setLevel(self.log_level)
       self.logfile = None
-    handler.setFormatter(logging.Formatter("[%(asctime)s][" + self.id +
-                                           "] %(message)s",
-                                           "%H:%M:%S"))
+    self.log_handler.setFormatter(logging.Formatter("[%(asctime)s][" + self.id +
+                                                    "] %(message)s",
+                                                    "%H:%M:%S"))
     rootlogger = logging.getLogger()
     assert len(rootlogger.handlers)==0, \
            "Root logger already has a handler: %s, there must be a logging call before log setup" % rootlogger.handlers[0].__repr__()
-    rootlogger.addHandler(handler)
+    rootlogger.addHandler(self.log_handler)
     rootlogger.setLevel(self.log_level)
     loglvl_map = {logging.DEBUG:'DEBUG', logging.INFO:'INFO',
                   logging.WARN:'WARN', logging.ERROR:'ERROR'}
