@@ -17,6 +17,7 @@ import naming
 import utils
 from block import BlockStatus, LoadTuple
 from system_stats import SystemStatsTaker, HOSTNAME
+import defs
 
 try:
   import datablox_engage_adapter.file_locator
@@ -150,6 +151,9 @@ class CareTaker(object):
       else:
         log_level = logging.INFO
       console_handler.setLevel(log_level)
+      formatter = logging.Formatter(defs.DATABLOX_LOG_FORMAT,
+                                    defs.DATABLOX_LOG_DATEFMT)
+      console_handler.setFormatter(formatter)
       root_logger.addHandler(console_handler)
       root_logger.setLevel(log_level)
 
