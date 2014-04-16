@@ -9,6 +9,7 @@ from logging.handlers import RotatingFileHandler
 logger = logging.getLogger(__name__)
 
 from master import *
+import defs
 
 try:
   import datablox_engage_adapter.file_locator
@@ -204,6 +205,9 @@ def main(argv):
       log_file = os.path.join(log_dir, "master.log")
       do_log_rollover = os.path.exists(log_file)
       handler = RotatingFileHandler(log_file, backupCount=5)
+      formatter = logging.Formatter(defs.DATABLOX_LOG_FORMAT,
+                                    defs.DATABLOX_LOG_DATEFMT)
+      handler.setFormatter(formatter)
       if do_log_rollover: # we do a rollover each time the master is run
         handler.doRollover()
       handler.setLevel(logging.DEBUG)

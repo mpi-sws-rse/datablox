@@ -18,6 +18,7 @@ import base64
 import re
 import contextlib
 
+import defs
 from fileserver import file_server_keypath
 # cache the key here so that we avoid having to read the keyfile for each file
 FILE_SERVER_KEY=None
@@ -933,9 +934,9 @@ class Block(threading.Thread):
       self.log_handler = logging.StreamHandler(sys.__stdout__)
       self.log_handler.setLevel(self.log_level)
       self.logfile = None
-    self.log_handler.setFormatter(logging.Formatter("[%(asctime)s][" + self.id +
-                                                    "] %(message)s",
-                                                    "%H:%M:%S"))
+    formatter = logging.Formatter(defs.DATABLOX_LOG_FORMAT,
+                                  defs.DATABLOX_LOG_DATEFMT)
+    self.log_handler.setFormatter(formatter)
     rootlogger = logging.getLogger()
     assert len(rootlogger.handlers)==0, \
            "Root logger already has a handler: %s, there must be a logging call before log setup" % rootlogger.handlers[0].__repr__()
