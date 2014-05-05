@@ -109,6 +109,8 @@ def main(argv):
                     help="If specified, save gathered performance statistics to the log file")
   parser.add_option('--error_file', dest='error_file', default=None,
                     help="If specified, write fatal errors to this file in JSON form")
+  parser.add_option('--time-limit', dest='time_limit', default=None, type="int",
+                    help="If specified, abort the run if it exceeds the specified time limit (in minutes)")
   if using_engage:
     parser.add_option("--reuse-existing-installs", default=None,
                       action="store_true",
@@ -223,7 +225,8 @@ def main(argv):
          stats_multiple=options.stats_multiple,
          block_args=block_args,
          loads_file=options.loads_file,
-         log_stats_hist=options.log_stats_hist)
+         log_stats_hist=options.log_stats_hist,
+         time_limit=options.time_limit)
   return 0
 
 

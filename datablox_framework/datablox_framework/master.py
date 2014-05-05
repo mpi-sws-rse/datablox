@@ -44,6 +44,7 @@ ERR_BLOCK_START = 1
 ERR_BLOCK_TIMEOUT = 2
 ERR_BLOCK_INTERRUPT = 3
 ERR_EXCEPTION = 4
+ERR_RUN_TIME_EXCEEDED = 5
 
 define_error(ERR_BLOCK_START, _("Master could not start block %(block)s. Ending the run."))
 define_error(ERR_BLOCK_TIMEOUT,
@@ -51,6 +52,8 @@ define_error(ERR_BLOCK_TIMEOUT,
 define_error(ERR_BLOCK_INTERRUPT,
              _("Aborted Datablox run due to keyboard interrupt."))
 define_error(ERR_EXCEPTION, _("Datablox master stopping run due to unexpected exception '%(exc)s'"))
+define_error(ERR_RUN_TIME_EXCEEDED,
+             _("Aborting run: run has exceeded deadline of %(deadline)s (%(time_limit)d minutes elapsed time)"))
 
 
 # The timeout for polling a remote block, in milliseconds.
@@ -1036,7 +1039,8 @@ class Master(object):
                stats_multiple=DEFAULT_STATS_MULTIPLE,
                block_args=None,
                loads_file=None,
-               log_stats_hist=False):
+               log_stats_hist=False,
+               time_limit=None):
     # Kind of yucky - using global variables for some key parameters
     global global_config, bloxpath, using_engage, log_level, debug_block_list, resource_manager
     bloxpath = _bloxpath
@@ -1068,6 +1072,14 @@ class Master(object):
 
     self.start_time = time.time()
     logger.info("Starting blocks at %s" % time.ctime(self.start_time))
+    self.time_limit = time_limit
+    if time_limit:
+      self.deadline_dt = datetime.datetime.now() + \
+                         datetime.timedelta(minutes=self.time_limit)
+      self.deadline_dt = self.deadline_dt.replace(microsecond=0)
+      logger.info("Setting a completion deadline of %s" % self.deadline_dt)
+    else:
+      self.deadline_dt = None
     try:
       self.main_block_handler.start()
     except BlockStartError, e:
@@ -1234,6 +1246,11 @@ class Master(object):
           self.stop_all("Master: topology has timeouts or crashes, killing all blocks and exiting")
           raise UserError(errors[ERR_BLOCK_TIMEOUT],
                           msg_args={'blocks':', '.join(self.get_timeout_block_ids())})
+        elif self.deadline_dt and datetime.datetime.now()>self.deadline_dt:
+          self.stop_all("Master: run is past deadline at %s (%s minutes), aborting run" % (self.deadline_dt, self.time_limit))
+          raise UserError(errors[ERR_RUN_TIME_EXCEEDED],
+                          msg_args={'deadline':self.deadline_dt.__str__(),
+                                    'time_limit':self.time_limit})
         elif not self.running():
           logger.info("Master: no more running nodes, quitting")
           self.report_end()
