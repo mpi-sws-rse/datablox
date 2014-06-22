@@ -40,7 +40,7 @@ class Block(object):
         assert isinstance(nodes, int)
         if self.args["node_type"].has_key("args"):
             return (nodes,
-                    [d["at"] if d.has_key("at") else None for d in self.args["node_type"]["args"]])
+                    [d["at"] if isinstance(d, dict) and d.has_key("at") else None for d in self.args["node_type"]["args"]])
         else:
             return (nodes, [None for i in range(len(nodes))])
         
