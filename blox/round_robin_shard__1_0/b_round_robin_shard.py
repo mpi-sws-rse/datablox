@@ -47,7 +47,7 @@ class round_robin_shard(Shard):
         new_log.set_log(log.log)
         self.push_node(i, new_log)
     else:
-      self.log(INFO, "%s sending to port %d" % (self.id, self.current_node))
+      self.log(DEBUG, "%s sending to port %d" % (self.id, self.current_node))
       self.push_node(self.current_node, log)
       self.row_counts[self.current_node]+= log.num_rows()
       self.msg_counts[self.current_node]+= 1
