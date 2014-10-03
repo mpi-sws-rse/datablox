@@ -950,7 +950,7 @@ class Block(threading.Thread):
     else:
       self.logger.info("Log level is set to %d" % self.log_level)
     
-  def log(self, log_level, log_msg):
+  def log(self, log_level, log_msg, *extra_args, **extra_kwargs):
     """Blocks should call this to provide consistent logging. The printed log
     messages will include the block id, so there is no need to include
     that in the log_msg.
@@ -958,7 +958,7 @@ class Block(threading.Thread):
     This should not be called in the __init__() method, as logging is not
     initialized until just before on_load()
     """
-    self.logger.log(log_level, log_msg)
+    self.logger.log(log_level, log_msg, *extra_args, **extra_kwargs)
 
   def log_send(self, control, serialized_msg, port):
     if self.log_level>=logging.DEBUG: return
