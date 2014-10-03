@@ -29,17 +29,29 @@ class round_robin_shard(Shard):
     self.config = config
     self.max_nodes = 20
     self.current_node = 0
+    self.msg_counts = [0L]*self.max_nodes
+    self.row_counts = [0L]*self.max_nodes
     self.add_port("input", Port.PUSH, Port.UNNAMED, [])
     self.add_port("input_query", Port.QUERY, Port.UNNAMED, [])
+    self.log(INFO, "self.nodes = %s" % self.nodes)
     self.log(INFO, "Round-Robin shard loaded")
   
   def config_for_new_node(self):
     return self.config["nodes"].args
         
   def recv_push(self, port, log):
-    self.log(INFO, "%s sending to port %d" % (self.id, self.current_node))
-    self.push_node(self.current_node, log)
-    self.current_node = (self.current_node + 1) % self.nodes
+    if log.log.has_key("token"):
+      self.log(INFO, "received token %s, passing to all shards" % log.log["token"][0])
+      for i in range(self.nodes):
+        new_log = Log()
+        new_log.set_log(log.log)
+        self.push_node(i, new_log)
+    else:
+      self.log(DEBUG, "%s sending to port %d" % (self.id, self.current_node))
+      self.push_node(self.current_node, log)
+      self.row_counts[self.current_node]+= log.num_rows()
+      self.msg_counts[self.current_node]+= 1
+      self.current_node = (self.current_node + 1) % self.nodes
   
   def can_add_node(self):
     return (self.nodes < self.max_nodes)
@@ -57,3 +69,7 @@ class round_robin_shard(Shard):
     ret = Log()
     ret.log["result"] = True
     self.return_query_res(port, ret)
+
+  def on_shutdown(self):
+    for i in range(self.nodes):
+      self.log(INFO, "%d rows (%d messages) were sent to shard %d" % (self.row_counts[i], self.msg_counts[i], i))
