@@ -1,301 +1,238 @@
 [
-   { "key": {"name":"distributed-job-manager", "version":"0.1"},
-     "display_name": "Distributed Job Manager",
-     "input_ports": {
-        "python": {
-          "home" : "path"
-        },
-	"pip": { "pipbin": "path" }
-     },
-    "output_ports" : {
-      "pkg_info": {
-        "provides_pkg": {"type":"string", "fixed-value":"dist_job_mgr"},
-        "test_module": {"type":"string",
-                        "fixed-value":"dist_job_mgr.version"},
-        "version": {"type":"string", "fixed-value":"0.1.0"}
-      }
-    },
-    "inside": {
-       "one-of": [
-          { "key": {"name": "ubuntu-linux", "version":"11.10"}},
-          { "key": {"name": "ubuntu-linux", "version":"12.04"}},
-          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
-                                                 "less-than":"10.7"}}}
-        ]
-     },
-     "environment": {
-        "all-of": [
-          { "key": {"name":"python",
-                    "version":{"greater-than-or-equal":"2.6"}},
-            "port_mapping": {"python":"python"}
-          },
-          { "key": {"name":"pip", "version":"any"},
-            "port_mapping": {"pip":"pip"}
-          }
-      ]}
-   },
-   { "key": {"name":"psutil", "version":"0.7"},
-     "display_name": "psutil (Process Status Utilities)",
-     "input_ports": {
-        "python": {
-          "home" : "path"
-        },
-	"pip": { "pipbin": "path" }
-     },
-    "output_ports" : {
-      "pkg_info": {
-        "provides_pkg": {"type":"string", "fixed-value":"psutil"},
-        "test_module": {"type":"string",
-                        "fixed-value":"psutil"}
-      }
-    },
-    "inside": {
-       "one-of": [
-          { "key": {"name": "ubuntu-linux", "version":"11.10"}},
-          { "key": {"name": "ubuntu-linux", "version":"12.04"}},
-          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
-                                                 "less-than":"10.7"}}}
-        ]
-     },
-     "environment": {
-        "all-of": [
-          { "key": {"name":"python",
-                    "version":{"greater-than-or-equal":"2.6"}},
-            "port_mapping": {"python":"python"}
-          },
-          { "key": {"name":"pip", "version":"any"},
-            "port_mapping": {"pip":"pip"}
-          }
-      ]}
-   },
-   { "key": {"name":"fabric", "version":"1.4"},
-     "display_name": "Fabric",
-     "input_ports": {
-        "python": {
-          "home" : "path"
-        },
-	"pip": { "pipbin": "path" }
-     },
-    "output_ports" : {
-      "pkg_info": {
-        "provides_pkg": {"type":"string", "fixed-value":"fabric"},
-        "test_module": {"type":"string",
-                        "fixed-value":"fabric.api"}
-      }
-    },
-    "inside": {
-       "one-of": [
-          { "key": {"name": "ubuntu-linux", "version":"11.10"}},
-          { "key": {"name": "ubuntu-linux", "version":"12.04"}},
-          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
-                                                 "less-than":"10.7"}}}
-        ]
-     },
-     "environment": {
-        "all-of": [
-          { "key": {"name":"python",
-                    "version":{"greater-than-or-equal":"2.6"}},
-            "port_mapping": {"python":"python"}
-          },
-          { "key": {"name":"pip", "version":"any"},
-            "port_mapping": {"pip":"pip"}
-          },
-          { "key": {"name":"pycrypto",
-                    "version":{"greater-than-or-equal":"2.3"}}}
-      ]}
-   },
-   { "key": {"name": "djm-server-config", "version":"0.1"},
-     "display_name": "Server configuration for Distributed Job Manager",
-     "input_ports": {
-        "host": {
-          "genforma_home": "path"
-        },
-        "pkg_info": {
-          "version":"string"
-        }
-     },
-     "output_ports": {
-       "djm_server": {
-         "server_config_dir":{"type":"path",
-                              "fixed-value":"${input_ports.host.genforma_home}/djm"}
-       } 
-    },
-    "inside": {
-       "one-of": [
-          { "key": {"name": "ubuntu-linux", "version":"11.10"},
-            "port_mapping":{"host":"host"}},
-          { "key": {"name": "ubuntu-linux", "version":"12.04"},
-            "port_mapping":{"host":"host"}},
-          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
-                                                 "less-than":"10.7"}},
-            "port_mapping":{"host":"host"}}
-        ]
-     },
-     "environment": {
-        "all-of": [
-          { "key": {"name":"distributed-job-manager",
-                    "version":{"greater-than-or-equal":"0.1"}},
-            "port_mapping":{"pkg_info":"pkg_info"}
-          }
-      ]}
-   },
-   { "key": {"name":"datablox-framework", "version":"1.0"},
-     "display_name": "Datablox framework",
-     "input_ports": {
-        "host": {
-          "genforma_home": "path"
-        },
-        "python": {
-          "home" : "path",
-          "PYTHONPATH": "path",
-          "python_bin_dir": "path"
-        },
-	"setuptools" : { "easy_install" : "string" }
-     },
-      "output_ports" : {
-        "pkg_info": {
-          "test_module": {"type":"string", "fixed-value":"datablox_framework"}
-        },
-        "datablox_framework": {
-          "BLOXPATH": {"type":"path",
-                       "fixed-value": "${input_ports.host.genforma_home}/blox"},
-          "caretaker_exe": {
-            "type":"path", "fixed-value":"${input_ports.python.python_bin_dir}/datablox-caretaker"
-          },
-          "loader_exe": {
-            "type":"path", "fixed-value":"${input_ports.python.python_bin_dir}/datablox-loader"
-          }
-        }
+  {
+    "key": {"name": "distributed-job-manager", "version": "0.1"},
+    "display_name": "Distributed Job Manager",
+    "input_ports": {
+      "pip": {
+        "pipbin": "path"
       },
-     "inside": {
-        "one-of": [
-          { "key": {"name": "ubuntu-linux", "version":"11.10"},
-            "port_mapping": {"host":"host"}},
-          { "key": {"name": "ubuntu-linux", "version":"12.04"},
-            "port_mapping": {"host":"host"}},
-          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
-                                                 "less-than":"10.7"}},
-            "port_mapping": {"host":"host"}}
-        ]
-     },
-     "environment": {
-        "all-of": [
-          { "key": {"name":"python",
-                    "version":{"greater-than-or-equal":"2.5"}},
-            "port_mapping": {"python":"python"}
-          },
-          { "key": {"name":"setuptools",
-                    "version":{"greater-than-or-equal":"0.6"}},
-            "port_mapping": {"setuptools":"setuptools"}
-          },
-          { "key": {"name":"pyzmq-abstract",
-                    "version":{"greater-than-or-equal":"2.1"}}},
-          { "key": {"name":"pycrypto",
-                    "version":{"greater-than-or-equal":"2.3"}}},
-          { "key": {"name":"fabric",
-                    "version":{"greater-than-or-equal":"1.4"}}},
-          { "key": {"name":"engage_utils",
-                    "version":{"greater-than-or-equal":"1.0"}}}
+      "python": {
+        "home": "path"
+      }
+    },
+    "output_ports": {
+      "pkg_info": {
+        "provides_pkg": {"type": "string", "fixed-value": "dist_job_mgr"},
+        "test_module": {"type": "string", "fixed-value": "dist_job_mgr.version"},
+        "version": {"type": "string", "fixed-value": "0.1.0"}
+      }
+    },
+    "inside": { "one-of": [
+        {"key": {"name":"ubuntu-linux", "version":"11.10"}},
+        {"key": {"name":"ubuntu-linux", "version":"12.04"}},
+        {"key": {"name":"mac-osx", "version":{"greater-than-or-equal": "10.5", "less-than": "10.7"}}}
+      ]},
+    "environment": { "all-of": [
+        {"key": {"name":"python", "version":{"greater-than-or-equal": "2.6"}},
+         "port_mapping": {"python": "python"}},
+        {"key": {"name":"pip", "version":"any"},
+         "port_mapping": {"pip": "pip"}}
       ]}
-   },
-   { "key": {"name":"datablox-caretaker", "version":"1.0"},
-     "display_name": "Datablox Caretaker process",
-     "config_port": {
-       "config_dir": {
-         "type":"path",
-         "default":"${input_ports.host.genforma_home}/datablox_caretaker"
-       },
-       "pid_file": {
-         "type":"path",
-         "default":"${input_ports.host.genforma_home}/datablox_caretaker/caretaker.pid"
-       },
-       "log_file": {
-         "type":"path",
-         "default":"${input_ports.host.log_directory}/datablox_caretaker.log"
-       }
-     },
-     "input_ports": {
-        "host": {
-          "genforma_home": "path",
-          "log_directory": "path"
-        },
-        "datablox_framework": {
-          "BLOXPATH": "path",
-          "caretaker_exe": "path"
-        }
-      },
-     "inside": {
-        "one-of": [
-          { "key": {"name": "ubuntu-linux", "version":"11.10"},
-            "port_mapping": {"host":"host"}},
-          { "key": {"name": "ubuntu-linux", "version":"12.04"},
-            "port_mapping": {"host":"host"}},
-          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
-                                                 "less-than":"10.7"}},
-            "port_mapping": {"host":"host"}}
-        ]
-     },
-     "environment": {
-        "all-of": [
-          { "key": {"name":"datablox-framework", "version":"1.0"},
-                    "version":{"greater-than-or-equal":""},
-            "port_mapping": {"datablox_framework":"datablox_framework"}},
-          {"key":{"name":"datablox-engage-adapter", "version":"1.0"}},
-          {"key":{"name":"psutil", "version":{"greater-than-or-equal":"0.6"}}}
-        ]
-    }
   },
-   { "key": {"name":"datablox-fileserver", "version":"1.0"},
-     "display_name": "Datablox Fileserver process",
-     "config_port": {
-       "config_dir": {
-         "type":"path",
-         "default":"${input_ports.host.genforma_home}/datablox_fileserver"
-       },
-       "pid_file": {
-         "type":"path",
-         "default":"${input_ports.host.genforma_home}/datablox_fileserver/fileserver.pid"
-       },
-       "log_file": {
-         "type":"path",
-         "default":"${input_ports.host.log_directory}/datablox_fileserver.log"
-       }
-     },
-     "input_ports": {
-        "host": {
-          "genforma_home": "path",
-          "log_directory": "path"
-        },
-        "gunicorn": {
-          "gunicorn_exe": "path"
-        },
-        "datablox_framework": {
-          "BLOXPATH": "path"
-        }
+  {
+    "key": {"name": "psutil", "version": "0.7"},
+    "display_name": "psutil (Process Status Utilities)",
+    "input_ports": {
+      "pip": {
+        "pipbin": "path"
       },
-     "inside": {
-        "one-of": [
-          { "key": {"name": "ubuntu-linux", "version":"11.10"},
-            "port_mapping": {"host":"host"}},
-          { "key": {"name": "ubuntu-linux", "version":"12.04"},
-            "port_mapping": {"host":"host"}},
-          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
-                                                 "less-than":"10.7"}},
-            "port_mapping": {"host":"host"}}
-        ]
-     },
-     "environment": {
-        "all-of": [
-          { "key": {"name":"datablox-framework", "version":"1.0"},
-                    "version":{"greater-than-or-equal":""},
-            "port_mapping": {"datablox_framework":"datablox_framework"}},
-          {"key":{"name":"datablox-engage-adapter", "version":"1.0"}},
-          {"key":{"name":"gunicorn", "version":{"greater-than-or-equal":"0.14"}},
-           "port_mapping":{"gunicorn":"gunicorn"}}
-        ]
-    }
+      "python": {
+        "home": "path"
+      }
+    },
+    "output_ports": {
+      "pkg_info": {
+        "provides_pkg": {"type": "string", "fixed-value": "psutil"},
+        "test_module": {"type": "string", "fixed-value": "psutil"}
+      }
+    },
+    "inside": { "one-of": [
+        {"key": {"name":"ubuntu-linux", "version":"11.10"}},
+        {"key": {"name":"ubuntu-linux", "version":"12.04"}},
+        {"key": {"name":"mac-osx", "version":{"greater-than-or-equal": "10.5", "less-than": "10.7"}}}
+      ]},
+    "environment": { "all-of": [
+        {"key": {"name":"python", "version":{"greater-than-or-equal": "2.6"}},
+         "port_mapping": {"python": "python"}},
+        {"key": {"name":"pip", "version":"any"},
+         "port_mapping": {"pip": "pip"}}
+      ]}
   },
-  { "key": {"name":"dir-src", "version":"1.0"},
+  {
+    "key": {"name": "fabric", "version": "1.4"},
+    "display_name": "Fabric",
+    "input_ports": {
+      "pip": {
+        "pipbin": "path"
+      },
+      "python": {
+        "home": "path"
+      }
+    },
+    "output_ports": {
+      "pkg_info": {
+        "provides_pkg": {"type": "string", "fixed-value": "fabric"},
+        "test_module": {"type": "string", "fixed-value": "fabric.api"}
+      }
+    },
+    "inside": { "one-of": [
+        {"key": {"name":"ubuntu-linux", "version":"11.10"}},
+        {"key": {"name":"ubuntu-linux", "version":"12.04"}},
+        {"key": {"name":"mac-osx", "version":{"greater-than-or-equal": "10.5", "less-than": "10.7"}}}
+      ]},
+    "environment": { "all-of": [
+        {"key": {"name":"python", "version":{"greater-than-or-equal": "2.6"}},
+         "port_mapping": {"python": "python"}},
+        {"key": {"name":"pip", "version":"any"},
+         "port_mapping": {"pip": "pip"}},
+        {"key": {"name":"pycrypto", "version":{"greater-than-or-equal": "2.3"}}}
+      ]}
+  },
+  {
+    "key": {"name": "djm-server-config", "version": "0.1"},
+    "display_name": "Server configuration for Distributed Job Manager",
+    "input_ports": {
+      "host": {
+        "genforma_home": "path"
+      },
+      "pkg_info": {
+        "version": "string"
+      }
+    },
+    "output_ports": {
+      "djm_server": {
+        "server_config_dir": {"type": "path", "fixed-value": "${input_ports.host.genforma_home}/djm"}
+      }
+    },
+    "inside": { "one-of": [
+        {"key": {"name":"ubuntu-linux", "version":"11.10"},
+         "port_mapping": {"host": "host"}},
+        {"key": {"name":"ubuntu-linux", "version":"12.04"},
+         "port_mapping": {"host": "host"}},
+        {"key": {"name":"mac-osx", "version":{"greater-than-or-equal": "10.5", "less-than": "10.7"}},
+         "port_mapping": {"host": "host"}}
+      ]},
+    "environment": { "all-of": [
+        {"key": {"name":"distributed-job-manager", "version":{"greater-than-or-equal": "0.1"}},
+         "port_mapping": {"pkg_info": "pkg_info"}}
+      ]}
+  },
+  {
+    "key": {"name": "datablox-framework", "version": "1.0"},
+    "display_name": "Datablox framework",
+    "input_ports": {
+      "host": {
+        "genforma_home": "path"
+      },
+      "python": {
+        "PYTHONPATH": "path",
+        "home": "path",
+        "python_bin_dir": "path"
+      },
+      "setuptools": {
+        "easy_install": "string"
+      }
+    },
+    "output_ports": {
+      "datablox_framework": {
+        "BLOXPATH": {"type": "path", "fixed-value": "${input_ports.host.genforma_home}/blox"},
+        "caretaker_exe": {"type": "path", "fixed-value": "${input_ports.python.python_bin_dir}/datablox-caretaker"},
+        "loader_exe": {"type": "path", "fixed-value": "${input_ports.python.python_bin_dir}/datablox-loader"}
+      },
+      "pkg_info": {
+        "test_module": {"type": "string", "fixed-value": "datablox_framework"}
+      }
+    },
+    "inside": { "one-of": [
+        {"key": {"name":"ubuntu-linux", "version":"11.10"},
+         "port_mapping": {"host": "host"}},
+        {"key": {"name":"ubuntu-linux", "version":"12.04"},
+         "port_mapping": {"host": "host"}},
+        {"key": {"name":"mac-osx", "version":{"greater-than-or-equal": "10.5", "less-than": "10.7"}},
+         "port_mapping": {"host": "host"}}
+      ]},
+    "environment": { "all-of": [
+        {"key": {"name":"python", "version":{"greater-than-or-equal": "2.5"}},
+         "port_mapping": {"python": "python"}},
+        {"key": {"name":"setuptools", "version":{"greater-than-or-equal": "0.6"}},
+         "port_mapping": {"setuptools": "setuptools"}},
+        {"key": {"name":"pyzmq-abstract", "version":{"greater-than-or-equal": "2.1"}}},
+        {"key": {"name":"pycrypto", "version":{"greater-than-or-equal": "2.3"}}},
+        {"key": {"name":"fabric", "version":{"greater-than-or-equal": "1.4"}}},
+        {"key": {"name":"engage_utils", "version":{"greater-than-or-equal": "1.0"}}}
+      ]}
+  },
+  {
+    "key": {"name": "datablox-caretaker", "version": "1.0"},
+    "display_name": "Datablox Caretaker process",
+    "config_port": {
+      "config_dir": {"default": "${input_ports.host.genforma_home}/datablox_caretaker", "type": "path"},
+      "log_file": {"default": "${input_ports.host.log_directory}/datablox_caretaker.log", "type": "path"},
+      "pid_file": {"default": "${input_ports.host.genforma_home}/datablox_caretaker/caretaker.pid", "type": "path"}
+    },
+    "input_ports": {
+      "datablox_framework": {
+        "BLOXPATH": "path",
+        "caretaker_exe": "path"
+      },
+      "host": {
+        "genforma_home": "path",
+        "log_directory": "path"
+      }
+    },
+    "inside": { "one-of": [
+        {"key": {"name":"ubuntu-linux", "version":"11.10"},
+         "port_mapping": {"host": "host"}},
+        {"key": {"name":"ubuntu-linux", "version":"12.04"},
+         "port_mapping": {"host": "host"}},
+        {"key": {"name":"mac-osx", "version":{"greater-than-or-equal": "10.5", "less-than": "10.7"}},
+         "port_mapping": {"host": "host"}}
+      ]},
+    "environment": { "all-of": [
+        {"key": {"name":"datablox-framework", "version":"1.0"},
+         "port_mapping": {"datablox_framework": "datablox_framework"}},
+        {"key": {"name":"datablox-engage-adapter", "version":"1.0"}},
+        {"key": {"name":"psutil", "version":{"greater-than-or-equal": "0.6"}}}
+      ]}
+  },
+  {
+    "key": {"name": "datablox-fileserver", "version": "1.0"},
+    "display_name": "Datablox Fileserver process",
+    "config_port": {
+      "config_dir": {"default": "${input_ports.host.genforma_home}/datablox_fileserver", "type": "path"},
+      "log_file": {"default": "${input_ports.host.log_directory}/datablox_fileserver.log", "type": "path"},
+      "pid_file": {"default": "${input_ports.host.genforma_home}/datablox_fileserver/fileserver.pid", "type": "path"}
+    },
+    "input_ports": {
+      "datablox_framework": {
+        "BLOXPATH": "path"
+      },
+      "gunicorn": {
+        "gunicorn_exe": "path"
+      },
+      "host": {
+        "genforma_home": "path",
+        "log_directory": "path"
+      }
+    },
+    "inside": { "one-of": [
+        {"key": {"name":"ubuntu-linux", "version":"11.10"},
+         "port_mapping": {"host": "host"}},
+        {"key": {"name":"ubuntu-linux", "version":"12.04"},
+         "port_mapping": {"host": "host"}},
+        {"key": {"name":"mac-osx", "version":{"greater-than-or-equal": "10.5", "less-than": "10.7"}},
+         "port_mapping": {"host": "host"}}
+      ]},
+    "environment": { "all-of": [
+        {"key": {"name":"datablox-framework", "version":"1.0"},
+         "port_mapping": {"datablox_framework": "datablox_framework"}},
+        {"key": {"name":"datablox-engage-adapter", "version":"1.0"}},
+        {"key": {"name":"gunicorn", "version":{"greater-than-or-equal": "0.14"}},
+         "port_mapping": {"gunicorn": "gunicorn"}}
+      ]}
+  },
+  {
+    "key": {"name": "dir-src", "version": "1.0"},
     "display_name": "Directory Source block",
     "input_ports": {
       "datablox_framework": {
@@ -304,29 +241,22 @@
     },
     "output_ports": {
       "block_info": {
-          "home":{
-            "type":"path",
-            "fixed-value":"${input_ports.datablox_framework.BLOXPATH}/dir_src__1_0"
-          }
+        "home": {"type": "path", "fixed-value": "${input_ports.datablox_framework.BLOXPATH}/dir_src__1_0"}
       }
     },
-    "inside": {
-       "one-of": [
-          { "key": {"name": "ubuntu-linux", "version":"11.10"}},
-          { "key": {"name": "ubuntu-linux", "version":"12.04"}},
-          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
-                                                 "less-than":"10.7"}}}
-        ]
-     },
-    "environment": {
-      "all-of": [
-        { "key": {"name":"datablox-framework", "version":"1.0"},
-          "port_mapping": {"datablox_framework":"datablox_framework"}},
-        { "key": {"name":"filetypes", "version":"0.1"}}
-      ]
-    }
+    "inside": { "one-of": [
+        {"key": {"name":"ubuntu-linux", "version":"11.10"}},
+        {"key": {"name":"ubuntu-linux", "version":"12.04"}},
+        {"key": {"name":"mac-osx", "version":{"greater-than-or-equal": "10.5", "less-than": "10.7"}}}
+      ]},
+    "environment": { "all-of": [
+        {"key": {"name":"datablox-framework", "version":"1.0"},
+         "port_mapping": {"datablox_framework": "datablox_framework"}},
+        {"key": {"name":"filetypes", "version":"0.1"}}
+      ]}
   },
-  { "key": {"name":"dump", "version":"1.0"},
+  {
+    "key": {"name": "dump", "version": "1.0"},
     "display_name": "Dump block",
     "input_ports": {
       "datablox_framework": {
@@ -335,26 +265,19 @@
     },
     "output_ports": {
       "block_info": {
-          "home":{
-            "type":"path",
-            "fixed-value":"${input_ports.datablox_framework.BLOXPATH}/dump__1_0"
-          }
+        "home": {"type": "path", "fixed-value": "${input_ports.datablox_framework.BLOXPATH}/dump__1_0"}
       }
     },
-    "inside": {
-       "one-of": [
-          { "key": {"name": "ubuntu-linux", "version":"11.10"}},
-          { "key": {"name": "ubuntu-linux", "version":"12.04"}},
-          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
-                                                 "less-than":"10.7"}}}
-        ]
-     },
-    "environment": {
-      "key": {"name":"datablox-framework", "version":"1.0"},
-      "port_mapping": {"datablox_framework":"datablox_framework"}
-    }
+    "inside": { "one-of": [
+        {"key": {"name":"ubuntu-linux", "version":"11.10"}},
+        {"key": {"name":"ubuntu-linux", "version":"12.04"}},
+        {"key": {"name":"mac-osx", "version":{"greater-than-or-equal": "10.5", "less-than": "10.7"}}}
+      ]},
+    "environment": {"key": {"name":"datablox-framework", "version":"1.0"},
+     "port_mapping": {"datablox_framework": "datablox_framework"}}
   },
-  { "key": {"name":"solr-block-schema-file", "version":"1.0"},
+  {
+    "key": {"name": "solr-block-schema-file", "version": "1.0"},
     "display_name": "Schema file to be used for Solr block",
     "comment": "The schema file is included in the extension as a 'package' and then copied by this resource to a well-known location. The solr install will then copy this to the right place in the solr file structure.",
     "input_ports": {
@@ -364,25 +287,20 @@
     },
     "output_ports": {
       "file_info": {
-        "file_path": {
-          "type": "path",
-          "fixed-value": "${input_ports.host.genforma_home}/solr_schema.xml"
-        }
+        "file_path": {"type": "path", "fixed-value": "${input_ports.host.genforma_home}/solr_schema.xml"}
       }
     },
-    "inside": {
-       "one-of": [
-          { "key": {"name": "ubuntu-linux", "version":"11.10"},
-            "port_mapping": {"host":"host"}},
-          { "key": {"name": "ubuntu-linux", "version":"12.04"},
-            "port_mapping": {"host":"host"}},
-          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
-                                                 "less-than":"10.7"}},
-            "port_mapping": {"host":"host"}}
-        ]
-     }
+    "inside": { "one-of": [
+        {"key": {"name":"ubuntu-linux", "version":"11.10"},
+         "port_mapping": {"host": "host"}},
+        {"key": {"name":"ubuntu-linux", "version":"12.04"},
+         "port_mapping": {"host": "host"}},
+        {"key": {"name":"mac-osx", "version":{"greater-than-or-equal": "10.5", "less-than": "10.7"}},
+         "port_mapping": {"host": "host"}}
+      ]}
   },
-  { "key": {"name":"apache-solr-jetty-server", "version":"4.1"},
+  {
+    "key": {"name": "apache-solr-jetty-server", "version": "4.1"},
     "display_name": "Apache Solr running with the included Jetty server",
     "input_ports": {
       "host": {
@@ -395,36 +313,29 @@
       "schema_file": {
         "file_path": "path"
       }
-   },
-   "output_ports": {
-     "solr": {
-       "home": {
-         "type":"path",
-         "fixed-value":"${input_ports.host.genforma_home}/solr"}
-       }
     },
-     "inside": {
-        "one-of": [
-          { "key": {"name": "ubuntu-linux", "version":"11.10"},
-            "port_mapping": {"host":"host"}},
-          { "key": {"name": "ubuntu-linux", "version":"12.04"},
-            "port_mapping": {"host":"host"}},
-          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
-                                                 "less-than":"10.7"}},
-            "port_mapping": {"host":"host"}}
-        ]
-     },
-     "environment": {
-       "all-of": [
-         { "key": {"name":"java-virtual-machine-abstract",
-                   "version":{"greater-than-or-equal":"1.6"}},
-          "port_mapping": {"jvm":"jvm"}},
-         { "key": {"name":"solr-block-schema-file", "version":"1.0"},
-           "port_mapping": {"schema_file":"file_info"}}
-       ]
-     }
+    "output_ports": {
+      "solr": {
+        "home": {"type": "path", "fixed-value": "${input_ports.host.genforma_home}/solr"}
+      }
+    },
+    "inside": { "one-of": [
+        {"key": {"name":"ubuntu-linux", "version":"11.10"},
+         "port_mapping": {"host": "host"}},
+        {"key": {"name":"ubuntu-linux", "version":"12.04"},
+         "port_mapping": {"host": "host"}},
+        {"key": {"name":"mac-osx", "version":{"greater-than-or-equal": "10.5", "less-than": "10.7"}},
+         "port_mapping": {"host": "host"}}
+      ]},
+    "environment": { "all-of": [
+        {"key": {"name":"java-virtual-machine-abstract", "version":{"greater-than-or-equal": "1.6"}},
+         "port_mapping": {"jvm": "jvm"}},
+        {"key": {"name":"solr-block-schema-file", "version":"1.0"},
+         "port_mapping": {"schema_file": "file_info"}}
+      ]}
   },
-  { "key": {"name":"apache-solr-jetty-server", "version":"3.5"},
+  {
+    "key": {"name": "apache-solr-jetty-server", "version": "3.5"},
     "display_name": "Apache Solr running with the included Jetty server",
     "input_ports": {
       "host": {
@@ -437,141 +348,115 @@
       "schema_file": {
         "file_path": "path"
       }
-   },
-   "output_ports": {
-     "solr": {
-       "home": {
-         "type":"path",
-         "fixed-value":"${input_ports.host.genforma_home}/solr"}
-       }
     },
-     "inside": {
-        "one-of": [
-          { "key": {"name": "ubuntu-linux", "version":"11.10"},
-            "port_mapping": {"host":"host"}},
-          { "key": {"name": "ubuntu-linux", "version":"12.04"},
-            "port_mapping": {"host":"host"}},
-          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
-                                                 "less-than":"10.7"}},
-            "port_mapping": {"host":"host"}}
-        ]
-     },
-     "environment": {
-       "all-of": [
-         { "key": {"name":"java-virtual-machine-abstract",
-                   "version":{"greater-than-or-equal":"1.6"}},
-          "port_mapping": {"jvm":"jvm"}},
-         { "key": {"name":"solr-block-schema-file", "version":"1.0"},
-           "port_mapping": {"schema_file":"file_info"}}
-       ]
-     }
+    "output_ports": {
+      "solr": {
+        "home": {"type": "path", "fixed-value": "${input_ports.host.genforma_home}/solr"}
+      }
+    },
+    "inside": { "one-of": [
+        {"key": {"name":"ubuntu-linux", "version":"11.10"},
+         "port_mapping": {"host": "host"}},
+        {"key": {"name":"ubuntu-linux", "version":"12.04"},
+         "port_mapping": {"host": "host"}},
+        {"key": {"name":"mac-osx", "version":{"greater-than-or-equal": "10.5", "less-than": "10.7"}},
+         "port_mapping": {"host": "host"}}
+      ]},
+    "environment": { "all-of": [
+        {"key": {"name":"java-virtual-machine-abstract", "version":{"greater-than-or-equal": "1.6"}},
+         "port_mapping": {"jvm": "jvm"}},
+        {"key": {"name":"solr-block-schema-file", "version":"1.0"},
+         "port_mapping": {"schema_file": "file_info"}}
+      ]}
   },
-  { "key": {"name":"datablox-engage-adapter", "version":"1.0"},
+  {
+    "key": {"name": "datablox-engage-adapter", "version": "1.0"},
     "display_name": "Engage adapter for Datablox",
-     "input_ports": {
-        "python": {
-          "home" : "path",
-          "PYTHONPATH": "path",
-          "python_bin_dir": "path"
-        },
-	"setuptools" : { "easy_install" : "string" }
-     },
-    "output_ports" : {
-      "pkg_info": {
-        "test_module": {"type":"string",
-                        "fixed-value":"datablox_engage_adapter"}
+    "input_ports": {
+      "python": {
+        "PYTHONPATH": "path",
+        "home": "path",
+        "python_bin_dir": "path"
+      },
+      "setuptools": {
+        "easy_install": "string"
       }
     },
-    "inside": {
-       "one-of": [
-          { "key": {"name": "ubuntu-linux", "version":"11.10"}},
-          { "key": {"name": "ubuntu-linux", "version":"12.04"}},
-          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
-                                                 "less-than":"10.7"}}}
-        ]
-     },
-     "environment": {
-        "all-of": [
-          { "key": {"name":"python",
-                    "version":{"greater-than-or-equal":"2.5"}},
-            "port_mapping": {"python":"python"}
-          },
-          { "key": {"name":"setuptools",
-                    "version":{"greater-than-or-equal":"0.6"}},
-            "port_mapping": {"setuptools":"setuptools"}
-          },
-          { "key": {"name":"pyzmq-abstract",
-                    "version":{"greater-than-or-equal":"2.1"}}},
-          { "key": {"name":"distributed-job-manager",
-                    "version":{"greater-than-or-equal":"0.1"}}}
+    "output_ports": {
+      "pkg_info": {
+        "test_module": {"type": "string", "fixed-value": "datablox_engage_adapter"}
+      }
+    },
+    "inside": { "one-of": [
+        {"key": {"name":"ubuntu-linux", "version":"11.10"}},
+        {"key": {"name":"ubuntu-linux", "version":"12.04"}},
+        {"key": {"name":"mac-osx", "version":{"greater-than-or-equal": "10.5", "less-than": "10.7"}}}
+      ]},
+    "environment": { "all-of": [
+        {"key": {"name":"python", "version":{"greater-than-or-equal": "2.5"}},
+         "port_mapping": {"python": "python"}},
+        {"key": {"name":"setuptools", "version":{"greater-than-or-equal": "0.6"}},
+         "port_mapping": {"setuptools": "setuptools"}},
+        {"key": {"name":"pyzmq-abstract", "version":{"greater-than-or-equal": "2.1"}}},
+        {"key": {"name":"distributed-job-manager", "version":{"greater-than-or-equal": "0.1"}}}
       ]}
   },
-  { "key": {"name":"filetypes", "version":"0.1"},
+  {
+    "key": {"name": "filetypes", "version": "0.1"},
     "display_name": "Filetypes: Get file type information based on file extension",
-     "input_ports": {
-        "python": {
-          "home" : "path"
-        },
-	"pip": { "pipbin": "path" }
-     },
-    "output_ports" : {
-      "pkg_info": {
-        "provides_pkg": {"type":"string", "fixed-value":"filetypes"},
-        "test_module": {"type":"string",
-                        "fixed-value":"filetypes"}
+    "input_ports": {
+      "pip": {
+        "pipbin": "path"
+      },
+      "python": {
+        "home": "path"
       }
     },
-    "inside": {
-       "one-of": [
-          { "key": {"name": "ubuntu-linux", "version":"11.10"}},
-          { "key": {"name": "ubuntu-linux", "version":"12.04"}},
-          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
-                                                 "less-than":"10.7"}}}
-        ]
-     },
-     "environment": {
-        "all-of": [
-          { "key": {"name":"python",
-                    "version":{"greater-than-or-equal":"2.5"}},
-            "port_mapping": {"python":"python"}
-          },
-          { "key": {"name":"pip", "version":"any"},
-            "port_mapping": {"pip":"pip"}
-          }
+    "output_ports": {
+      "pkg_info": {
+        "provides_pkg": {"type": "string", "fixed-value": "filetypes"},
+        "test_module": {"type": "string", "fixed-value": "filetypes"}
+      }
+    },
+    "inside": { "one-of": [
+        {"key": {"name":"ubuntu-linux", "version":"11.10"}},
+        {"key": {"name":"ubuntu-linux", "version":"12.04"}},
+        {"key": {"name":"mac-osx", "version":{"greater-than-or-equal": "10.5", "less-than": "10.7"}}}
+      ]},
+    "environment": { "all-of": [
+        {"key": {"name":"python", "version":{"greater-than-or-equal": "2.5"}},
+         "port_mapping": {"python": "python"}},
+        {"key": {"name":"pip", "version":"any"},
+         "port_mapping": {"pip": "pip"}}
       ]}
   },
-  { "key": {"name":"BeautifulSoup", "version":"3"},
+  {
+    "key": {"name": "BeautifulSoup", "version": "3"},
     "display_name": "Beautiful Soup: HTML parser",
-     "input_ports": {
-        "python": {
-          "home" : "path"
-        },
-	"pip": { "pipbin": "path" }
-     },
-    "output_ports" : {
-      "pkg_info": {
-        "provides_pkg": {"type":"string", "fixed-value":"BeautifulSoup"},
-        "test_module": {"type":"string",
-                        "fixed-value":"BeautifulSoup"}
+    "input_ports": {
+      "pip": {
+        "pipbin": "path"
+      },
+      "python": {
+        "home": "path"
       }
     },
-    "inside": {
-       "one-of": [
-          { "key": {"name": "ubuntu-linux", "version":"11.10"}},
-          { "key": {"name": "ubuntu-linux", "version":"12.04"}},
-          { "key": {"name":"mac-osx", "version":{"greater-than-or-equal":"10.5",
-                                                 "less-than":"10.7"}}}
-        ]
-     },
-     "environment": {
-        "all-of": [
-          { "key": {"name":"python",
-                    "version":{"greater-than-or-equal":"2.5"}},
-            "port_mapping": {"python":"python"}
-          },
-          { "key": {"name":"pip", "version":"any"},
-            "port_mapping": {"pip":"pip"}
-          }
+    "output_ports": {
+      "pkg_info": {
+        "provides_pkg": {"type": "string", "fixed-value": "BeautifulSoup"},
+        "test_module": {"type": "string", "fixed-value": "BeautifulSoup"}
+      }
+    },
+    "inside": { "one-of": [
+        {"key": {"name":"ubuntu-linux", "version":"11.10"}},
+        {"key": {"name":"ubuntu-linux", "version":"12.04"}},
+        {"key": {"name":"mac-osx", "version":{"greater-than-or-equal": "10.5", "less-than": "10.7"}}}
+      ]},
+    "environment": { "all-of": [
+        {"key": {"name":"python", "version":{"greater-than-or-equal": "2.5"}},
+         "port_mapping": {"python": "python"}},
+        {"key": {"name":"pip", "version":"any"},
+         "port_mapping": {"pip": "pip"}}
       ]}
   }
 ]
