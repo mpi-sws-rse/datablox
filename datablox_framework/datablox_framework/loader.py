@@ -78,7 +78,7 @@ log_levels = {
 
 running_from_command_line = False
 
-def main(argv):
+def main(argv, callbacks=None):
   if using_engage:
     usage = "%prog [options] config_file node_name_1 node_name_2 ..."
   else:
@@ -226,7 +226,8 @@ def main(argv):
          block_args=block_args,
          loads_file=options.loads_file,
          log_stats_hist=options.log_stats_hist,
-         time_limit=options.time_limit)
+         time_limit=options.time_limit,
+         callbacks=callbacks)
   return 0
 
 

@@ -45,6 +45,7 @@ ERR_BLOCK_TIMEOUT = 2
 ERR_BLOCK_INTERRUPT = 3
 ERR_EXCEPTION = 4
 ERR_RUN_TIME_EXCEEDED = 5
+ERR_CANCEL_REQUESTED = 6
 
 define_error(ERR_BLOCK_START, _("Master could not start block %(block)s. Ending the run."))
 define_error(ERR_BLOCK_TIMEOUT,
@@ -54,7 +55,13 @@ define_error(ERR_BLOCK_INTERRUPT,
 define_error(ERR_EXCEPTION, _("Datablox master stopping run due to unexpected exception '%(exc)s'"))
 define_error(ERR_RUN_TIME_EXCEEDED,
              _("Aborting run: run has exceeded deadline of %(deadline)s (%(time_limit)d minutes elapsed time)"))
+define_error(ERR_CANCEL_REQUESTED,
+             _("Aborting run: the user has cancelled this job."))
 
+class CancelRequested(UserError):
+  """Subclass for signaling that a cancel was requested.
+  """
+  pass
 
 # The timeout for polling a remote block, in milliseconds.
 # See issue #62 for details.
@@ -1030,6 +1037,19 @@ class DjmAddressManager(AddressManager):
   def get_all_ipaddresses(self):
     return [node["datablox_ip_address"] for node in self.djm_job.nodes]
 
+class ManagementCallbacks(object):
+  def cancel_job(self):
+    """This should return true if the current job should be
+    stopped, based on a request from the user.
+    """
+    return False
+
+  def update_perf_stats(self, log_stats_hist):
+    """Put any code here that post-processes the performance stats.
+    """
+    pass
+
+
 class Master(object):
   def __init__(self, _bloxpath, config_file, ip_addr_list,
                _using_engage, _log_level=logging.INFO,
@@ -1040,7 +1060,8 @@ class Master(object):
                block_args=None,
                loads_file=None,
                log_stats_hist=False,
-               time_limit=None):
+               time_limit=None,
+               callbacks=None):
     # Kind of yucky - using global variables for some key parameters
     global global_config, bloxpath, using_engage, log_level, debug_block_list, resource_manager
     bloxpath = _bloxpath
@@ -1080,6 +1101,7 @@ class Master(object):
       logger.info("Setting a completion deadline of %s" % self.deadline_dt)
     else:
       self.deadline_dt = None
+    self.callbacks = callbacks
     try:
       self.main_block_handler.start()
     except BlockStartError, e:
@@ -1242,7 +1264,13 @@ class Master(object):
           resource_manager.write_loads(self.start_time, self.log_stats_hist)
           self.print_server_stats(self.log_stats_hist)
           sys.stdout.flush()
-        if self.has_timeouts():
+          if self.callbacks:
+            self.callbacks.update_perf_stats(self.log_stats_hist)
+        if not self.running():
+          logger.info("Master: no more running nodes, quitting")
+          self.report_end()
+          return 0
+        elif self.has_timeouts():
           self.stop_all("Master: topology has timeouts or crashes, killing all blocks and exiting")
           raise UserError(errors[ERR_BLOCK_TIMEOUT],
                           msg_args={'blocks':', '.join(self.get_timeout_block_ids())})
@@ -1251,10 +1279,9 @@ class Master(object):
           raise UserError(errors[ERR_RUN_TIME_EXCEEDED],
                           msg_args={'deadline':self.deadline_dt.__str__(),
                                     'time_limit':self.time_limit})
-        elif not self.running():
-          logger.info("Master: no more running nodes, quitting")
-          self.report_end()
-          return 0
+        elif (self.callbacks is not None) and self.callbacks.cancel_job():
+          self.stop_all("Master: aborting run due to user cancel request")
+          raise CancelRequested(errors[ERR_CANCEL_REQUESTED])
     except KeyboardInterrupt:
       self.stop_all("Got a keyboard interrupt")
       raise UserError(errors[ERR_BLOCK_INTERRUPT])
