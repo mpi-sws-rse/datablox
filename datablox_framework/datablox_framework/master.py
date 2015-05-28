@@ -79,128 +79,6 @@ def id_wo_prefix(block_id):
          else block_id
 
 
-class ResourceManager(object):
-  def __init__(self):
-    # requests made from src to dest, except for rows with the same src/dest index,
-    # which are used for requests served.
-    self.block_loads = {}
-    self.block_times = {}
-    #this keeps track of timed out and shutdown blocks
-    self.block_status = {}
-    self.load_history = defaultdict(list)
-    self.shards = {}
-
-  def initialize_shard(self, id, name):
-    """ASK_SAI: Not sure what this is for -- the shard structure is initialized, but never used!
-    """
-    self.shards[id] = name
-    
-  def poll_completed(self):
-    print "Shards that can be parallelized:", self.shards
-
-  def initialize_block_stats(self, block_id):
-    self.block_loads[block_id] = {}
-    self.block_status[block_id] = BlockStatus.STARTUP
-    self.block_times[block_id] = 0
-
-  def is_block_running(self, block_id):
-    status = self.block_status[block_id]
-    return status in BlockStatus.alive_status_values
-
-  def any_blocks_running(self):
-    for status in self.block_status:
-      if status in BlockStatus.alive_status_values:
-        return True
-    return False
-
-  def set_block_status(self, block_id, status):
-    self.block_status[block_id] = status
-    
-  def update_requests_made(self, src_block, dest_block, request_cnt):
-    """Called by block handler"""
-    self.block_loads[src_block][dest_block] = request_cnt
-
-  def update_requests_served(self, block_id, total_served):
-    """Called by block handler. We store the requests served in the otherwise
-    unused self-request entry"""
-    self.block_loads[block_id][block_id] = -1 * total_served
-
-  def update_total_times(self, block_id, processing_time, poll_time):
-    """Called by block handler
-    """
-    self.block_times[block_id] = processing_time
-
-  def has_timeouts(self):
-    """Return True if there are are any blocks in the TIMEOUT
-    or DEAD state
-    """
-    for i, v in self.block_status.items():
-      if v == BlockStatus.TIMEOUT:
-        logger.info("%s has a timeout" % i)
-        return True
-      elif v == BlockStatus.DEAD:
-        logger.info("%s crashed" % i)
-        return True
-    return False
-
-  def get_timeout_block_ids(self):
-    return [
-      i for i, v in filter(lambda i, v: v==BlockStatus.TIMEOUT or v==BlockStatus.DEAD,
-                           self.block_status.items())
-    ]
-    
-  def write_loads(self, overall_start_time, log_stats_hist):
-    # print "Block loads", self.block_loads
-    loads = defaultdict(int)
-    for poller_id, d in self.block_loads.items():
-      #this block has timed out, but add an entry anyway
-      #to keep it in sync with other block loads
-      if d == {}:
-        loads[poller_id] += 0
-      else:
-        for block_id, load in d.items():
-          # ASK_SAI: Should we skip the case where poller_id == block_id,
-          # since that is used for requests served?
-          loads[block_id] += load
-    time_per_req = {}
-    for i, t in self.block_times.items():
-      try:
-        time_per_req[i] = t/(-1 * self.block_loads[i][i])
-      except (KeyError, ZeroDivisionError):
-        time_per_req[i] = 0
-    etas = [(l * time_per_req[i], i) for i, l in loads.items()]
-    etas.sort()
-    print "ETAs"
-    for e in etas:
-      print "%r -> %.3f (%.3f x %r)" % (e[1], e[0], time_per_req[e[1]], loads[e[1]])
-      self.load_history[e[1]].append(e[0])
-    duration = time.time() - overall_start_time
-    #writing the time stamps of the polls in the same dictionary
-    self.load_history["times"].append(duration)
-    # with open("loads.json", 'w') as f:
-    #   json.dump(dict([(e[1], e[0]) for e in etas]), f)
-
-  def write_final_perfstats(self, overal_start_time, run_start_time,
-                            loads_csv_file=None):
-    logger.debug("Message counts:")
-    for (s, dct) in self.block_loads.items():
-      for (d, cnt) in dct.items():
-        if s != d:
-          logger.info("  %s => %s: %d msgs" % (s, d, cnt))
-    if loads_csv_file==None:
-      return
-    with open(loads_csv_file, 'wb') as f:
-      w = csv.writer(f)
-      times = self.load_history["times"]
-      del(self.load_history["times"])
-      block_ids = self.load_history.keys()
-      loads = self.load_history.values()
-      #write the legend
-      w.writerow(["Time"] + block_ids)
-      for i in range(len(times)):
-        row = [times[i]] + [v[i] for v in loads]
-        w.writerow(row)
-
 # value used in BlockPerfStats to indicate that the value for
 # a statistic is not available or not applicable.
 INVALID_VALUE = 'N/A'
@@ -358,8 +236,10 @@ class LoadBasedResourceManager(object):
                                  self.block_stats.values())
     ]
 
-  def write_loads(self, overall_start_time, write_stats_hist):
+  def write_loads(self, overall_start_time, write_stats_hist=True):
     """Print out the current load data and update historical data.
+    If write_stats_hist is True, then we write the statistics to the
+    logfile each time. Otherwise, we only write to stdout.
     """
     current_time = time.time()
     time_into_run = current_time - overall_start_time
@@ -1049,8 +929,9 @@ class ManagementCallbacks(object):
     """
     return False
 
-  def update_perf_stats(self, log_stats_hist):
+  def update_perf_stats(self, block_perf_stats):
     """Put any code here that post-processes the performance stats.
+    block_perf_stats is a map from block id to BlockPerfStats instances.
     """
     pass
 
@@ -1273,7 +1154,7 @@ class Master(object):
           self.print_server_stats(self.log_stats_hist)
           sys.stdout.flush()
           if self.callbacks:
-            self.callbacks.update_perf_stats(self.log_stats_hist)
+            self.callbacks.update_perf_stats(resource_manager.block_stats)
         if not self.running():
           logger.info("Master: no more running nodes, quitting")
           self.report_end()
