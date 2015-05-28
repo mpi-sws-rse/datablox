@@ -42,9 +42,14 @@ def define_error(error_code, msg):
 
 ERR_BLOCK_START = 1
 ERR_BLOCK_TIMEOUT = 2
+# block_interrupt is thrown when there is a keyboard interrupt. We always
+# throw it with the CancelRequested subclass of UserError to distinguish
+# cancels from fatal errors.
 ERR_BLOCK_INTERRUPT = 3
 ERR_EXCEPTION = 4
 ERR_RUN_TIME_EXCEEDED = 5
+# User requested cancel, which was detected through the callback.
+# This is always thrown with the CancelRequested class.
 ERR_CANCEL_REQUESTED = 6
 
 define_error(ERR_BLOCK_START, _("Master could not start block %(block)s. Ending the run."))
@@ -1104,6 +1109,9 @@ class Master(object):
     self.callbacks = callbacks
     try:
       self.main_block_handler.start()
+    except KeyboardInterrupt:
+      self.stop_all("Got a keyboard interrupt, during startup")
+      raise CancelRequested(errors[ERR_BLOCK_INTERRUPT])
     except BlockStartError, e:
       self.stop_all("Unable to start block %s, aborting run" % e.block_id)
       raise UserError(errors[ERR_BLOCK_START], msg_args={'block':e.block_id})
@@ -1284,5 +1292,5 @@ class Master(object):
           raise CancelRequested(errors[ERR_CANCEL_REQUESTED])
     except KeyboardInterrupt:
       self.stop_all("Got a keyboard interrupt")
-      raise UserError(errors[ERR_BLOCK_INTERRUPT])
+      raise CancelRequested(errors[ERR_BLOCK_INTERRUPT])
       
