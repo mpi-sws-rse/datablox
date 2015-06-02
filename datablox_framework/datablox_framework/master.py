@@ -1155,14 +1155,14 @@ class Master(object):
           sys.stdout.flush()
           if self.callbacks:
             self.callbacks.update_perf_stats(resource_manager.block_stats)
-        if not self.running():
-          logger.info("Master: no more running nodes, quitting")
-          self.report_end()
-          return 0
-        elif self.has_timeouts():
+        if self.has_timeouts():
           self.stop_all("Master: topology has timeouts or crashes, killing all blocks and exiting")
           raise UserError(errors[ERR_BLOCK_TIMEOUT],
                           msg_args={'blocks':', '.join(self.get_timeout_block_ids())})
+        elif not self.running():
+          logger.info("Master: no more running nodes, quitting")
+          self.report_end()
+          return 0
         elif self.deadline_dt and datetime.datetime.now()>self.deadline_dt:
           self.stop_all("Master: run is past deadline at %s (%s minutes), aborting run" % (self.deadline_dt, self.time_limit))
           raise UserError(errors[ERR_RUN_TIME_EXCEEDED],
