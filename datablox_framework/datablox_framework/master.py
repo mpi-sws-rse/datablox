@@ -86,6 +86,13 @@ INVALID_VALUE = 'N/A'
 class BlockPerfStats(object):
   """Stats for a single block instance. Used in LoadBasedResourceManager
   """
+  __slots__ = ['block_id', 'status', 'total_requests_served',
+               'period_requests_served', 'requests_made_by_block',
+               'total_requests_made', 'total_processing_time',
+               'period_processing_time', 'total_poll_time',
+               'period_poll_time', 'average_loads', 'last_average_load',
+               'requests_originated_by_dest', 'total_requests_originated']
+               
   def __init__(self, block_id):
     self.block_id = block_id
     self.status = BlockStatus.STARTUP
@@ -101,6 +108,8 @@ class BlockPerfStats(object):
     self.period_poll_time = 0.0
     self.average_loads = []
     self.last_average_load = 0
+    self.requests_originated_by_dest = {}
+    self.total_requests_originated = 0
 
   def update_requests_served(self, total_served):
     self.period_requests_served = total_served - self.total_requests_served
@@ -116,6 +125,16 @@ class BlockPerfStats(object):
     old_reqs = self.requests_made_by_block[src_block]
     self.requests_made_by_block[src_block] = cnt
     self.total_requests_made += cnt - old_reqs
+
+  def update_requests_originated(self, dest_block, cnt):
+    """This is for data source blocks that originate new
+    requests from outside the system.
+    """
+    if not self.requests_originated_by_dest.has_key(dest_block):
+      self.requests_originated_by_dest[dest_block] = 0
+    old_reqs = self.requests_originated_by_dest[dest_block]
+    self.requests_originated_by_dest[dest_block] = cnt
+    self.total_requests_originated += cnt - old_reqs
 
   def update_total_times(self, processing_time, poll_time):
     self.period_processing_time = processing_time - self.total_processing_time
@@ -212,6 +231,10 @@ class LoadBasedResourceManager(object):
     assert self.block_stats.has_key(block_id)
     self.block_stats[block_id].update_requests_served(total_served)
 
+  def update_requests_originated(self, block_id, dest_block, request_cnt):
+    assert self.block_stats.has_key(block_id)
+    self.block_stats[block_id].update_requests_originated(dest_block, request_cnt)
+    
   def update_total_times(self, block_id, processing_time, poll_time):
     assert self.block_stats.has_key(block_id)
     self.block_stats[block_id].update_total_times(processing_time,
@@ -421,6 +444,7 @@ class BlockHandler(object):
     self.last_load = 0
     self.timeouts = 0
     self.last_poll_time = 0
+    self.has_inputs = False
     resource_manager.initialize_block_stats(self.id)
   
   #creates an output port if it does not exist
@@ -532,6 +556,7 @@ class BlockHandler(object):
     else:
       to_connections.connection_urls.append(connection_url)
       to_connections.targets.append((self, from_port))
+    to_block.has_inputs = True
   
   def find_target(self, port):
     t = self.connections[port].targets
@@ -555,6 +580,10 @@ class BlockHandler(object):
           try:
             to_block, to_port = self.find_target(p)
             resource_manager.update_requests_made(self.id, to_block.id, r)
+            if not self.has_inputs:
+              # if there are no inputs, this is a source block and we tally up
+              # the requests originating at this block.
+              resource_manager.update_requests_originated(self.id, to_block.id, r)
           except KeyError:
             print "Could not find port %s in block %s" % (p, self.id)
             raise
