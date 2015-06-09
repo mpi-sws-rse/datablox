@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 
 import naming
 import utils
-from block import BlockStatus, LoadTuple
+from block import BlockStatus, LoadTuple, get_error_file_path
+from engage_utils.user_error import get_user_error_from_file
 from system_stats import SystemStatsTaker, HOSTNAME
 import defs
 
@@ -107,6 +108,7 @@ class CareTaker(object):
 
   def collect_poll_data(self, get_stats):
     loads = {}
+    errors = []
     for block_id, block_file in self.processes.values():
       try:
         block_load = None
@@ -119,6 +121,15 @@ class CareTaker(object):
         if (block_load[LoadTuple.STATUS] in BlockStatus.alive_status_values) and\
            (not utils.is_process_alive(pid)):
           logger.error("Block %s, Process %d has died" % (block_id, pid))
+          errfile = get_error_file_path(block_id, pid, self.log_dir)
+          if os.path.exists(errfile):
+            ue = get_user_error_from_file(errfile)
+            ue.append_to_context_top("Datablox node %s" % HOSTNAME)
+            errors.append(ue.json_repr())
+            logger.error("Found error file for %s, will forward to master" % block_id)
+          else:
+            logger.error("Did not find an error file for %s, perhaps the process crashed or was killed" %
+                         block_id)
           block_load[LoadTuple.STATUS] = BlockStatus.DEAD
         elif block_load[LoadTuple.STATUS]==BlockStatus.BLOCKED:
           # The block is blocked in a long-running operation and cannot update load statistics.
@@ -137,9 +148,9 @@ class CareTaker(object):
         logger.error("got error when attempting to read block file %s: %s" % (block_file, e))
         continue
     if get_stats and self.stats_taker.stats_available():
-      return (HOSTNAME, loads, self.stats_taker.take_snapshot())
+      return (HOSTNAME, loads, self.stats_taker.take_snapshot(), errors)
     else:
-      return (HOSTNAME, loads, None)
+      return (HOSTNAME, loads, None, errors)
     
   def setup(self, argv):
     # setup logging

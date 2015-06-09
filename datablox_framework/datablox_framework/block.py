@@ -18,7 +18,23 @@ import base64
 import re
 import contextlib
 
-import defs
+import defs # datablox constants
+
+# Error definitions
+from engage_utils.user_error import UserError, ErrorInfo, convert_exc_to_user_error, format_exc
+import gettext
+_ = gettext.gettext
+errors = {}
+def define_error(error_code, msg):
+  global errors
+  error_info = ErrorInfo(defs.DATABLOX_BLOCK_ERROR_AREA,
+                         __name__, error_code, msg)
+  errors[error_code] = error_info
+
+ERR_BLOCK_EXC = 1
+define_error(ERR_BLOCK_EXC, _("Block %(block_id)s failed with unexpected exception: %(exc)s"))
+
+
 from fileserver import file_server_keypath
 # cache the key here so that we avoid having to read the keyfile for each file
 FILE_SERVER_KEY=None
@@ -382,6 +398,19 @@ def register_json_encoder(encoder, overwrite_existing=False):
   JsonEncoder = encoder
 
 
+def get_error_file_path(block_id, pid, log_dir=None):
+  """Get the path where the block will write its error file, if there is one.
+  """
+  if block_id.startswith('main_inst.'):
+    errfile = "%s_%d_error.json" % (block_id[len('main_inst.'):], pid)
+  else:
+    errfile = "%s_%d_error.json" % (block_id, pid)
+  if log_dir:
+    return os.path.join(log_dir, errfile)
+  else:
+    return errfile
+  
+
 class Block(threading.Thread):
   def __init__(self, master_url):
     threading.Thread.__init__(self)
@@ -432,6 +461,24 @@ class Block(threading.Thread):
       self.start_listening()
     except KeyboardInterrupt:
       self.log(logging.INFO, "Stopping thread")
+    except UserError, e:
+      ue.append_to_context_top("Datablox block id %s, type %s" %
+                               (self.id, self.block_name))
+      e.write_error_to_log(self.logger)
+      if e.logfile==None:
+        e.logfile = self.logfile
+      e.write_error_to_file(get_error_file_path(self.id, os.getpid(),
+                                                self.log_directory))
+    except Exception, e:
+      ue = convert_exc_to_user_error(sys.exc_info(), errors[ERR_BLOCK_EXC],
+                                     msg_args={'block_id':self.id, 'exc':format_exc(e)})
+      ue.append_to_context_top("Datablox block id %s, type %s" %
+                               (self.id, self.block_name))
+      ue.write_error_to_log(self.logger)
+      ue.logfile = self.logfile
+      ue.write_error_to_file(get_error_file_path(self.id, os.getpid(),
+                                                 self.log_directory))
+    
   
   def ready_ports(self):
     self.ready_master_port()
@@ -926,6 +973,7 @@ class Block(threading.Thread):
         logfile = os.path.join(log_directory,
                                "%s_%d.log" % (self.id, os.getpid()))
       self.logfile = logfile
+      self.log_directory = log_directory
       self.log_handler = logging.FileHandler(logfile, delay=True)
       self.log_handler.setLevel(self.log_level)
       sys.stdout.write("[%s] logging %s\n" % (self.id, logfile))
@@ -934,6 +982,7 @@ class Block(threading.Thread):
       self.log_handler = logging.StreamHandler(sys.__stdout__)
       self.log_handler.setLevel(self.log_level)
       self.logfile = None
+      self.log_directory = None
     formatter = logging.Formatter(defs.DATABLOX_LOG_FORMAT,
                                   defs.DATABLOX_LOG_DATEFMT)
     self.log_handler.setFormatter(formatter)

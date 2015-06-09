@@ -30,7 +30,8 @@ else:
 logger = logging.getLogger(__name__)
 
 # error definitions
-from engage_utils.user_error import UserError, ErrorInfo, convert_exc_to_user_error
+from engage_utils.user_error import UserError, ErrorInfo, \
+                                    convert_exc_to_user_error, parse_user_error
 import gettext
 _ = gettext.gettext
 AREA_DATABLOX = "Datablox Framework"
@@ -1111,14 +1112,24 @@ class Master(object):
     load_items = []
     message = json.dumps(("POLL", {'get_stats':get_stats}))
     results = self.send_all_nodes(message)
-    for (node_host, node_loads, node_stats) in results:
+    for (node_host, node_loads, node_stats, node_errors) in results:
+      if len(node_errors)>0:
+        # we have one or more fatal block errors
+        ue = None
+        for ejson in node_errors:
+          if ue:
+            logger.error("Fatal error in block: %s" % parse_user_error(ejson))
+          else:
+            ue = parse_user_error(ejson)
+            logger.error("Fatal error in block: %s" % ue)
+        raise ue
+            
       load_items.extend(node_loads.items())
       if node_stats!=None:
         if not self.server_stats.has_key(node_host):
           self.server_stats[node_host] = SystemStats(node_host)
         self.server_stats[node_host].add_snapshot(node_stats)
     loads = dict(load_items)
-    # print loads
     return loads
 
   def print_server_stats(self, log_stats_hist):
@@ -1166,7 +1177,12 @@ class Master(object):
         time.sleep(self.poll_interval)
         get_stats_on_this_poll = (poll_no % self.stats_multiple)==0
         poll_no += 1
-        loads = self.poll_all_nodes(get_stats=get_stats_on_this_poll)
+        try:
+          loads = self.poll_all_nodes(get_stats=get_stats_on_this_poll)
+        except UserError, e:
+          self.stop_all("Master: stopping due to fatal error in block: %s" %
+                        e)
+          raise
         self.main_block_handler.update_load(loads, update_stats=get_stats_on_this_poll)
         if get_stats_on_this_poll:
           ptime = time.time()
