@@ -86,7 +86,6 @@ def setup_worker_node(reuse_existing_installs):
     setup_script = os.path.join(fl.get_sw_packages_dir(), "setup_caretaker.sh")
     put(setup_script, "~/setup_caretaker.sh")
     run("chmod 755 ~/setup_caretaker.sh")
-    run("~/setup_caretaker.sh")
     if reuse_existing_installs:
         run("~/setup_caretaker.sh --reuse-existing-install")
     else:
