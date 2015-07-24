@@ -433,6 +433,7 @@ class BlockHandler(object):
     self.id = block_record["id"]
     self.name = block_record["name"]
     self.args = block_record["args"]
+    self.at = block_record.get("at")
     self.context = context
     self.address_manager = address_manager
     self.ip_address = address_manager.get_ipaddress(block_record.get("at"))
@@ -709,6 +710,7 @@ class ShardHandler(BlockHandler):
       #optimization: creating the join block on the same node as the shard - TODO: verify this
       join_record = {}
       join_record["id"] = self.join_id()
+      join_record["at"] = self.at
       join_record["name"] = "dynamic-join"
       join_record["args"] = {}
       self.join_handler = DynamicJoinHandler(join_record, self.address_manager, self.context, self.policy)
