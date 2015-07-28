@@ -11,22 +11,20 @@ function remove_old_install {
 }
 
 if [ -d $INSTALL_DIR ]; then
-  CAN_REUSE_INSTALL="no"
   if [[ "$1" == "--reuse-existing-install" ]]; then
-    if [ -x $INSTALL_DIR/engage/bin/svcctl ]; then
       cd $INSTALL_DIR/engage/bin
-      ./svcctl -p $INSTALL_DIR/config/master.pw start caretaker
+      sudo ./svcctl -p $INSTALL_DIR/config/master.pw start caretaker
       rc=$?
       if [[ "$rc" == "0" ]]; then
-        CAN_REUSE_INSTALL="yes"
+        echo "Reusing existing datablox install"
+        exit 0
+      else
+        echo "Problem starting caretaker"
+        exit 1
       fi
-    fi
-  fi
-  if [[ "$CAN_REUSE_INSTALL" == "yes" ]]; then
-    echo "Reusing existing datablox install"
-    exit 0
   else
-    remove_old_install
+      echo "Deleting old install ..."
+      remove_old_install
   fi
 fi
 

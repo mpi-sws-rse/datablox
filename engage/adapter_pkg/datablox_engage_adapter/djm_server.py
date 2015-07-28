@@ -79,16 +79,19 @@ class DjmJob(object):
 @parallel
 @roles("workers")
 def setup_worker_node(reuse_existing_installs):
+    logger.info("setup_worker_node: reuse_existing_installs = %s" % reuse_existing_installs)
     fl = FileLocator()
     dist_path = fl.get_engage_distribution_file()
     # todo: don't copy engage if existing install can be reused
-    put(dist_path, "~/" + os.path.basename(dist_path))
+   
     setup_script = os.path.join(fl.get_sw_packages_dir(), "setup_caretaker.sh")
     put(setup_script, "~/setup_caretaker.sh")
     run("chmod 755 ~/setup_caretaker.sh")
+
     if reuse_existing_installs:
         run("~/setup_caretaker.sh --reuse-existing-install")
     else:
+        put(dist_path, "~/" + os.path.basename(dist_path))
         run("~/setup_caretaker.sh")
     
 def start_job_and_get_nodes(node_list, config_file_name, total_nodes=None,
