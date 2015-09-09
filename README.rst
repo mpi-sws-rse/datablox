@@ -226,4 +226,4 @@ Additional Documentation
 See docs folder for the description of configuration language.
 blox_meta folder contains documentation and requirements for individual blocks.
 
-Copyright 2011, 2012 by MPI-SWS and genForma Corporation
+Copyright 2011 - 2015 by MPI-SWS and Quaddra Software
