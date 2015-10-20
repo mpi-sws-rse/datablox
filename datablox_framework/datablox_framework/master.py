@@ -333,7 +333,11 @@ class LoadBasedResourceManager(object):
 
 resource_manager = None
 
-BLOCK_SYNC_TIMEOUT_MS = 20000
+# The timeout when waiting for a block to respond after startup.
+# This was originally 20 seconds, which was too short.
+# TODO: eliminate the timeout and use process liveness and status
+# messages to determine whether block is responding.
+BLOCK_SYNC_TIMEOUT_MS = 120000
 
 # time between polls of the caretakers (in seconds). Can override via a command line parameter
 DEFAULT_POLL_INTERVAL = 30
