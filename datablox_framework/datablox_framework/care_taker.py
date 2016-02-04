@@ -45,13 +45,40 @@ class CareTaker(object):
     self.setup(argv)
 
   def stop_all(self):
+    """We go through all the blox running on this node and send them a sigterm.
+    We then poll them every second for five seconds to see if they are still alive.
+    On the third poll, we resend a SIGTERM. Finally, any processes that are still
+    alive after 5 polls are then killed.
+    """
     logger.info("[caretaker] stopping all blocks")
-    for p in self.processes.keys():
+    pinfo = [(p, d[0]) for (p, d) in self.processes.items()]
+    for (p, pname) in pinfo:
       p.terminate()
+      logger.info("Sent sigterm to process %d (%s)" % (p.pid, pname))
+    logger.info("Waiting for processes to exit")
+    for i in range(1, 6):
+      time.sleep(1)
+      alive_procs = []
+      for (p, pname) in pinfo:
+        if utils.is_process_alive(p.pid):
+          if i==3:
+            p.terminate()
+            logger.info("Check %d: %d (%s) still alive - resent SIGTERM" % (i, p.pid, pname))
+          else:
+            logger.info("Check %d: %d (%s) still alive" % (i, p.pid, pname))
+          alive_procs.append((p, pname),)
+      pinfo = alive_procs
+      if len(pinfo)==0:
+        break
+    for (p, pname) in pinfo:
+      if utils.is_process_alive(p.pid):
+        logger.info("%d (%s) still alive after %d seconds, sending SIGKILL" % (p.pid, pname, i))
+        p.kill()
     logger.info("[caretaker] done")
 
   def shutdown(self):
-    self.stop_all()
+    if len(self.processes)>0:
+      self.stop_all()
     if self.fileserver_process:
       self.fileserver_process.terminate()
     self.socket.close()
@@ -234,6 +261,7 @@ class CareTaker(object):
           self.stop_all()
           self.processes = {}
           self.socket.send(json.dumps(True))
+          break # we shutdown after receiving a stop request
         elif control == "END RUN":
           self.stop_all()
           self.processes = {}

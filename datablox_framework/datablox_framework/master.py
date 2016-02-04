@@ -6,6 +6,7 @@ import subprocess
 import logging
 import csv
 import datetime
+import signal
 
 import naming
 from block import *
@@ -357,6 +358,7 @@ def timed_recv(socket, time):
   poller = zmq.Poller()
   poller.register(socket)
   socks = dict(poller.poll(time))
+  poller.unregister(socket)
   if socks == {} or socks[socket] != zmq.POLLIN:
     return None
   else:
@@ -971,6 +973,18 @@ class ManagementCallbacks(object):
     """
     pass
 
+def destroy_zmq_context(context):
+  completed = False
+  def handler(signo, stack):
+    assert signo==signal.SIGALRM
+    if not completed:
+      logger.error("Received timeout signal when attempting to destroy zmq context")
+  signal.signal(signal.SIGALRM, handler)
+  signal.alarm(5)
+  context.destroy(linger=0)
+  completed = True
+  signal.alarm(0) # clear the timer
+  logger.info("Zmq context destroyed")
 
 class Master(object):
   def __init__(self, _bloxpath, config_file, ip_addr_list,
@@ -1104,8 +1118,10 @@ class Master(object):
       message = json.dumps(("STOP ALL", {}))
       self.send_all_nodes(message)
       logger.info("Sent stop message, destroying zmq context")
-      self.context.destroy()
-      logger.info("Zmq context destroyed")
+      destroy_zmq_context(self.context)
+      self.context = None
+      # self.context.destroy(linger=0)
+      # logger.info("Zmq context destroyed")
     finally:
       if using_engage:
         self.address_manager.djm_job.stop_job(successful=False,

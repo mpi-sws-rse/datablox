@@ -827,7 +827,8 @@ class Block(threading.Thread):
       if hasattr(p, "sockets"):
         for socket in p.sockets:
           socket.close()
-    self.context.term()
+    if self.context!=None:
+      self.context.term()
     
   def report_shutdown(self):
     self.log(logging.INFO, " waiting for master to poll to report shutdown")

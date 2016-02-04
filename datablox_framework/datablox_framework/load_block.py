@@ -2,10 +2,19 @@ import json
 import sys
 import os
 import logging
+import signal
 
 import naming
 from block import *
 from shard import *
+
+inst_for_sighandler = None
+def sig_term_handler(signo, stack):
+  assert inst_for_sighandler
+  inst_for_sighandler.logger.error("Received signal %s, terminating" %
+                                   signo)
+  inst_for_sighandler.close_all_ports()
+  sys.exit(1)
 
 
 try:
@@ -68,6 +77,10 @@ def start(blox_dir, configuration_file_name, poll_file_name, log_dir):
   # initialize logging
   inst.initialize_logging(log_directory=log_dir)
   inst.log(logging.DEBUG, config)
+  global inst_for_sighandler
+  inst_for_sighandler = inst
+  signal.signal(signal.SIGTERM, sig_term_handler)
+  inst.log(logging.INFO, "registered SIGTERM handler")
   try:
     #setup policies
     if config.has_key("policy"):
