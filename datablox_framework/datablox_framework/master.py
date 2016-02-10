@@ -353,16 +353,37 @@ NUM_TIMEOUTS_BEFORE_DEAD = 15
 def get_url(ip_address, port_number):
   return "tcp://" + ip_address + ":" + str(port_number)
 
-def timed_recv(socket, time):
-  """time is to be given in milliseconds"""
+TIME_BETWEEN_CANCEL_CHECKS_IN_MS = 5000
+
+def _ms_to_td(ms):
+  seconds = 0 if ms < 1000 else ms/1000
+  milliseconds = max(ms - (seconds*1000), 0)
+  return datetime.timedelta(seconds=seconds, milliseconds=milliseconds)
+
+def timed_recv(socket, timeout, cancel_job_cb):
+  """timeout is to be given in milliseconds. We check every
+  TIME_BETWEEN_CANCEL_CHECKS_IN_MS for a cancel request.
+  Result of this function is either a message, None (if timeout),
+  or a CancelRequested exception is thrown."""
   poller = zmq.Poller()
   poller.register(socket)
-  socks = dict(poller.poll(time))
-  poller.unregister(socket)
-  if socks == {} or socks[socket] != zmq.POLLIN:
-    return None
-  else:
-    return socket.recv()
+  timeout_as_dt = datetime.datetime.now() + _ms_to_td(timeout)
+  time_to_sleep = min(timeout, TIME_BETWEEN_CANCEL_CHECKS_IN_MS)
+  try: # try-finally used to ensure we always unregister
+    while True:
+      socks = dict(poller.poll(time_to_sleep))
+      if socks == {} or socks[socket] != zmq.POLLIN:
+        # We only check for cancel if there was no data. This is because
+        # we'd prefer to read any data off the socket and let the next
+        # check catch the cancel.
+        if cancel_job_cb():
+          raise CancelRequested(errors[ERR_CANCEL_REQUESTED])
+        if datetime.datetime.now() > timeout_as_dt:
+          return None # timeout passed and no message ready
+      else:
+        return socket.recv()
+  finally:
+    poller.unregister(socket)
 
 def get_or_default(d, key, default):
   if d.has_key(key):
@@ -403,18 +424,23 @@ def is_shard(block_name):
 def is_rpc(block_name):
   return block_name == "RPC"
   
-def create_handler(block_record, address_manager, context, policy=None):
+def create_handler(block_record, address_manager, context, cancel_job_cb,
+                   policy=None):
   group = get_group(block_record["name"])
   if group == None:
     if is_rpc(block_record["name"]):
-      return RPCHandler(block_record, address_manager, context, policy)
+      return RPCHandler(block_record, address_manager, context, cancel_job_cb,
+                        policy)
     elif is_shard(block_record["name"]):
       resource_manager.initialize_shard(block_record["id"], block_record["name"])
-      return ShardHandler(block_record, address_manager, context, policy)
+      return ShardHandler(block_record, address_manager, context, cancel_job_cb,
+                          policy)
     else:
-      return BlockHandler(block_record, address_manager, context, policy)
+      return BlockHandler(block_record, address_manager, context, cancel_job_cb,
+                          policy)
   else:
-    return GroupHandler(block_record, group, address_manager, context)
+    return GroupHandler(block_record, group, address_manager, context,
+                        cancel_job_cb)
 
 class Connection(object):
   #targets = [(block, port)]
@@ -434,7 +460,8 @@ class BlockStartError(Exception):
     self.block_id = block_id
 
 class BlockHandler(object):
-  def __init__(self, block_record, address_manager, context, policy=None):
+  def __init__(self, block_record, address_manager, context, cancel_job_cb,
+               policy=None):
     global resource_manager
     self.id = block_record["id"]
     self.name = block_record["name"]
@@ -444,6 +471,9 @@ class BlockHandler(object):
     self.address_manager = address_manager
     self.ip_address = address_manager.get_ipaddress(block_record.get("at"))
     self.master_port = address_manager.get_master_port()
+    assert cancel_job_cb!=None, "cancel callback should not be none!"
+    assert hasattr(cancel_job_cb, '__call__'), "Cancel callback not callback was %s" % cancel_job_cb.__repr__()
+    self.cancel_job_cb = cancel_job_cb
     self.policy = policy
     self.version = block_record["version"] if block_record.has_key("version") \
                                    else naming.DEFAULT_VERSION
@@ -504,6 +534,9 @@ class BlockHandler(object):
     return config
     
   def start(self):
+    if self.cancel_job_cb():
+      logger.info("Detected a job cancel, aborting job")
+      raise CancelRequested(errors[ERR_CANCEL_REQUESTED])
     logger.info("starting %s" % self.name)
     config = self.create_basic_config()
     self.add_additional_config(config)
@@ -534,8 +567,11 @@ class BlockHandler(object):
     logger.info("syncing with block %s (%s) at url %s" % (self.id, self.name, url))
     syncclient.send('')
     # wait for synchronization reply
-    res = timed_recv(syncclient, BLOCK_SYNC_TIMEOUT_MS)
-    syncclient.close()
+    try:
+      # will return a result, None, or throw a CancelRequested exception
+      res = timed_recv(syncclient, BLOCK_SYNC_TIMEOUT_MS, self.cancel_job_cb)
+    finally:
+      syncclient.close()
     if res != None:
       resource_manager.set_block_status(self.id, BlockStatus.ALIVE)
       return True
@@ -615,15 +651,20 @@ class BlockHandler(object):
         resource_manager.set_block_status(self.id, BlockStatus.TIMEOUT)
 
 class RPCHandler(BlockHandler):
-  def __init__(self, block_record, address_manager, context, policy=None):
+  def __init__(self, block_record, address_manager, context, cancel_job_cb,
+               policy=None):
     global resource_manager
-    BlockHandler.__init__(self, block_record, address_manager, context, policy)
+    BlockHandler.__init__(self, block_record, address_manager, context, cancel_job_cb,
+                          policy)
     #TODO: we don't really need it, but put master node's ip in it
     self.ip_address = "127.0.0.1"
     self.webserver_process = None
     self.webserver_poll_file = "webservice_poll.json"
   
   def start(self):
+    if self.cancel_job_cb():
+      logger.info("Detected a job cancel, aborting job")
+      raise CancelRequested(errors[ERR_CANCEL_REQUESTED])
     connections_file_name = "connections"
     with open(connections_file_name, 'w') as f:
       f.write(json.dumps(self.create_port_config()))
@@ -662,8 +703,10 @@ class RPCHandler(BlockHandler):
     BlockHandler.update_load(self, loads, update_stats)
   
 class DynamicJoinHandler(BlockHandler):
-  def __init__(self, block_record, address_manager, context, policy=None):
-    BlockHandler.__init__(self, block_record, address_manager, context, policy)
+  def __init__(self, block_record, address_manager, context, cancel_job_cb,
+               policy=None):
+    BlockHandler.__init__(self, block_record, address_manager, context, cancel_job_cb,
+                          policy)
     self.subscribers = 0
     self.join_port = address_manager.new_port()
   
@@ -678,8 +721,10 @@ class DynamicJoinHandler(BlockHandler):
     config["subscribers"] = self.subscribers  
   
 class ShardHandler(BlockHandler):
-  def __init__(self, block_record, address_manager, context, policy=None):
-    BlockHandler.__init__(self, block_record, address_manager, context, policy)
+  def __init__(self, block_record, address_manager, context, cancel_job_cb,
+               policy=None):
+    BlockHandler.__init__(self, block_record, address_manager, context,
+                          cancel_job_cb, policy)
     if using_engage:
       # For shard blocks, we need to install the block, even on the master.
       # This is because the block class is instantiated to call its
@@ -719,13 +764,14 @@ class ShardHandler(BlockHandler):
       join_record["at"] = self.at
       join_record["name"] = "dynamic-join"
       join_record["args"] = {}
-      self.join_handler = DynamicJoinHandler(join_record, self.address_manager, self.context, self.policy)
+      self.join_handler = DynamicJoinHandler(join_record, self.address_manager, self.context, self.cancel_job_cb,
+                                             self.policy)
 
     for i, block_config in enumerate(block_configs):
       output_port = "output"+str(i)
       loc = block_config["at"] if block_config.has_key("at") else None
       rec = {"id": self.block_id(i), "name": block_name, "args": block_config, "at": loc}
-      block_handler = create_handler(rec, self.address_manager, self.context, self.policy)
+      block_handler = create_handler(rec, self.address_manager, self.context, self.cancel_job_cb, self.policy)
       self.block_handlers.append(block_handler)
       #hack, this will get substituted to the right port in get_output_port_connections
       self.connect_to("<<" + output_port, block_handler, input_port)
@@ -785,7 +831,8 @@ class ShardHandler(BlockHandler):
 class GroupHandler(BlockHandler):
   #group_record is the specification of the group (like a "class")
   #block_record is the instance of the group (like an "object")
-  def __init__(self, block_record, group_record, address_manager, context):
+  def __init__(self, block_record, group_record, address_manager, context,
+               cancel_job_cb):
     global resource_manager
     self.id = block_record["id"]
     self.name = group_record["group-name"]
@@ -793,6 +840,7 @@ class GroupHandler(BlockHandler):
     self.context = context
     self.policies = group_record["policies"] if group_record.has_key("policies") else {}
     self.group_args = block_record["args"]
+    self.cancel_job_cb = cancel_job_cb
     resource_manager.initialize_block_stats(self.id)
     #substitute group-args to hold proper arguments
     block_records = copy.deepcopy(group_record["blocks"])
@@ -800,7 +848,8 @@ class GroupHandler(BlockHandler):
       b["id"] = self.full_id(b["id"]) 
       if b["args"] == "group-args":
         b["args"] = self.group_args
-    self.block_handlers = [create_handler(b, self.address_manager, self.context, self.policies.get(b["id"])) 
+    self.block_handlers = [create_handler(b, self.address_manager, self.context,
+                                          self.cancel_job_cb, self.policies.get(b["id"]))
                             for b in block_records]
     self.block_hash = {}
     for bh in self.block_handlers:
@@ -1023,7 +1072,8 @@ class Master(object):
     global_config = self.get_config(config_file, block_args=block_args)
     #can fill this with command line args
     main_block_rec = {"id": "main_inst", "args": {}}
-    self.main_block_handler = GroupHandler(main_block_rec, get_group("main"), self.address_manager, self.context)
+    self.main_block_handler = GroupHandler(main_block_rec, get_group("main"), self.address_manager, self.context,
+                                           callbacks.cancel_job)
 
     self.server_stats = {} # map from server hostname to SystemStats for that server
 
@@ -1040,6 +1090,9 @@ class Master(object):
     self.callbacks = callbacks
     try:
       self.main_block_handler.start()
+    except CancelRequested, e:
+      self.stop_all("User requested cancel of job")
+      raise
     except KeyboardInterrupt:
       self.stop_all("Got a keyboard interrupt, during startup")
       raise CancelRequested(errors[ERR_BLOCK_INTERRUPT])
