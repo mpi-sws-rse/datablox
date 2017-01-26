@@ -38,3 +38,44 @@ sequence of messages:
 
 .. figure:: block_initialization.svg
 
+The master first connects to the caretaker for the node associated with
+the block to be started. It then sends an ``ADD BLOCK`` message with
+the configuration for the block. This configuration includes the
+parameters specified in the topology file as well as the network
+addresses of the input and output ports. TCP/IP ports are pre-assigned
+by the master. It starts at a specified port number and then increments
+for each port needed on the given node.
+
+The caretaker writes this configuration to a file and then fork/execs
+the block's process, passing it the path to the configuration file and
+the path to the poll data file as command line arguments. The block
+reads this configuration, stores it in its object, and then starts
+listening on its input ports. It has a special input port for direct
+communications from the master.
+
+After forking off the block process, the caretaker returns ``True`` to
+indicate sucess and ``False`` otherwise.
+
+The master then connects to the block's master port [#]_, sends
+a "sync" message, and waits for an (empty) response. If no response is
+received by the timeout, an error is signaled, and the entire startup processes
+aborted.
+
+Once all the blocks have been started successfully, the master enters its
+main execution loop.
+
+.. [#] Note that this is a ZeroMQ connect, not a TCP/IP connect. ZeroMQ
+       connects are lazy and sends may not be immediate. In this case,
+       the send will not occur until the block has actually started
+       listening on its receive socket. See the ZeroMQ documentation for
+       details.
+
+Polling Messages
+----------------
+
+
+Job Completion
+--------------
+
+
+
