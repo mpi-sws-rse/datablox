@@ -1,0 +1,32 @@
+.PS
+copy "sequence.pic";
+boxwid = 1.1;
+movewid = 0.5;
+
+# Define the objects
+object(M,"m:Master");
+object(C1,"c1:CareTaker");
+object(C2,"c2:CareTaker");
+step()
+
+active(M);
+message(M,C1,"POLL");
+active(C1);
+step();
+return_message(C1,M,"(host,loads,stats,errors)");
+inactive(C1);
+step();
+
+message(M,C2,"POLL");
+active(C2);
+step();
+return_message(C2,M,"(host,loads,stats,errors)");
+inactive(C2);
+step();
+
+inactive(M);
+step();
+complete(M);
+complete(C1);
+complete(C2);
+.PE

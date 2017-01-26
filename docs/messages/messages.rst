@@ -72,7 +72,43 @@ main execution loop.
 
 Polling Messages
 ----------------
+During the run of a job, the master polls each of the caretaker nodes
+at a set interval (once every 30 seconds by default). Here is an example
+of the message exchange:
 
+.. image:: poll_all_nodes.svg
+
+The master communicates with each caretaker in turn. It sends a ``POLL``
+message. This message has a single parameter: ``get_stats``, a boolean.
+If ``True``, the caretaker should include load data and system statistics.
+This is requested once every 5 requests (so, 2 1/2 minutes by default).
+
+The caretaker responds with a tuple consisting of the hostname,
+load data from all of the workers on the node (if requested),
+node-wide system statistics (CPU and memory usage, if requested),
+and any fatal errors (including the full error message
+and stack trace).
+
+The load data is managed by the class ``LoadBasedResourceManager``. It uses
+an instance of ``BlockPerfStates`` for each block to track requests made
+to the block, requests served by this block, and total processing time.
+These are used to compute load percentage and queue size.
+
+Stopping Due to an Error
+------------------------
+If there were any fatal errors or block timeouts returned from the caretakers,
+the stop procedure is initiatiated. A ``STOP ALL`` message is sent in turn to
+each caretaker. Here is an example message exchange with one of the
+caretaker processes:
+
+.. image:: stop_all.svg
+
+Upon receiving the ``STOP ALL`` message, it sends a ``SIGTERM`` signal to each
+block process. It then monitors the processes to see whether they have
+exited. If they have not exited within a certain number of polls, another
+``SIGTERM`` is sent (e.g. block ``b2`` in our example). Finally, the block
+process ``b2`` is killed with a ``SIGKILL`` signal. The caretaker process then
+responds to the master with a ``True`` value message and then exits.
 
 Job Completion
 --------------

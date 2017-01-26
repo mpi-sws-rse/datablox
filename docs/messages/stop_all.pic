@@ -1,0 +1,33 @@
+.PS
+copy "sequence.pic";
+
+# define the objects
+object(M,"m:Master");
+object(C,"c:CareTaker");
+object(B1,"b1:Block");
+object(B2,"b2:Block");
+step();
+
+active(M);
+message(M,C,"STOP ALL");
+active(C);
+step();
+
+message(C,B1,"SIGTERM");
+message(C,B2,"SIGTERM");
+step();
+
+complete(B1);
+step();
+message(C,B2,"SIGTERM");
+step();
+message(C,B2,"SIGKILL");
+complete(B2);
+return_message(C,M,"True");
+inactive(C);
+complete(C);
+
+step();
+inactive(M);
+complete(M);
+.PE
