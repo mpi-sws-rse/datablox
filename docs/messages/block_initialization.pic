@@ -1,0 +1,46 @@
+.PS
+copy "sequence.pic";
+
+# Define the objects
+object(M,"m:Master");
+object(C,"c:CareTaker");
+object(F,"f:Filesystem");
+placeholder_object(B);
+step()
+
+active(M);
+message(M,C,"connect()")
+step();
+message(M,C,"ADD BLOCK (config)");
+active(C);
+step();
+message(C,F,"write_config()");
+step();
+create_message(C,B,"b:Block");
+return_message(C,M,"True");
+inactive(C);
+step();
+
+active(B);
+message(B,F,"read_config()");
+return_message(F,B,"");
+inactive(B);
+step();
+
+message(M,B,"connect()");
+step();
+
+active(B);
+message(M,B,"sync");
+return_message(B,M,"");
+inactive(B);
+inactive(M);
+
+step();
+complete(M);
+complete(C);
+complete(B);
+complete(F);
+.PE
+
+
