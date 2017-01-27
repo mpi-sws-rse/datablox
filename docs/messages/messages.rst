@@ -39,7 +39,7 @@ sequence of messages:
 .. figure:: block_initialization.svg
 
 The master first connects to the caretaker for the node associated with
-the block to be started. It then sends an ``ADD BLOCK`` message with
+the block to be started. [#]_ It then sends an ``ADD BLOCK`` message with
 the configuration for the block. This configuration includes the
 parameters specified in the topology file as well as the network
 addresses of the input and output ports. TCP/IP ports are pre-assigned
@@ -64,6 +64,9 @@ aborted.
 Once all the blocks have been started successfully, the master enters its
 main execution loop.
 
+.. [#] The caretaker process is started at the beginning of the run
+       by the Engage infrastructure.
+       
 .. [#] Note that this is a ZeroMQ connect, not a TCP/IP connect. ZeroMQ
        connects are lazy and sends may not be immediate. In this case,
        the send will not occur until the block has actually started
@@ -80,11 +83,12 @@ of the message exchange:
 
 The master communicates with each caretaker in turn. It sends a ``POLL``
 message. This message has a single parameter: ``get_stats``, a boolean.
-If ``True``, the caretaker should include load data and system statistics.
+If ``True``, the caretaker should include system statistics.
 This is requested once every 5 requests (so, 2 1/2 minutes by default).
 
-The caretaker responds with a tuple consisting of the hostname,
-load data from all of the workers on the node (if requested),
+The caretaker calls ``collect_poll_data()`` (see below) to gather the
+data. It then responds to the master with a tuple consisting of the hostname,
+load data from all of the workers on the node,
 node-wide system statistics (CPU and memory usage, if requested),
 and any fatal errors (including the full error message
 and stack trace).
@@ -93,6 +97,22 @@ The load data is managed by the class ``LoadBasedResourceManager``. It uses
 an instance of ``BlockPerfStates`` for each block to track requests made
 to the block, requests served by this block, and total processing time.
 These are used to compute load percentage and queue size.
+
+collect_poll_data
+-----------------
+The message sequence chart below shows how the collection of load and
+liveness data works at the worker nodes:
+
+.. image:: liveness_check.svg
+
+Each block process periodically writes its status data to a file specified
+by the caretaker. When the caretaker receives a ``POLL`` request from the
+master, it cycles through all the blocks on the node. For each block,
+it reads the status data file and updates its information. It also
+executes a ``ps -p`` command on the block's process to verify that it
+is still alive. If it is dead, it marks the status as dead and also
+looks for an error dump file (which is included in the response, if present).
+
 
 Stopping Due to an Error
 ------------------------
@@ -112,6 +132,15 @@ responds to the master with a ``True`` value message and then exits.
 
 Job Completion
 --------------
+After gathering the liveness data from a poll of the caretakers, the master
+checks to see whether any blocks are still running. If no blocks are running,
+and we haven't seen an error, then they are all in the ``STOPPED`` state (see
+``BlockStatus`` in block.py. The master then sends a ``END RUN`` message to each
+of the caretakers. The caretaker stops the blocks (which should have no effect),
+responds to the master with ``True``, and then exits.
+
+After communicating with all the caretakers, the master itself prints
+final summary statistics and exits.
 
 
 

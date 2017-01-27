@@ -4,7 +4,7 @@
 <title>SVG drawing</title>
 <desc>This was produced by version 4.4 of GNU libplot, a free library for exporting 2-D vector graphics.</desc>
 <rect id="background" x="0" y="0" width="1" height="1" stroke="none" fill="white"/>
-<g id="content" transform="translate(0.2,0.35313) scale(1,-1) scale(0.125) " xml:space="preserve" stroke="black" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10.433" stroke-dasharray="none" stroke-dashoffset="0" stroke-opacity="1" fill="none" fill-rule="evenodd" fill-opacity="1" font-style="normal" font-variant="normal" font-weight="normal" font-stretch="normal" font-size-adjust="none" letter-spacing="normal" word-spacing="normal" text-anchor="start">
+<g id="content" transform="translate(0.2,0.29063) scale(1,-1) scale(0.125) " xml:space="preserve" stroke="black" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10.433" stroke-dasharray="none" stroke-dashoffset="0" stroke-opacity="1" fill="none" fill-rule="evenodd" fill-opacity="1" font-style="normal" font-variant="normal" font-weight="normal" font-stretch="normal" font-size-adjust="none" letter-spacing="normal" word-spacing="normal" text-anchor="start">
 <rect x="0" y="-0.15" width="1.1" height="0.3" stroke-width="0.0094118" />
 <text transform="translate(0.26063,-0.049028) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" >m:Master</text>
 <line x1="0.1" y1="-0.07" x2="1" y2="-0.07" stroke-width="0.0094118" />
@@ -22,31 +22,43 @@
 <text transform="translate(1.3307,-0.63236) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" > </text>
 <line x1="2.15" y1="-0.15" x2="2.15" y2="-0.5" stroke-width="0.0094118" stroke-dasharray="0.05, 0.05" />
 <line x1="2.1" y1="-0.5" x2="2.2" y2="-0.5" stroke-width="0.0094118" />
-<line x1="2.09" y1="-1" x2="0.61" y2="-1" stroke-width="0.0094118" stroke-dasharray="0.05, 0.05" />
-<polygon points="0.71,-1.025 0.61,-1 0.71,-0.975 " stroke-width="0.0094118" fill="black" />
-<text transform="translate(0.62062,-0.96569) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" >(host,loads,stats,errors)</text>
-<text transform="translate(1.3307,-1.1324) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" > </text>
-<line x1="2.1" y1="-0.5" x2="2.1" y2="-1" stroke-width="0.0094118" />
-<line x1="2.2" y1="-0.5" x2="2.2" y2="-1" stroke-width="0.0094118" />
-<line x1="2.1" y1="-1" x2="2.2" y2="-1" stroke-width="0.0094118" />
-<line x1="0.61" y1="-1.5" x2="3.69" y2="-1.5" stroke-width="0.0094118" />
-<polygon points="3.59,-1.475 3.69,-1.5 3.59,-1.525 " stroke-width="0.0094118" fill="black" />
-<text transform="translate(1.9724,-1.4657) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" >POLL</text>
-<text transform="translate(2.1307,-1.6324) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" > </text>
-<line x1="3.75" y1="-0.15" x2="3.75" y2="-1.5" stroke-width="0.0094118" stroke-dasharray="0.05, 0.05" />
-<line x1="3.7" y1="-1.5" x2="3.8" y2="-1.5" stroke-width="0.0094118" />
-<line x1="3.69" y1="-2" x2="0.61" y2="-2" stroke-width="0.0094118" stroke-dasharray="0.05, 0.05" />
-<polygon points="0.71,-2.025 0.61,-2 0.71,-1.975 " stroke-width="0.0094118" fill="black" />
-<text transform="translate(1.4206,-1.9657) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" >(host,loads,stats,errors)</text>
+<polyline points="2.21,-1 2.71,-1 2.71,-1.25 2.21,-1.25 " stroke-width="0.0094118" />
+<polygon points="2.31,-1.275 2.21,-1.25 2.31,-1.225 " stroke-width="0.0094118" fill="black" />
+<text transform="translate(2.21,-0.92403) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" >collect_poll_data()</text>
+<text transform="translate(2.1907,-1.0907) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" > </text>
+<text transform="translate(2.1907,-1.2574) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" > </text>
+<text transform="translate(2.1907,-1.424) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" > </text>
+<line x1="2.09" y1="-1.5" x2="0.61" y2="-1.5" stroke-width="0.0094118" stroke-dasharray="0.05, 0.05" />
+<polygon points="0.71,-1.525 0.61,-1.5 0.71,-1.475 " stroke-width="0.0094118" fill="black" />
+<text transform="translate(0.62062,-1.4657) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" >(host,loads,stats,errors)</text>
+<text transform="translate(1.3307,-1.6324) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" > </text>
+<line x1="2.1" y1="-0.5" x2="2.1" y2="-1.5" stroke-width="0.0094118" />
+<line x1="2.2" y1="-0.5" x2="2.2" y2="-1.5" stroke-width="0.0094118" />
+<line x1="2.1" y1="-1.5" x2="2.2" y2="-1.5" stroke-width="0.0094118" />
+<line x1="0.61" y1="-2" x2="3.69" y2="-2" stroke-width="0.0094118" />
+<polygon points="3.59,-1.975 3.69,-2 3.59,-2.025 " stroke-width="0.0094118" fill="black" />
+<text transform="translate(1.9724,-1.9657) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" >POLL</text>
 <text transform="translate(2.1307,-2.1324) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" > </text>
-<line x1="3.7" y1="-1.5" x2="3.7" y2="-2" stroke-width="0.0094118" />
-<line x1="3.8" y1="-1.5" x2="3.8" y2="-2" stroke-width="0.0094118" />
+<line x1="3.75" y1="-0.15" x2="3.75" y2="-2" stroke-width="0.0094118" stroke-dasharray="0.05, 0.05" />
 <line x1="3.7" y1="-2" x2="3.8" y2="-2" stroke-width="0.0094118" />
-<line x1="0.5" y1="-0.25" x2="0.5" y2="-2.25" stroke-width="0.0094118" />
-<line x1="0.6" y1="-0.25" x2="0.6" y2="-2.25" stroke-width="0.0094118" />
-<line x1="0.5" y1="-2.25" x2="0.6" y2="-2.25" stroke-width="0.0094118" />
-<line x1="0.55" y1="-2.25" x2="0.55" y2="-2.5" stroke-width="0.0094118" stroke-dasharray="0.05, 0.05" />
-<line x1="2.15" y1="-1" x2="2.15" y2="-2.5" stroke-width="0.0094118" stroke-dasharray="0.05, 0.05" />
-<line x1="3.75" y1="-2" x2="3.75" y2="-2.5" stroke-width="0.0094118" stroke-dasharray="0.05, 0.05" />
+<polyline points="3.81,-2.5 4.31,-2.5 4.31,-2.75 3.81,-2.75 " stroke-width="0.0094118" />
+<polygon points="3.91,-2.775 3.81,-2.75 3.91,-2.725 " stroke-width="0.0094118" fill="black" />
+<text transform="translate(3.81,-2.424) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" >collect_poll_data()</text>
+<text transform="translate(3.7907,-2.5907) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" > </text>
+<text transform="translate(3.7907,-2.7574) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" > </text>
+<text transform="translate(3.7907,-2.924) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" > </text>
+<line x1="3.69" y1="-3" x2="0.61" y2="-3" stroke-width="0.0094118" stroke-dasharray="0.05, 0.05" />
+<polygon points="0.71,-3.025 0.61,-3 0.71,-2.975 " stroke-width="0.0094118" fill="black" />
+<text transform="translate(1.4206,-2.9657) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" >(host,loads,stats,errors)</text>
+<text transform="translate(2.1307,-3.1324) scale(1,-1) scale(0.0069444) " font-family="Helvetica,sans-serif" font-size="20px" stroke="none" fill="black" > </text>
+<line x1="3.7" y1="-2" x2="3.7" y2="-3" stroke-width="0.0094118" />
+<line x1="3.8" y1="-2" x2="3.8" y2="-3" stroke-width="0.0094118" />
+<line x1="3.7" y1="-3" x2="3.8" y2="-3" stroke-width="0.0094118" />
+<line x1="0.5" y1="-0.25" x2="0.5" y2="-3.25" stroke-width="0.0094118" />
+<line x1="0.6" y1="-0.25" x2="0.6" y2="-3.25" stroke-width="0.0094118" />
+<line x1="0.5" y1="-3.25" x2="0.6" y2="-3.25" stroke-width="0.0094118" />
+<line x1="0.55" y1="-3.25" x2="0.55" y2="-3.5" stroke-width="0.0094118" stroke-dasharray="0.05, 0.05" />
+<line x1="2.15" y1="-1.5" x2="2.15" y2="-3.5" stroke-width="0.0094118" stroke-dasharray="0.05, 0.05" />
+<line x1="3.75" y1="-3" x2="3.75" y2="-3.5" stroke-width="0.0094118" stroke-dasharray="0.05, 0.05" />
 </g>
 </svg>

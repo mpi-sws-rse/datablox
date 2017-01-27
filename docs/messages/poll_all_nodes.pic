@@ -13,6 +13,8 @@ active(M);
 message(M,C1,"POLL");
 active(C1);
 step();
+
+message(C1,C1,"collect_poll_data()");
 return_message(C1,M,"(host,loads,stats,errors)");
 inactive(C1);
 step();
@@ -20,6 +22,7 @@ step();
 message(M,C2,"POLL");
 active(C2);
 step();
+message(C2,C2,"collect_poll_data()");
 return_message(C2,M,"(host,loads,stats,errors)");
 inactive(C2);
 step();

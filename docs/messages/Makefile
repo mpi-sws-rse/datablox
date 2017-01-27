@@ -1,5 +1,5 @@
 # compile the message sequence charts
-SVGFILES=block_initialization.svg poll_all_nodes.svg stop_all.svg
+SVGFILES=block_initialization.svg poll_all_nodes.svg liveness_check.svg stop_all.svg
 
 THEME=--stylesheet=docutils_basic.css --embed-stylesheet
 

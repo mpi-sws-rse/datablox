@@ -1,0 +1,43 @@
+.PS
+copy "sequence.pic";
+
+# Define the objects
+object(M, "m:Master");
+object(C,"c:CareTaker");
+object(F,"f:FileSystem");
+object(B,"b:Block");
+object(O,"o:OsKernel");
+step();
+
+active(B);
+step();
+message(B,F,"write_status(json data)");
+inactive(B);
+
+step();
+step();
+
+message(M,C,"POLL");
+active(C);
+message(C,F,"read_status()");
+return_message(F,C,"json data");
+message(C,O,"ps -p PID");
+return_message(O,C,"process status");
+step();
+return_message(C,M,"(host,loads,stats,errors)");
+inactive(C);
+
+step();
+active(B);
+step();
+message(B,F,"write_status(json data)");
+inactive(B);
+
+step();
+complete(C);
+complete(B);
+complete(F);
+complete(O);
+complete(M);
+.PE
+
